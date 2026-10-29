@@ -766,6 +766,7 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header" id="sidebarLogoHeader" onclick="navigateToDashboardFromLogo()" style="cursor: pointer;" title="Return to General Dashboard">
+            <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" onclick="event.stopPropagation(); toggleMobileSidebar(false);" aria-label="Close Navigation Menu">&times;</button>
             <div class="school-logo" id="sidebarMdsjfiLogo" onclick="navigateToDashboardFromLogo()" style="cursor: pointer;" title="Return to General Dashboard">
                 <img src="school-logo.png" alt="Montessori De San Jose Logo">
             </div>
@@ -889,9 +890,11 @@
         </div>
     </aside>
 
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileSidebar(false)"></div>
+
     <!-- Mobile Header -->
     <header class="mobile-header">
-        <button class="hamburger" id="hamburger" onclick="document.getElementById('sidebar')?.classList.toggle('open')" title="Toggle Navigation Menu">
+        <button class="hamburger" id="hamburger" onclick="toggleMobileSidebar()" title="Toggle Navigation Menu">
             <i class="fas fa-bars"></i>
         </button>
         <img src="school-logo.png" alt="Logo" class="mobile-logo" onclick="navigateToDashboardFromLogo()" style="cursor: pointer;" title="Return to General Dashboard">

@@ -730,6 +730,9 @@ function navigateTo(pageId) {
 
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('open');
+    if (typeof toggleMobileSidebar === 'function') {
+        toggleMobileSidebar(false);
+    }
 
     if (pageId === 'dashboard') refreshDashboard();
     else if (pageId === 'students') { 
@@ -6048,11 +6051,34 @@ function importData(e) {
     e.target.value = '';
 }
 
+function toggleMobileSidebar(force) {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebarBackdrop');
+    if (!sb) return;
+    const shouldOpen = (force !== undefined) ? !!force : !sb.classList.contains('open');
+    if (shouldOpen) {
+        sb.classList.add('open');
+        if (bd) bd.classList.add('active');
+        document.body.classList.add('mobile-sidebar-open');
+    } else {
+        sb.classList.remove('open');
+        if (bd) bd.classList.remove('active');
+        document.body.classList.remove('mobile-sidebar-open');
+    }
+}
+window.toggleMobileSidebar = toggleMobileSidebar;
+
 function initMobileMenu() {
     const ham = document.getElementById('hamburger');
-    const sidebar = document.getElementById('sidebar');
-    if (ham && sidebar) {
-        ham.onclick = () => sidebar.classList.toggle('open');
+    if (ham) {
+        ham.onclick = (e) => {
+            if (e) e.stopPropagation();
+            toggleMobileSidebar();
+        };
+    }
+    const bd = document.getElementById('sidebarBackdrop');
+    if (bd) {
+        bd.onclick = () => toggleMobileSidebar(false);
     }
 }
 
