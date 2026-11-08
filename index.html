@@ -600,11 +600,65 @@
             window.scrollTo(0, 0);
         };
 
+        // Sidebar Collapse / Expand Mini State (around 64px)
+        window.toggleSidebarCollapse = function(forceState) {
+            var sidebar = document.getElementById('sidebar');
+            var toggleBtn = document.getElementById('sidebarCollapseToggleBtn');
+            var isCollapsed;
+            if (typeof forceState === 'boolean') {
+                isCollapsed = forceState;
+            } else {
+                isCollapsed = !document.body.classList.contains('sidebar-collapsed');
+            }
+
+            if (isCollapsed) {
+                document.body.classList.add('sidebar-collapsed');
+                if (sidebar) sidebar.classList.add('collapsed');
+                try { localStorage.setItem('mdsj_sidebar_collapsed', 'true'); } catch(e) {}
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('title', 'Expand navigation sidebar');
+                    toggleBtn.setAttribute('aria-label', 'Expand navigation sidebar');
+                }
+            } else {
+                document.body.classList.remove('sidebar-collapsed');
+                if (sidebar) sidebar.classList.remove('collapsed');
+                try { localStorage.setItem('mdsj_sidebar_collapsed', 'false'); } catch(e) {}
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('title', 'Collapse navigation sidebar');
+                    toggleBtn.setAttribute('aria-label', 'Collapse navigation sidebar');
+                }
+            }
+
+            setTimeout(function() {
+                try { window.dispatchEvent(new Event('resize')); } catch(e) {}
+            }, 320);
+        };
+
+        window.applySidebarCollapseState = function() {
+            if (window.innerWidth <= 768) {
+                document.body.classList.remove('sidebar-collapsed');
+                var s = document.getElementById('sidebar');
+                if (s) s.classList.remove('collapsed');
+                return;
+            }
+            try {
+                var saved = localStorage.getItem('mdsj_sidebar_collapsed') === 'true';
+                if (saved) {
+                    window.toggleSidebarCollapse(true);
+                }
+            } catch(e) {}
+        };
+
         // Year Level Dropdown Toggle
         window.toggleYearLevelDropdown = function(event) {
             if (event) {
                 if (typeof event.preventDefault === "function") event.preventDefault();
                 if (typeof event.stopPropagation === "function") event.stopPropagation();
+            }
+            if (document.body.classList.contains("sidebar-collapsed")) {
+                if (typeof window.toggleSidebarCollapse === "function") {
+                    window.toggleSidebarCollapse(false);
+                }
             }
             var dd = document.getElementById("navYearLevelDropdown");
             var btn = document.getElementById("btnYearLevelToggle");
@@ -847,6 +901,14 @@
             if (activeSession) {
                 unlockDashboardUI(activeSession);
             }
+            try { window.applySidebarCollapseState(); } catch(e) {}
+            window.addEventListener('resize', function() {
+                if (window.innerWidth <= 768) {
+                    document.body.classList.remove('sidebar-collapsed');
+                    var s = document.getElementById('sidebar');
+                    if (s) s.classList.remove('collapsed');
+                }
+            });
 
             function clearAlert() {
                 if (uEl) uEl.style.borderColor = "";
@@ -910,6 +972,10 @@
 
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
+        <!-- Collapse / Expand Sidebar Toggle Arrow Button on Right Edge -->
+        <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggleBtn" onclick="toggleSidebarCollapse()" title="Collapse navigation sidebar" aria-label="Toggle sidebar collapse">
+            <i class="fas fa-chevron-left" id="sidebarCollapseArrow"></i>
+        </button>
         <div class="sidebar-header" id="sidebarLogoHeader" onclick="navigateToDashboardFromLogo()" style="cursor: pointer;" title="Return to General Dashboard">
             <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" onclick="event.stopPropagation(); toggleMobileSidebar(false);" aria-label="Close Navigation Menu">&times;</button>
             <div class="school-logo" id="sidebarMdsjfiLogo" onclick="navigateToDashboardFromLogo()" style="cursor: pointer;" title="Return to General Dashboard">
@@ -927,11 +993,11 @@
             </div>
         </div>
         <nav class="sidebar-nav">
-            <a href="javascript:void(0)" class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+            <a href="javascript:void(0)" class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')" title="Dashboard">
                 <i class="fas fa-chart-pie"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="javascript:void(0)" class="nav-item" data-page="students" onclick="navigateTo('students')">
+            <a href="javascript:void(0)" class="nav-item" data-page="students" onclick="navigateTo('students')" title="All Students">
                 <i class="fas fa-users"></i>
                 <span>All Students</span>
             </a>
@@ -943,68 +1009,68 @@
                     <i class="fas fa-chevron-down nav-dropdown-arrow"></i>
                 </button>
                 <div class="nav-dropdown-menu" id="yearLevelMenu">
-                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade7" onclick="navigateTo('grade7')">
+                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade7" onclick="navigateTo('grade7')" title="Grade 7">
                         <i class="fas fa-chevron-right"></i>
                         <span>Grade 7</span>
                     </a>
-                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade8" onclick="navigateTo('grade8')">
+                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade8" onclick="navigateTo('grade8')" title="Grade 8">
                         <i class="fas fa-chevron-right"></i>
                         <span>Grade 8</span>
                     </a>
-                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade9" onclick="navigateTo('grade9')">
+                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade9" onclick="navigateTo('grade9')" title="Grade 9">
                         <i class="fas fa-chevron-right"></i>
                         <span>Grade 9</span>
                     </a>
-                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade10" onclick="navigateTo('grade10')">
+                    <a href="javascript:void(0)" class="nav-subitem" data-page="grade10" onclick="navigateTo('grade10')" title="Grade 10">
                         <i class="fas fa-chevron-right"></i>
                         <span>Grade 10</span>
                     </a>
                 </div>
             </div>
-            <a href="javascript:void(0)" class="nav-item" data-page="add-student" onclick="navigateTo('add-student')">
+            <a href="javascript:void(0)" class="nav-item" data-page="add-student" onclick="navigateTo('add-student')" title="Enroll Student">
                 <i class="fas fa-user-plus"></i>
                 <span>Enroll Student</span>
             </a>
-            <a href="javascript:void(0)" class="nav-item" data-page="soa" onclick="navigateTo('soa')">
+            <a href="javascript:void(0)" class="nav-item" data-page="soa" onclick="navigateTo('soa')" title="Statement of Account">
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Statement of Account</span>
             </a>
             <!-- Daily Cash In and Out Flow (Quick Access & Actions) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="cash-flow" onclick="navigateTo('cash-flow')">
+            <a href="javascript:void(0)" class="nav-item" data-page="cash-flow" onclick="navigateTo('cash-flow')" title="Cash In &amp; Out Flow">
                 <i class="fas fa-money-bill-wave"></i>
                 <span>Cash In &amp; Out Flow</span>
             </a>
             <!-- Student Clearance (Examination) (Quick Access & Actions) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="clearance" onclick="navigateTo('clearance')">
+            <a href="javascript:void(0)" class="nav-item" data-page="clearance" onclick="navigateTo('clearance')" title="Student Clearance (Examination)">
                 <i class="fas fa-clipboard-check"></i>
                 <span>Student Clearance (Examination)</span>
             </a>
             <!-- Faculty & Staff Payroll (Quick Access & Actions) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="payroll" onclick="navigateTo('payroll')">
+            <a href="javascript:void(0)" class="nav-item" data-page="payroll" onclick="navigateTo('payroll')" title="Faculty &amp; Staff Payroll">
                 <i class="fas fa-money-check-alt"></i>
                 <span>Faculty &amp; Staff Payroll</span>
             </a>
             <!-- Teachers & Faculty Directory (Quick Access & Actions) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="teachers" onclick="navigateTo('teachers')">
+            <a href="javascript:void(0)" class="nav-item" data-page="teachers" onclick="navigateTo('teachers')" title="Teachers &amp; Faculty">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Teachers &amp; Faculty</span>
             </a>
             <!-- Current Activities Logs (placed before Archived) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="activities" onclick="navigateTo('activities')">
+            <a href="javascript:void(0)" class="nav-item" data-page="activities" onclick="navigateTo('activities')" title="Current Activities">
                 <i class="fas fa-history"></i>
                 <span>Current Activities</span>
             </a>
             <!-- Advance / Promote to Next School Year (placed after Current Activities) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="promote" onclick="navigateTo('promote')">
+            <a href="javascript:void(0)" class="nav-item" data-page="promote" onclick="navigateTo('promote')" title="Advance / Promote to Next School Year">
                 <i class="fas fa-graduation-cap"></i>
                 <span>Advance / Promote to Next School Year</span>
             </a>
             <!-- JHS Finisher / Alumni (placed after Advance / Promote) -->
-            <a href="javascript:void(0)" class="nav-item" data-page="alumni" onclick="navigateTo('alumni')">
+            <a href="javascript:void(0)" class="nav-item" data-page="alumni" onclick="navigateTo('alumni')" title="Finisher / Alumni">
                 <i class="fas fa-user-graduate"></i>
                 <span>Finisher / Alumni</span>
             </a>
-            <a href="javascript:void(0)" class="nav-item" data-page="archive" onclick="navigateTo('archive')">
+            <a href="javascript:void(0)" class="nav-item" data-page="archive" onclick="navigateTo('archive')" title="Archived">
                 <i class="fas fa-archive"></i>
                 <span>Archived</span>
             </a>
@@ -1081,17 +1147,6 @@
                             <option value="2027-2028">S.Y. 2027-2028 (Upcoming)</option>
                         </select>
                     </div>
-                    <div class="header-qa-toggle-wrap">
-                        <label class="quick-actions-toggle-switch" style="padding: 4px 10px; background: #fff;" title="Quick Access &amp; Actions Hide / Unhide Toggle">
-                            <input type="checkbox" id="qaVisibilityToggleHeaderCheckbox" checked onchange="toggleQuickActionsFromSwitch(this.checked)">
-                            <span class="toggle-slider"></span>
-                            <span class="qa-toggle-switch-text" style="font-size:0.78rem;">Quick Actions</span>
-                        </label>
-                        <button type="button" id="btnToggleQuickActionsHeader" onclick="toggleQuickActions()" class="btn-sm btn-secondary" style="height:36px; padding:6px 12px; border-radius:6px; font-weight:600; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Hide or Unhide Quick Access &amp; Actions portion">
-                            <i class="fas fa-eye-slash" id="iconToggleQuickActions"></i>
-                            <span id="textToggleQuickActions">Hide Quick Actions</span>
-                        </button>
-                    </div>
                     <div class="current-datetime-badge" id="dashboardLiveClock">
                         <div class="live-date">
                             <i class="far fa-calendar-alt"></i>
@@ -1125,35 +1180,6 @@
                 </div>
             </div>
 
-            <!-- Quick Access & Actions Hide / Unhide Control Bar & Toggle Switch -->
-            <div class="quick-actions-toggle-banner" id="quickActionsToggleBanner">
-                <div class="qa-toggle-info">
-                    <div class="qa-toggle-icon">
-                        <i class="fas fa-compass"></i>
-                    </div>
-                    <div>
-                        <div class="qa-toggle-title">
-                            <span>Quick Access &amp; Actions</span>
-                            <span class="qa-status-pill visible" id="quickActionsStatusPill">
-                                <i class="fas fa-check-circle"></i> Visible
-                            </span>
-                        </div>
-                        <div class="qa-toggle-desc">Fast action hub and instant search across all database modules</div>
-                    </div>
-                </div>
-                <div class="qa-toggle-actions-area">
-                    <label class="quick-actions-toggle-switch" title="Quick Access &amp; Actions Hide / Unhide Toggle">
-                        <input type="checkbox" id="qaVisibilityToggleCheckbox" checked onchange="toggleQuickActionsFromSwitch(this.checked)">
-                        <span class="toggle-slider"></span>
-                        <span class="qa-toggle-switch-text" id="qaToggleSwitchLabel">Hide / Unhide Toggle</span>
-                    </label>
-                    <button type="button" id="btnToggleQuickActionsDedicated" onclick="toggleQuickActions()" class="btn-sm btn-qa-action state-hide" title="Hide or Unhide Quick Access &amp; Actions">
-                        <i class="fas fa-eye-slash" id="iconToggleQuickActionsDedicated"></i>
-                        <span id="textToggleQuickActionsDedicated">Hide Quick Actions</span>
-                    </button>
-                </div>
-            </div>
-
             <!-- Quick Access & Actions Global Search & Launcher -->
             <div class="dashboard-quick-search-section" id="dashboardQuickActionsSection" style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; color: #fff; box-shadow: 0 4px 15px rgba(11,37,69,0.15); transition: all 0.3s ease;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
@@ -1170,14 +1196,6 @@
                         <span class="badge" style="background:rgba(255,255,255,0.15); color:#93c5fd; font-size:0.75rem; padding:4px 10px; border-radius:20px; font-weight:600;">
                             <i class="fas fa-bolt" style="color:#facc15;"></i> Fast Action Hub
                         </span>
-                        <label class="quick-actions-toggle-switch" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); padding:4px 10px; margin:0;" title="Quick Access &amp; Actions Hide / Unhide Toggle">
-                            <input type="checkbox" id="qaVisibilityToggleInnerCheckbox" checked onchange="toggleQuickActionsFromSwitch(this.checked)">
-                            <span class="toggle-slider"></span>
-                            <span class="qa-toggle-switch-text" style="color:#fff; font-size:0.75rem;">Toggle</span>
-                        </label>
-                        <button type="button" id="btnHideQuickActions" onclick="toggleQuickActions(true)" title="Hide Quick Access &amp; Actions" style="background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:6px; padding:5px 10px; font-size:0.78rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease;">
-                            <i class="fas fa-eye-slash"></i> <span>Hide</span>
-                        </button>
                     </div>
                 </div>
 
@@ -1192,17 +1210,6 @@
 
                 <!-- Quick Access Links Search Results (Hidden by default; displays matching modules when searching) -->
                 <div id="dashboardQuickLinksGrid" style="display:none; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
-            </div>
-
-            <!-- Collapsed Bar When Hidden (Provides one-click Unhide button) -->
-            <div id="quickActionsUnhideBar" style="display:none; margin-bottom: 20px; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
-                <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.85rem; font-weight:600;">
-                    <i class="fas fa-compass" style="color:var(--primary);"></i>
-                    <span>Quick Access &amp; Actions portion is currently hidden</span>
-                </div>
-                <button type="button" id="btnUnhideQuickActions" onclick="toggleQuickActions(false)" class="btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:0.82rem; font-weight:700; border-radius:6px; cursor:pointer;">
-                    <i class="fas fa-eye"></i> <span>Unhide Quick Actions</span>
-                </button>
             </div>
 
             <!-- Stats Cards -->

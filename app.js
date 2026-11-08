@@ -535,7 +535,7 @@ function initApp() {
     try { getCashFlowEntries(); } catch(e) {}
     try { getPayrollEmployees(); } catch(e) {}
     try { initDashboardQuickSearch(); } catch(e) {}
-    try { applyQuickActionsVisibility(); } catch(e) {}
+    try { applySidebarCollapseState(); } catch(e) {}
 
     // Check for direct mobile QR scan (?lrn=...)
     try {
@@ -1248,7 +1248,6 @@ function refreshDashboard() {
         try { renderCharts(cohort); } catch (e) { console.error('Dashboard charts error:', e); }
         try { renderRecentTable(cohort); } catch (e) { console.error('Dashboard recent table error:', e); }
         try { initDashboardQuickSearch(); } catch (e) { console.error('Dashboard quick search error:', e); }
-        try { applyQuickActionsVisibility(); } catch (e) {}
     } catch (err) {
         console.error('Fatal in refreshDashboard:', err);
     }
@@ -2175,92 +2174,57 @@ function refreshArchiveTable() {
 }
 window.refreshArchiveTable = refreshArchiveTable;
 
-// ======================== DASHBOARD QUICK ACCESS HIDE / UNHIDE ========================
+// ======================== SIDEBAR COLLAPSE / EXPAND MINI STATE ========================
 
-function toggleQuickActionsFromSwitch(isChecked) {
-    toggleQuickActions(!isChecked);
-}
-window.toggleQuickActionsFromSwitch = toggleQuickActionsFromSwitch;
-
-function toggleQuickActions(explicitState) {
-    const section = document.getElementById('dashboardQuickActionsSection');
-    if (!section) return;
-
-    let isHidden;
-    if (typeof explicitState === 'boolean') {
-        isHidden = explicitState;
+function toggleSidebarCollapse(forceState) {
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('sidebarCollapseToggleBtn');
+    let isCollapsed;
+    if (typeof forceState === 'boolean') {
+        isCollapsed = forceState;
     } else {
-        const currentHidden = section.style.display === 'none' || localStorage.getItem('mdsj_hide_quick_actions') === 'true';
-        isHidden = !currentHidden;
+        isCollapsed = !document.body.classList.contains('sidebar-collapsed');
     }
 
-    localStorage.setItem('mdsj_hide_quick_actions', isHidden ? 'true' : 'false');
-    applyQuickActionsVisibility();
-
-    if (isHidden) {
-        showToast('Quick Access & Actions portion hidden.', 'info');
+    if (isCollapsed) {
+        document.body.classList.add('sidebar-collapsed');
+        if (sidebar) sidebar.classList.add('collapsed');
+        try { localStorage.setItem('mdsj_sidebar_collapsed', 'true'); } catch(e) {}
+        if (toggleBtn) {
+            toggleBtn.setAttribute('title', 'Expand navigation sidebar');
+            toggleBtn.setAttribute('aria-label', 'Expand navigation sidebar');
+        }
     } else {
-        showToast('Quick Access & Actions portion displayed.', 'success');
-    }
-}
-window.toggleQuickActions = toggleQuickActions;
-
-function applyQuickActionsVisibility() {
-    const isHidden = localStorage.getItem('mdsj_hide_quick_actions') === 'true';
-    const section = document.getElementById('dashboardQuickActionsSection');
-    const statusPill = document.getElementById('quickActionsStatusPill');
-    const checkboxDedicated = document.getElementById('qaVisibilityToggleCheckbox');
-    const checkboxHeader = document.getElementById('qaVisibilityToggleHeaderCheckbox');
-    const checkboxInner = document.getElementById('qaVisibilityToggleInnerCheckbox');
-    const btnDedicated = document.getElementById('btnToggleQuickActionsDedicated');
-    const btnDedicatedText = document.getElementById('textToggleQuickActionsDedicated');
-    const btnDedicatedIcon = document.getElementById('iconToggleQuickActionsDedicated');
-    const headerBtnText = document.getElementById('textToggleQuickActions');
-    const headerBtnIcon = document.getElementById('iconToggleQuickActions');
-    const unhideBar = document.getElementById('quickActionsUnhideBar');
-
-    if (section) {
-        section.style.display = isHidden ? 'none' : 'block';
-    }
-
-    if (statusPill) {
-        if (isHidden) {
-            statusPill.className = 'qa-status-pill hidden';
-            statusPill.innerHTML = '<i class="fas fa-eye-slash"></i> Hidden';
-        } else {
-            statusPill.className = 'qa-status-pill visible';
-            statusPill.innerHTML = '<i class="fas fa-check-circle"></i> Visible';
+        document.body.classList.remove('sidebar-collapsed');
+        if (sidebar) sidebar.classList.remove('collapsed');
+        try { localStorage.setItem('mdsj_sidebar_collapsed', 'false'); } catch(e) {}
+        if (toggleBtn) {
+            toggleBtn.setAttribute('title', 'Collapse navigation sidebar');
+            toggleBtn.setAttribute('aria-label', 'Collapse navigation sidebar');
         }
     }
 
-    if (checkboxDedicated) checkboxDedicated.checked = !isHidden;
-    if (checkboxHeader) checkboxHeader.checked = !isHidden;
-    if (checkboxInner) checkboxInner.checked = !isHidden;
-
-    if (btnDedicated) {
-        if (isHidden) {
-            btnDedicated.className = 'btn-sm btn-qa-action state-unhide';
-            if (btnDedicatedText) btnDedicatedText.textContent = 'Unhide Quick Actions';
-            if (btnDedicatedIcon) btnDedicatedIcon.className = 'fas fa-eye';
-        } else {
-            btnDedicated.className = 'btn-sm btn-qa-action state-hide';
-            if (btnDedicatedText) btnDedicatedText.textContent = 'Hide Quick Actions';
-            if (btnDedicatedIcon) btnDedicatedIcon.className = 'fas fa-eye-slash';
-        }
-    }
-
-    if (headerBtnText) {
-        headerBtnText.textContent = isHidden ? 'Unhide Quick Actions' : 'Hide Quick Actions';
-    }
-    if (headerBtnIcon) {
-        headerBtnIcon.className = isHidden ? 'fas fa-eye' : 'fas fa-eye-slash';
-    }
-
-    if (unhideBar) {
-        unhideBar.style.display = 'none';
-    }
+    setTimeout(() => {
+        try { window.dispatchEvent(new Event('resize')); } catch(e) {}
+    }, 320);
 }
-window.applyQuickActionsVisibility = applyQuickActionsVisibility;
+window.toggleSidebarCollapse = toggleSidebarCollapse;
+
+function applySidebarCollapseState() {
+    if (window.innerWidth <= 768) {
+        document.body.classList.remove('sidebar-collapsed');
+        const s = document.getElementById('sidebar');
+        if (s) s.classList.remove('collapsed');
+        return;
+    }
+    try {
+        const saved = localStorage.getItem('mdsj_sidebar_collapsed') === 'true';
+        if (saved) {
+            toggleSidebarCollapse(true);
+        }
+    } catch(e) {}
+}
+window.applySidebarCollapseState = applySidebarCollapseState;
 
 // ======================== JHS FINISHER & ALUMNI DIRECTORY ========================
 
