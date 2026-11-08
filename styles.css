@@ -6561,6 +6561,7 @@ input, select, textarea {
 }
 
 /* ======================== TEACHER ROLE RESTRICTIONS ======================== */
+/* Teacher account strictly shows ONLY: Dashboard, All Students, Year Level, Clearance, and Teachers & Faculty */
 body.role-teacher [data-page="soa"],
 body.role-teacher .nav-item[data-page="soa"],
 body.role-teacher #navItemSOA,
@@ -6570,6 +6571,21 @@ body.role-teacher #page-cash-flow,
 body.role-teacher [data-page="payroll"],
 body.role-teacher .nav-item[data-page="payroll"],
 body.role-teacher #page-payroll,
+body.role-teacher [data-page="activities"],
+body.role-teacher .nav-item[data-page="activities"],
+body.role-teacher #page-activities,
+body.role-teacher [data-page="promote"],
+body.role-teacher .nav-item[data-page="promote"],
+body.role-teacher #page-promote,
+body.role-teacher [data-page="alumni"],
+body.role-teacher .nav-item[data-page="alumni"],
+body.role-teacher #page-alumni,
+body.role-teacher [data-page="archive"],
+body.role-teacher .nav-item[data-page="archive"],
+body.role-teacher #page-archive,
+body.role-teacher [data-page="add-student"],
+body.role-teacher .nav-item[data-page="add-student"],
+body.role-teacher #page-add-student,
 body.role-teacher .btn-icon.soa,
 body.role-teacher button[data-action="soa"],
 body.role-teacher button[onclick*="openSOAModal"],
@@ -6578,18 +6594,39 @@ body.role-teacher .soa-tab-btn,
 body.role-teacher #btnOpenNewCashFlow,
 body.role-teacher #btnImportCashFlow,
 body.role-teacher #btnDeleteFromView,
+body.role-teacher #btnArchiveFromView,
 body.role-teacher #btnEditFromView,
 body.role-teacher .btn-icon.edit,
 body.role-teacher .btn-icon.delete,
+body.role-teacher .btn-icon.archive,
+body.role-teacher .btn-icon.restore,
 body.role-teacher .btn-primary[data-action="promote"],
-body.role-teacher .nav-item[data-page="promote"],
-body.role-teacher .nav-item[data-page="add-student"],
 body.role-teacher #btnClearActivities {
     display: none !important;
 }
 
 body.role-teacher .teacher-hidden {
     display: none !important;
+}
+
+/* Restore & Archive Buttons Styling */
+.btn-icon.restore {
+    color: #059669 !important;
+    background: #ecfdf5 !important;
+    border: 1px solid #86efac !important;
+}
+.btn-icon.restore:hover {
+    background: #059669 !important;
+    color: #ffffff !important;
+}
+.btn-icon.archive {
+    color: #64748b !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+.btn-icon.archive:hover {
+    background: #475569 !important;
+    color: #ffffff !important;
 }
 
 /* ======================== CASH IN AND OUT FLOW STYLES ======================== */

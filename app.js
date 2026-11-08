@@ -234,6 +234,10 @@ function filterDashboardQuickLinks(query) {
     }
 
     const filtered = DASHBOARD_QUICK_ACTIONS.filter(item => {
+        if (typeof isTeacher === 'function' && isTeacher()) {
+            const allowed = ['dashboard', 'students', 'clearance', 'teachers', 'grade7', 'grade8', 'grade9', 'grade10'];
+            if (!allowed.includes(item.id)) return false;
+        }
         const text = `${item.name} ${item.category} ${item.keywords}`.toLowerCase();
         return text.includes(q);
     });
@@ -531,6 +535,7 @@ function initApp() {
     try { getCashFlowEntries(); } catch(e) {}
     try { getPayrollEmployees(); } catch(e) {}
     try { initDashboardQuickSearch(); } catch(e) {}
+    try { applyQuickActionsVisibility(); } catch(e) {}
 
     // Check for direct mobile QR scan (?lrn=...)
     try {
@@ -636,8 +641,11 @@ function showApp(user) {
     try {
         const hash = (window.location.hash || '').replace('#', '').trim();
         savedPage = hash || sessionStorage.getItem('mdsj_active_page') || localStorage.getItem('mdsj_active_page') || 'dashboard';
-        if (isTeacher() && (savedPage === 'soa' || savedPage === 'cash-flow' || savedPage === 'payroll')) {
-            savedPage = 'dashboard';
+        if (isTeacher()) {
+            const allowedPages = ['dashboard', 'students', 'clearance', 'teachers'];
+            if (!allowedPages.includes(savedPage) && !savedPage.startsWith('grade')) {
+                savedPage = 'dashboard';
+            }
         }
     } catch(e) {}
     navigateTo(savedPage);
@@ -662,20 +670,14 @@ function navigateTo(pageId) {
 
     if (pageId === 'cashflow') pageId = 'cash-flow';
 
-    if (pageId === 'soa' && typeof isTeacher === 'function' && isTeacher()) {
-        showToast('Access Restricted: Teachers cannot view confidential Statement of Account.', 'warning');
-        navigateTo('dashboard');
-        return;
-    }
-    if (pageId === 'cash-flow' && typeof isTeacher === 'function' && isTeacher()) {
-        showToast('Access Restricted: Teachers cannot view Cash In & Out Flow.', 'warning');
-        navigateTo('dashboard');
-        return;
-    }
-    if (pageId === 'payroll' && typeof isTeacher === 'function' && isTeacher()) {
-        showToast('Access Restricted: Only School President and Registrar/Accounting accounts can view Faculty & Staff Payroll.', 'warning');
-        navigateTo('dashboard');
-        return;
+    if (typeof isTeacher === 'function' && isTeacher()) {
+        const allowedTeacherPages = ['dashboard', 'students', 'clearance', 'teachers'];
+        const isYearLevel = pageId.startsWith('grade');
+        if (!allowedTeacherPages.includes(pageId) && !isYearLevel) {
+            showToast('Access Restricted: Teachers can only access Dashboard, All Students, Year Level, Clearance, and Teachers.', 'warning');
+            navigateTo('dashboard');
+            return;
+        }
     }
 
     // Toggle view-fit-window mode for fixed-height single-window views
@@ -1246,6 +1248,7 @@ function refreshDashboard() {
         try { renderCharts(cohort); } catch (e) { console.error('Dashboard charts error:', e); }
         try { renderRecentTable(cohort); } catch (e) { console.error('Dashboard recent table error:', e); }
         try { initDashboardQuickSearch(); } catch (e) { console.error('Dashboard quick search error:', e); }
+        try { applyQuickActionsVisibility(); } catch (e) {}
     } catch (err) {
         console.error('Fatal in refreshDashboard:', err);
     }
@@ -1626,6 +1629,7 @@ function refreshStudentsTable() {
     const municipality = document.getElementById('filterMunicipality') ? document.getElementById('filterMunicipality').value : '';
 
     let filtered = students.filter(s => {
+        if (!status && isStudentArchived(s)) return false;
         if (syFilter && s.schoolYear !== syFilter) return false;
         if (grade && String(s.gradeLevel) !== String(grade)) return false;
         if (section && s.section !== section) return false;
@@ -1723,6 +1727,7 @@ function refreshStudentsTable() {
                         <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
                         <button type="button" class="btn-icon soa" title="Statement of Account" data-action="soa" data-id="${s.id}" onclick="openSOAModal('${s.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
                         <button type="button" class="btn-icon edit" title="Edit Record" data-action="edit" data-id="${s.id}" onclick="editStudent('${s.id}')"><i class="fas fa-edit"></i></button>
+                        <button type="button" class="btn-icon archive" title="Archive Student Record" data-action="archive" data-id="${s.id}" onclick="archiveStudent('${s.id}')"><i class="fas fa-archive"></i></button>
                         <button type="button" class="btn-icon delete" title="Delete Record" data-action="delete" data-id="${s.id}" onclick="confirmDelete('${s.id}')"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
@@ -1785,7 +1790,7 @@ function refreshGradeTable(grade) {
     const sy = syFilter ? syFilter.value : currentSchoolYear;
 
     // Compute Grade Level Dashboard KPI Stats
-    const gradeCohort = students.filter(s => String(s.gradeLevel) === String(grade) && (!sy || s.schoolYear === sy));
+    const gradeCohort = students.filter(s => String(s.gradeLevel) === String(grade) && (!sy || s.schoolYear === sy) && !isStudentArchived(s));
     const totalCount = gradeCohort.length;
     const maleCount = gradeCohort.filter(s => (s.gender || '').toUpperCase() === 'MALE').length;
     const femaleCount = gradeCohort.filter(s => (s.gender || '').toUpperCase() === 'FEMALE').length;
@@ -1808,7 +1813,7 @@ function refreshGradeTable(grade) {
     if (elSectionsSub) elSectionsSub.textContent = sections.length > 0 ? sections.join(', ') : 'No Section Assigned';
     if (elSyLabel) elSyLabel.textContent = sy ? `— S.Y. ${sy}` : '— All School Years';
 
-    let gradeStudents = students.filter(s => String(s.gradeLevel) === String(grade));
+    let gradeStudents = students.filter(s => String(s.gradeLevel) === String(grade) && !isStudentArchived(s));
     if (sy) gradeStudents = gradeStudents.filter(s => s.schoolYear === sy);
     if (section) gradeStudents = gradeStudents.filter(s => s.section === section);
     if (search) {
@@ -1844,6 +1849,7 @@ function refreshGradeTable(grade) {
                     <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
                     <button type="button" class="btn-icon soa" title="Statement of Account" data-action="soa" data-id="${s.id}" onclick="openSOAModal('${s.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
                     <button type="button" class="btn-icon edit" title="Edit Record" data-action="edit" data-id="${s.id}" onclick="editStudent('${s.id}')"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="btn-icon archive" title="Archive Student Record" data-action="archive" data-id="${s.id}" onclick="archiveStudent('${s.id}')"><i class="fas fa-archive"></i></button>
                     <button type="button" class="btn-icon delete" title="Delete Record" data-action="delete" data-id="${s.id}" onclick="confirmDelete('${s.id}')"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
@@ -1984,41 +1990,254 @@ function refreshSOAPage() {
     if (elWithBalanceCount) elWithBalanceCount.textContent = `${withBalanceCount} learner${withBalanceCount === 1 ? '' : 's'} with balance`;
 }
 
+// ======================== ARCHIVED STUDENTS MODULE ========================
+
+function isStudentArchived(s) {
+    if (!s) return false;
+    if (s.isArchived === true || s.archived === true) return true;
+    const st = String(s.enrollmentStatus || s.status || '').trim().toLowerCase();
+    return ['inactive', 'transferred', 'dropped', 'graduated', 'archived'].includes(st);
+}
+window.isStudentArchived = isStudentArchived;
+
+function archiveStudent(id) {
+    if (typeof isTeacher === 'function' && isTeacher()) {
+        showToast('Teacher account has view-only permissions.', 'warning');
+        return;
+    }
+    const s = findStudent(id);
+    if (!s) {
+        showToast('Student record not found.', 'error');
+        return;
+    }
+    if (!confirm(`Are you sure you want to move ${s.firstName} ${s.lastName} (LRN: ${s.lrn || 'N/A'}) to Archived Records?`)) {
+        return;
+    }
+    s.isArchived = true;
+    s.enrollmentStatus = 'Archived';
+    s.dateModified = new Date().toISOString();
+    saveStudents();
+    logActivity('Student Archived', `Archived learner record of ${s.lastName}, ${s.firstName} (LRN: ${s.lrn || 'N/A'})`, s);
+    refreshAll();
+    showToast(`Learner ${s.firstName} ${s.lastName} has been moved to Archived Records.`, 'success');
+}
+window.archiveStudent = archiveStudent;
+
+function restoreStudent(id) {
+    if (typeof isTeacher === 'function' && isTeacher()) {
+        showToast('Teacher account has view-only permissions.', 'warning');
+        return;
+    }
+    const s = findStudent(id);
+    if (!s) {
+        showToast('Student record not found.', 'error');
+        return;
+    }
+    if (!confirm(`Restore ${s.firstName} ${s.lastName} (LRN: ${s.lrn || 'N/A'}) back to Active Student roster?`)) {
+        return;
+    }
+    s.isArchived = false;
+    s.archived = false;
+    s.enrollmentStatus = 'Active';
+    s.dateModified = new Date().toISOString();
+    saveStudents();
+    logActivity('Student Restored', `Restored learner record of ${s.lastName}, ${s.firstName} (LRN: ${s.lrn || 'N/A'}) from Archive to Active status.`, s);
+    refreshAll();
+    showToast(`Learner ${s.firstName} ${s.lastName} restored to Active roster successfully.`, 'success');
+}
+window.restoreStudent = restoreStudent;
+
+function exportArchiveCSV() {
+    const archived = (students || []).filter(s => isStudentArchived(s));
+    if (archived.length === 0) {
+        showToast('No archived student records to export.', 'info');
+        return;
+    }
+    const headers = ['LRN', 'Last Name', 'First Name', 'Middle Name', 'School Year', 'Grade Level', 'Section', 'Gender', 'ESC Grantee', 'Status', 'Date Modified'];
+    const rows = archived.map(s => [
+        `"${s.lrn || ''}"`,
+        `"${s.lastName || ''}"`,
+        `"${s.firstName || ''}"`,
+        `"${s.middleName || ''}"`,
+        `"${s.schoolYear || ''}"`,
+        `"${s.gradeLevel || ''}"`,
+        `"${s.section || ''}"`,
+        `"${s.gender || ''}"`,
+        `"${s.escGrantee || 'NO'}"`,
+        `"${s.enrollmentStatus || 'Archived'}"`,
+        `"${s.dateModified || ''}"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `MDSJFI_Archived_Students_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Archived students CSV exported successfully.', 'success');
+}
+window.exportArchiveCSV = exportArchiveCSV;
+
 function refreshArchiveTable() {
     const tbody = document.getElementById('archiveTableBody');
     if (!tbody) return;
 
-    const archived = students.filter(s => ['Inactive', 'Transferred', 'Dropped', 'Graduated'].includes(s.enrollmentStatus));
-    if (archived.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="empty-state"><i class="fas fa-archive"></i><p>No archived students.</p></td></tr>`;
+    const allArchived = (students || []).filter(s => isStudentArchived(s));
+
+    // Populate School Year filter dynamically
+    const syFilter = document.getElementById('archiveFilterSy');
+    if (syFilter) {
+        const currentSy = syFilter.value;
+        const distinctSys = Array.from(new Set(allArchived.map(s => s.schoolYear).filter(Boolean))).sort().reverse();
+        const allSys = typeof getAllSchoolYears === 'function' ? getAllSchoolYears() : [];
+        allSys.forEach(y => { if (!distinctSys.includes(y) && (students || []).some(s => s.schoolYear === y)) distinctSys.push(y); });
+        let html = '<option value="">All School Years</option>';
+        distinctSys.forEach(y => {
+            html += `<option value="${escHtml(y)}" ${y === currentSy ? 'selected' : ''}>S.Y. ${escHtml(y)}</option>`;
+        });
+        syFilter.innerHTML = html;
+    }
+
+    const searchInput = document.getElementById('archiveSearchInput');
+    const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    const selSy = syFilter ? syFilter.value : '';
+    const statusFilter = document.getElementById('archiveFilterStatus');
+    const selStatus = (statusFilter ? statusFilter.value : '').toLowerCase().trim();
+
+    let filtered = allArchived;
+    if (selSy) {
+        filtered = filtered.filter(s => s.schoolYear === selSy);
+    }
+    if (selStatus) {
+        filtered = filtered.filter(s => {
+            const st = String(s.enrollmentStatus || s.status || '').toLowerCase().trim();
+            return st === selStatus;
+        });
+    }
+    if (q) {
+        filtered = filtered.filter(s => {
+            const fullName = `${s.lastName || ''} ${s.firstName || ''} ${s.middleName || ''}`.toLowerCase();
+            const lrn = String(s.lrn || '').toLowerCase();
+            const sec = String(s.section || '').toLowerCase();
+            return fullName.includes(q) || lrn.includes(q) || sec.includes(q);
+        });
+    }
+
+    // Update KPI stats cards
+    const elTotal = document.getElementById('statArchiveTotal');
+    const elInactive = document.getElementById('statArchiveInactive');
+    const elTransferred = document.getElementById('statArchiveTransferred');
+    const elGraduated = document.getElementById('statArchiveGraduated');
+
+    if (elTotal) elTotal.textContent = allArchived.length;
+    if (elInactive) elInactive.textContent = allArchived.filter(s => {
+        const st = String(s.enrollmentStatus || '').toLowerCase();
+        return st === 'inactive' || st === 'dropped' || st === 'archived';
+    }).length;
+    if (elTransferred) elTransferred.textContent = allArchived.filter(s => String(s.enrollmentStatus || '').toLowerCase() === 'transferred').length;
+    if (elGraduated) elGraduated.textContent = allArchived.filter(s => {
+        const st = String(s.enrollmentStatus || '').toLowerCase();
+        return st === 'graduated' || st === 'completed';
+    }).length;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state" style="padding: 40px 20px; text-align:center;"><i class="fas fa-archive" style="font-size:2.4rem; color:#94a3b8; margin-bottom:10px; display:block;"></i><p style="font-weight:600; font-size:1rem; color:#475569;">No archived students found.</p><p style="font-size:0.82rem; color:#64748b;">Learners marked as Inactive, Transferred, Dropped, Graduated, or Archived will appear here.</p></td></tr>`;
         return;
     }
 
-    tbody.innerHTML = archived.map(s => {
+    tbody.innerHTML = filtered.map(s => {
         const thumb = getStudentThumbHtml(s);
         const isEsc = (s.escGrantee === 'YES');
         const escBadge = isEsc ? '<span class="badge-esc yes"><i class="fas fa-check"></i> YES</span>' : '<span class="badge-esc no">NO</span>';
+        const stClass = String(s.enrollmentStatus || 'inactive').toLowerCase();
+
         return `
         <tr data-student-id="${s.id}">
-            <td>${thumb}</td>
+            <td style="text-align:center;">${thumb}</td>
             <td><code>${escHtml(s.lrn)}</code></td>
             <td><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong></td>
-            <td><span class="sy-pill">${escHtml(s.schoolYear || '2026-2027')}</span></td>
+            <td style="text-align:center;"><span class="sy-pill">${escHtml(s.schoolYear || '2026-2027')}</span></td>
             <td>Grade ${escHtml(s.gradeLevel)}</td>
             <td>${escHtml(s.section)}</td>
-            <td>${escBadge}</td>
-            <td><span class="status-badge ${(s.enrollmentStatus || 'Inactive').toLowerCase()}">${escHtml(s.enrollmentStatus)}</span></td>
-            <td class="actions-cell">
+            <td style="text-align:center;">${escBadge}</td>
+            <td style="text-align:center;"><span class="status-badge ${stClass}">${escHtml(s.enrollmentStatus || 'Archived')}</span></td>
+            <td class="actions-cell" style="text-align:center;">
+                <button type="button" class="btn-icon restore" title="Restore to Active List" onclick="restoreStudent('${s.id}')"><i class="fas fa-undo"></i></button>
                 <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
                 <button type="button" class="btn-icon soa" title="Statement of Account" data-action="soa" data-id="${s.id}" onclick="openSOAModal('${s.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
                 <button type="button" class="btn-icon edit" title="Edit Record" data-action="edit" data-id="${s.id}" onclick="editStudent('${s.id}')"><i class="fas fa-edit"></i></button>
-                <button type="button" class="btn-icon delete" title="Delete Record" data-action="delete" data-id="${s.id}" onclick="confirmDelete('${s.id}')"><i class="fas fa-trash"></i></button>
+                <button type="button" class="btn-icon delete" title="Permanently Delete" data-action="delete" data-id="${s.id}" onclick="confirmDelete('${s.id}')"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
         `;
     }).join('');
 }
 window.refreshArchiveTable = refreshArchiveTable;
+
+// ======================== DASHBOARD QUICK ACCESS HIDE / UNHIDE ========================
+
+function toggleQuickActions(explicitState) {
+    const section = document.getElementById('dashboardQuickActionsSection');
+    const unhideBar = document.getElementById('quickActionsUnhideBar');
+    const headerBtnText = document.getElementById('textToggleQuickActions');
+    const headerBtnIcon = document.getElementById('iconToggleQuickActions');
+    if (!section) return;
+
+    let isHidden;
+    if (typeof explicitState === 'boolean') {
+        isHidden = explicitState;
+    } else {
+        isHidden = section.style.display !== 'none';
+    }
+
+    if (isHidden) {
+        section.style.display = 'none';
+        if (unhideBar) {
+            unhideBar.style.display = 'flex';
+        }
+        if (headerBtnText) headerBtnText.textContent = 'Unhide Quick Actions';
+        if (headerBtnIcon) {
+            headerBtnIcon.className = 'fas fa-eye';
+        }
+        localStorage.setItem('mdsj_hide_quick_actions', 'true');
+        showToast('Quick Access & Actions portion hidden.', 'info');
+    } else {
+        section.style.display = 'block';
+        if (unhideBar) {
+            unhideBar.style.display = 'none';
+        }
+        if (headerBtnText) headerBtnText.textContent = 'Hide Quick Actions';
+        if (headerBtnIcon) {
+            headerBtnIcon.className = 'fas fa-eye-slash';
+        }
+        localStorage.setItem('mdsj_hide_quick_actions', 'false');
+        showToast('Quick Access & Actions portion displayed.', 'success');
+    }
+}
+window.toggleQuickActions = toggleQuickActions;
+
+function applyQuickActionsVisibility() {
+    const isHidden = localStorage.getItem('mdsj_hide_quick_actions') === 'true';
+    const section = document.getElementById('dashboardQuickActionsSection');
+    const unhideBar = document.getElementById('quickActionsUnhideBar');
+    const headerBtnText = document.getElementById('textToggleQuickActions');
+    const headerBtnIcon = document.getElementById('iconToggleQuickActions');
+    if (!section) return;
+
+    if (isHidden) {
+        section.style.display = 'none';
+        if (unhideBar) unhideBar.style.display = 'flex';
+        if (headerBtnText) headerBtnText.textContent = 'Unhide Quick Actions';
+        if (headerBtnIcon) headerBtnIcon.className = 'fas fa-eye';
+    } else {
+        section.style.display = 'block';
+        if (unhideBar) unhideBar.style.display = 'none';
+        if (headerBtnText) headerBtnText.textContent = 'Hide Quick Actions';
+        if (headerBtnIcon) headerBtnIcon.className = 'fas fa-eye-slash';
+    }
+}
+window.applyQuickActionsVisibility = applyQuickActionsVisibility;
 
 // ======================== JHS FINISHER & ALUMNI DIRECTORY ========================
 
@@ -2278,6 +2497,11 @@ function viewStudent(id) {
     if (statusBadge) {
         statusBadge.textContent = s.enrollmentStatus || 'Active';
         statusBadge.className = 'status-badge ' + (s.enrollmentStatus || 'Active').toLowerCase();
+    }
+
+    const archiveBtnText = document.getElementById('btnArchiveFromViewText');
+    if (archiveBtnText) {
+        archiveBtnText.textContent = isStudentArchived(s) ? 'Restore Student' : 'Archive Student';
     }
 
     const avatar = document.getElementById('viewAvatar');

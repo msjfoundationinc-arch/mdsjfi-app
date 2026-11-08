@@ -1081,6 +1081,10 @@
                             <option value="2027-2028">S.Y. 2027-2028 (Upcoming)</option>
                         </select>
                     </div>
+                    <button type="button" id="btnToggleQuickActionsHeader" onclick="toggleQuickActions()" class="btn-sm btn-secondary" style="height:36px; padding:6px 12px; border-radius:6px; font-weight:600; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Hide or Unhide Quick Access &amp; Actions portion">
+                        <i class="fas fa-eye-slash" id="iconToggleQuickActions"></i>
+                        <span id="textToggleQuickActions">Hide Quick Actions</span>
+                    </button>
                     <div class="current-datetime-badge" id="dashboardLiveClock">
                         <div class="live-date">
                             <i class="far fa-calendar-alt"></i>
@@ -1115,7 +1119,7 @@
             </div>
 
             <!-- Quick Access & Actions Global Search & Launcher -->
-            <div class="dashboard-quick-search-section" style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; color: #fff; box-shadow: 0 4px 15px rgba(11,37,69,0.15);">
+            <div class="dashboard-quick-search-section" id="dashboardQuickActionsSection" style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; color: #fff; box-shadow: 0 4px 15px rgba(11,37,69,0.15); transition: all 0.3s ease;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <div style="width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:#60a5fa;">
@@ -1126,9 +1130,14 @@
                             <p style="margin:2px 0 0 0; font-size:0.78rem; color:#cbd5e1;">Instant search and one-click navigation across all school database modules</p>
                         </div>
                     </div>
-                    <span class="badge" style="background:rgba(255,255,255,0.15); color:#93c5fd; font-size:0.75rem; padding:4px 10px; border-radius:20px; font-weight:600;">
-                        <i class="fas fa-bolt" style="color:#facc15;"></i> Fast Action Hub
-                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="badge" style="background:rgba(255,255,255,0.15); color:#93c5fd; font-size:0.75rem; padding:4px 10px; border-radius:20px; font-weight:600;">
+                            <i class="fas fa-bolt" style="color:#facc15;"></i> Fast Action Hub
+                        </span>
+                        <button type="button" id="btnHideQuickActions" onclick="toggleQuickActions(true)" title="Hide Quick Access &amp; Actions" style="background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:6px; padding:5px 10px; font-size:0.78rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease;">
+                            <i class="fas fa-eye-slash"></i> <span>Hide</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Search Input -->
@@ -1142,6 +1151,17 @@
 
                 <!-- Quick Access Links Search Results (Hidden by default; displays matching modules when searching) -->
                 <div id="dashboardQuickLinksGrid" style="display:none; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+            </div>
+
+            <!-- Collapsed Bar When Hidden (Provides one-click Unhide button) -->
+            <div id="quickActionsUnhideBar" style="display:none; margin-bottom: 20px; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                <div style="display:flex; align-items:center; gap:8px; color:#64748b; font-size:0.85rem; font-weight:600;">
+                    <i class="fas fa-compass" style="color:var(--primary);"></i>
+                    <span>Quick Access &amp; Actions portion is currently hidden</span>
+                </div>
+                <button type="button" id="btnUnhideQuickActions" onclick="toggleQuickActions(false)" class="btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-size:0.82rem; font-weight:700; border-radius:6px; cursor:pointer;">
+                    <i class="fas fa-eye"></i> <span>Unhide Quick Actions</span>
+                </button>
             </div>
 
             <!-- Stats Cards -->
@@ -1817,6 +1837,7 @@
                                 <option value="Transferred">Transferred</option>
                                 <option value="Dropped">Dropped</option>
                                 <option value="Graduated">Graduated</option>
+                                <option value="Archived">Archived</option>
                             </select>
                         </div>
                     </div>
@@ -4941,15 +4962,93 @@
         <section class="page" id="page-archive">
             <div class="page-header">
                 <div>
-                    <h2 class="page-title">Archived Students</h2>
-                    <p class="page-desc">Inactive, transferred, dropped, or graduated students</p>
+                    <h2 class="page-title"><i class="fas fa-archive" style="color:var(--primary); margin-right:8px;"></i> Archived Records</h2>
+                    <p class="page-desc">Permanent repository for inactive, transferred, dropped, graduated, or archived student records</p>
+                </div>
+                <div class="page-header-actions" style="display:flex; gap:8px;">
+                    <button type="button" class="btn-secondary" onclick="exportArchiveCSV()" title="Export Archived Records to CSV">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </button>
+                    <button type="button" class="btn-primary" onclick="refreshArchiveTable()" title="Refresh Archived Records">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                 </div>
             </div>
+
+            <!-- Archived Summary Stats Cards -->
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+                <div class="stat-card" style="border-left: 4px solid #64748b;">
+                    <div class="stat-icon" style="background:#f1f5f9; color:#475569;"><i class="fas fa-archive"></i></div>
+                    <div class="stat-info">
+                        <h3 id="statArchiveTotal">0</h3>
+                        <p>Total Archived</p>
+                        <span class="stat-subdetail">All Inactive &amp; Archived</span>
+                    </div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid #ef4444;">
+                    <div class="stat-icon" style="background:#fee2e2; color:#ef4444;"><i class="fas fa-user-slash"></i></div>
+                    <div class="stat-info">
+                        <h3 id="statArchiveInactive">0</h3>
+                        <p>Inactive / Dropped</p>
+                        <span class="stat-subdetail">Withdrawn or stopped</span>
+                    </div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                    <div class="stat-icon" style="background:#fef3c7; color:#d97706;"><i class="fas fa-exchange-alt"></i></div>
+                    <div class="stat-info">
+                        <h3 id="statArchiveTransferred">0</h3>
+                        <p>Transferred Out</p>
+                        <span class="stat-subdetail">Moved to other school</span>
+                    </div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid #10b981;">
+                    <div class="stat-icon" style="background:#d1fae5; color:#059669;"><i class="fas fa-user-graduate"></i></div>
+                    <div class="stat-info">
+                        <h3 id="statArchiveGraduated">0</h3>
+                        <p>Graduated / Completed</p>
+                        <span class="stat-subdetail">Alumni &amp; Completers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Controls / Search & Filters -->
+            <div class="table-controls" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:#fff; padding:12px 16px; border-radius:10px; margin-bottom:16px; border:1px solid #e2e8f0;">
+                <div class="search-box" style="flex:1; min-width:240px;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="archiveSearchInput" placeholder="Search archived by student name, LRN, section..." oninput="refreshArchiveTable()">
+                </div>
+                <div class="filter-group" style="display:flex; align-items:center; gap:8px;">
+                    <label for="archiveFilterSy" style="font-weight:600; font-size:0.85rem;"><i class="fas fa-calendar-alt"></i> S.Y.:</label>
+                    <select id="archiveFilterSy" onchange="refreshArchiveTable()" style="padding:7px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.88rem; font-weight:600;">
+                        <option value="">All School Years</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="display:flex; align-items:center; gap:8px;">
+                    <label for="archiveFilterStatus" style="font-weight:600; font-size:0.85rem;"><i class="fas fa-tag"></i> Status:</label>
+                    <select id="archiveFilterStatus" onchange="refreshArchiveTable()" style="padding:7px 12px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.88rem; font-weight:600;">
+                        <option value="">All Archived Statuses</option>
+                        <option value="Archived">Archived</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Transferred">Transferred</option>
+                        <option value="Dropped">Dropped</option>
+                        <option value="Graduated">Graduated</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="table-wrapper">
-                <table class="data-table">
+                <table class="data-table" id="archiveTable">
                     <thead>
                         <tr>
-                            <th>Photo</th><th>LRN</th><th>Student Name</th><th>S.Y.</th><th>Grade</th><th>Section</th><th>ESC</th><th>Status</th><th>Actions</th>
+                            <th style="width: 5%; text-align: center;">Photo</th>
+                            <th style="width: 13%;">LRN</th>
+                            <th style="width: 23%;">Student Name</th>
+                            <th style="width: 9%; text-align: center;">S.Y.</th>
+                            <th style="width: 9%;">Grade</th>
+                            <th style="width: 10%;">Section</th>
+                            <th style="width: 7%; text-align: center;">ESC</th>
+                            <th style="width: 9%; text-align: center;">Status</th>
+                            <th style="width: 15%; text-align: center;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="archiveTableBody"></tbody>
@@ -6307,6 +6406,9 @@
             <div class="modal-footer">
                 <button type="button" class="btn-danger" id="btnDeleteFromView" onclick="if (typeof currentViewId !== 'undefined' && currentViewId) { confirmDelete(currentViewId); }" style="background: #dc2626; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; margin-right: auto;" title="Delete this student record (Admin credentials required)">
                     <i class="fas fa-trash-alt"></i> Delete Record
+                </button>
+                <button type="button" class="btn-secondary" id="btnArchiveFromView" onclick="if (typeof currentViewId !== 'undefined' && currentViewId) { const s = findStudent(currentViewId); if (isStudentArchived(s)) { restoreStudent(currentViewId); } else { archiveStudent(currentViewId); } closeModal('viewModal'); }" title="Archive or restore this student record">
+                    <i class="fas fa-archive"></i> <span id="btnArchiveFromViewText">Archive</span>
                 </button>
                 <button type="button" class="btn-secondary" id="btnViewMobileQr" onclick="openLearnerMobilePass()" title="Open full-screen Mobile QR Pass for smartphone scanning">
                     <i class="fas fa-qrcode"></i> Mobile QR Pass
