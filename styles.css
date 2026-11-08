@@ -8253,7 +8253,7 @@ td.actions-cell > .btn-sm,
         overflow: hidden !important;
     }
 
-    /* Main Content Reset */
+    /* Main Content Reset & Sticky Header Top Padding */
     body.view-fit-window .main-content,
     body:has(#page-clearance.active) .main-content,
     body:has(#page-payroll.active) .main-content,
@@ -8263,12 +8263,78 @@ td.actions-cell > .btn-sm,
         margin-left: 0 !important;
         width: 100% !important;
         max-width: 100vw !important;
-        padding: 68px 12px 28px 12px !important;
+        padding: 72px 14px 32px 14px !important;
         height: auto !important;
+        min-height: calc(100vh - 56px) !important;
         max-height: none !important;
         overflow: visible !important;
         display: block !important;
         box-sizing: border-box !important;
+    }
+
+    /* Replace fixed container heights with fluid min-height */
+    .card,
+    .stat-card,
+    .chart-card,
+    .recent-card,
+    .quick-action-card,
+    .form-section,
+    .data-table-container,
+    .dashboard-quick-search-section,
+    .login-container,
+    .login-card {
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+    }
+
+    /* Enable flex-wrap: wrap across all mobile flex containers */
+    .page-header,
+    .header-controls,
+    .filters-bar,
+    .filter-group,
+    .table-info,
+    .table-controls,
+    .pagination,
+    .payroll-subtabs,
+    .clearance-subtabs,
+    .view-tabs,
+    .modal-header,
+    .modal-footer,
+    .student-profile-header,
+    .view-header,
+    .photo-uploader-card,
+    .photo-uploader-box,
+    .photo-uploader-actions,
+    .login-options-row,
+    .dashboard-quick-search-section > div,
+    .sy-selector-wrap,
+    .btn-group,
+    .action-btn-group,
+    .user-avatar-chip,
+    .up-dropdown-badges,
+    .table-actions-cell,
+    .form-actions {
+        flex-wrap: wrap !important;
+    }
+
+    /* Remove desktop-only negative margins and overlap hazards */
+    .login-options-row {
+        margin-top: 0 !important;
+        margin-bottom: 16px !important;
+        gap: 8px !important;
+    }
+
+    .app-refresh-spinner-sub {
+        margin: 0 !important;
+    }
+
+    /* Mobile Toast Notifications offset below sticky header */
+    .toast-container {
+        top: 68px !important;
+        right: 12px !important;
+        left: 12px !important;
+        z-index: 3000 !important;
     }
 
     /* Active Pages Expansion */
@@ -8448,6 +8514,7 @@ td.actions-cell > .btn-sm,
     #page-students .table-wrapper,
     #page-soa .table-wrapper,
     #page-teachers .table-wrapper,
+    #teachersTableContainer,
     #page-alumni .table-wrapper,
     #page-archive .table-wrapper,
     #payrollArchivesTableContainer {
@@ -8458,6 +8525,7 @@ td.actions-cell > .btn-sm,
         max-width: 100% !important;
         display: block !important;
         height: auto !important;
+        min-height: 180px !important;
         max-height: none !important;
         border-radius: var(--radius-sm) !important;
         margin-bottom: 16px !important;
@@ -8493,34 +8561,41 @@ td.actions-cell > .btn-sm,
         white-space: nowrap !important;
     }
 
-    /* Modals & Dialogs on Mobile */
+    /* Modals & Dialogs on Mobile (Zero Overlap & Viewport Fit) */
     .modal-overlay {
-        padding: 12px 8px !important;
+        padding: 24px 8px 24px 8px !important;
         align-items: flex-start !important;
         overflow-y: auto !important;
     }
 
-    .modal {
+    .modal,
+    .modal-content {
         width: 100% !important;
         max-width: 96vw !important;
-        margin: 16px auto !important;
+        margin: 12px auto !important;
         max-height: 88vh !important;
         overflow-y: auto !important;
         border-radius: 12px !important;
     }
 
     .modal-header {
-        padding: 14px 16px !important;
+        position: relative !important;
+        padding: 14px 48px 14px 16px !important; /* ensures title never overlaps close button */
+        flex-shrink: 0 !important;
     }
 
     .modal-body {
         padding: 14px 16px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        max-height: calc(88vh - 120px) !important;
     }
 
     .modal-footer {
         flex-direction: column-reverse !important;
         gap: 8px !important;
         padding: 12px 16px !important;
+        flex-shrink: 0 !important;
     }
 
     .modal-footer .btn,
@@ -8545,11 +8620,22 @@ td.actions-cell > .btn-sm,
         text-align: center !important;
     }
 
+    .photo-uploader-card,
     .photo-uploader-box {
         flex-direction: column !important;
         align-items: center !important;
         text-align: center !important;
         gap: 12px !important;
+        padding: 12px !important;
+    }
+
+    .photo-preview-wrapper {
+        margin: 0 auto !important;
+    }
+
+    .photo-controls {
+        text-align: center !important;
+        width: 100% !important;
     }
 
     .photo-uploader-actions {
@@ -8566,8 +8652,16 @@ td.actions-cell > .btn-sm,
 
 /* Small Smart Phones (<= 480px, e.g., 360px - 480px viewports) */
 @media (max-width: 480px) {
+    body.view-fit-window .main-content,
+    body:has(#page-clearance.active) .main-content,
+    body:has(#page-payroll.active) .main-content,
+    body:has(#page-teachers.active) .main-content,
+    body:has(#page-cash-flow.active) .main-content,
     .main-content {
-        padding: 64px 8px 24px 8px !important;
+        padding-top: 68px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-bottom: 24px !important;
     }
 
     .stats-grid {
@@ -8576,11 +8670,21 @@ td.actions-cell > .btn-sm,
     }
 
     .page-title {
-        font-size: 1.25rem !important;
+        font-size: 1.2rem !important;
     }
 
     .page-desc {
-        font-size: 0.78rem !important;
+        font-size: 0.76rem !important;
+    }
+
+    .header-controls .btn,
+    .header-controls button {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+
+    .dashboard-quick-search-section {
+        padding: 12px 10px !important;
     }
 
     .quick-link-tile {
@@ -8631,7 +8735,8 @@ td.actions-cell > .btn-sm,
         font-size: 1.4rem !important;
     }
 
-    .modal {
+    .modal,
+    .modal-content {
         max-width: 98vw !important;
         margin: 8px auto !important;
     }
@@ -8646,6 +8751,7 @@ td.actions-cell > .btn-sm,
     #page-students .table-wrapper,
     #page-soa .table-wrapper,
     #page-teachers .table-wrapper,
+    #teachersTableContainer,
     #page-alumni .table-wrapper,
     #page-archive .table-wrapper,
     #payrollArchivesTableContainer {
@@ -9356,17 +9462,37 @@ body.sidebar-collapsed .btn-logout i,
 
 @media (max-width: 768px) {
     .top-utility-bar {
+        display: block !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        position: static !important;
+        overflow: visible !important;
+    }
+    .top-utility-left,
+    #dashboardLiveClock,
+    #userAvatarChipBtn {
         display: none !important;
+    }
+    .user-profile-trigger-wrap {
+        position: static !important;
     }
     .mobile-user-trigger {
         display: block !important;
     }
     .user-profile-dropdown {
         position: fixed !important;
-        top: 64px !important;
+        top: 62px !important;
         right: 12px !important;
+        left: auto !important;
         width: calc(100vw - 24px) !important;
         max-width: 320px !important;
+        z-index: 1100 !important;
     }
 }
 
