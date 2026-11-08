@@ -1081,10 +1081,17 @@
                             <option value="2027-2028">S.Y. 2027-2028 (Upcoming)</option>
                         </select>
                     </div>
-                    <button type="button" id="btnToggleQuickActionsHeader" onclick="toggleQuickActions()" class="btn-sm btn-secondary" style="height:36px; padding:6px 12px; border-radius:6px; font-weight:600; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Hide or Unhide Quick Access &amp; Actions portion">
-                        <i class="fas fa-eye-slash" id="iconToggleQuickActions"></i>
-                        <span id="textToggleQuickActions">Hide Quick Actions</span>
-                    </button>
+                    <div class="header-qa-toggle-wrap">
+                        <label class="quick-actions-toggle-switch" style="padding: 4px 10px; background: #fff;" title="Quick Access &amp; Actions Hide / Unhide Toggle">
+                            <input type="checkbox" id="qaVisibilityToggleHeaderCheckbox" checked onchange="toggleQuickActionsFromSwitch(this.checked)">
+                            <span class="toggle-slider"></span>
+                            <span class="qa-toggle-switch-text" style="font-size:0.78rem;">Quick Actions</span>
+                        </label>
+                        <button type="button" id="btnToggleQuickActionsHeader" onclick="toggleQuickActions()" class="btn-sm btn-secondary" style="height:36px; padding:6px 12px; border-radius:6px; font-weight:600; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Hide or Unhide Quick Access &amp; Actions portion">
+                            <i class="fas fa-eye-slash" id="iconToggleQuickActions"></i>
+                            <span id="textToggleQuickActions">Hide Quick Actions</span>
+                        </button>
+                    </div>
                     <div class="current-datetime-badge" id="dashboardLiveClock">
                         <div class="live-date">
                             <i class="far fa-calendar-alt"></i>
@@ -1118,6 +1125,35 @@
                 </div>
             </div>
 
+            <!-- Quick Access & Actions Hide / Unhide Control Bar & Toggle Switch -->
+            <div class="quick-actions-toggle-banner" id="quickActionsToggleBanner">
+                <div class="qa-toggle-info">
+                    <div class="qa-toggle-icon">
+                        <i class="fas fa-compass"></i>
+                    </div>
+                    <div>
+                        <div class="qa-toggle-title">
+                            <span>Quick Access &amp; Actions</span>
+                            <span class="qa-status-pill visible" id="quickActionsStatusPill">
+                                <i class="fas fa-check-circle"></i> Visible
+                            </span>
+                        </div>
+                        <div class="qa-toggle-desc">Fast action hub and instant search across all database modules</div>
+                    </div>
+                </div>
+                <div class="qa-toggle-actions-area">
+                    <label class="quick-actions-toggle-switch" title="Quick Access &amp; Actions Hide / Unhide Toggle">
+                        <input type="checkbox" id="qaVisibilityToggleCheckbox" checked onchange="toggleQuickActionsFromSwitch(this.checked)">
+                        <span class="toggle-slider"></span>
+                        <span class="qa-toggle-switch-text" id="qaToggleSwitchLabel">Hide / Unhide Toggle</span>
+                    </label>
+                    <button type="button" id="btnToggleQuickActionsDedicated" onclick="toggleQuickActions()" class="btn-sm btn-qa-action state-hide" title="Hide or Unhide Quick Access &amp; Actions">
+                        <i class="fas fa-eye-slash" id="iconToggleQuickActionsDedicated"></i>
+                        <span id="textToggleQuickActionsDedicated">Hide Quick Actions</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Quick Access & Actions Global Search & Launcher -->
             <div class="dashboard-quick-search-section" id="dashboardQuickActionsSection" style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; color: #fff; box-shadow: 0 4px 15px rgba(11,37,69,0.15); transition: all 0.3s ease;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
@@ -1134,6 +1170,11 @@
                         <span class="badge" style="background:rgba(255,255,255,0.15); color:#93c5fd; font-size:0.75rem; padding:4px 10px; border-radius:20px; font-weight:600;">
                             <i class="fas fa-bolt" style="color:#facc15;"></i> Fast Action Hub
                         </span>
+                        <label class="quick-actions-toggle-switch" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); padding:4px 10px; margin:0;" title="Quick Access &amp; Actions Hide / Unhide Toggle">
+                            <input type="checkbox" id="qaVisibilityToggleInnerCheckbox" checked onchange="toggleQuickActionsFromSwitch(this.checked)">
+                            <span class="toggle-slider"></span>
+                            <span class="qa-toggle-switch-text" style="color:#fff; font-size:0.75rem;">Toggle</span>
+                        </label>
                         <button type="button" id="btnHideQuickActions" onclick="toggleQuickActions(true)" title="Hide Quick Access &amp; Actions" style="background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:6px; padding:5px 10px; font-size:0.78rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s ease;">
                             <i class="fas fa-eye-slash"></i> <span>Hide</span>
                         </button>

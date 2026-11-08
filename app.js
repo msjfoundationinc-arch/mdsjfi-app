@@ -2177,41 +2177,29 @@ window.refreshArchiveTable = refreshArchiveTable;
 
 // ======================== DASHBOARD QUICK ACCESS HIDE / UNHIDE ========================
 
+function toggleQuickActionsFromSwitch(isChecked) {
+    toggleQuickActions(!isChecked);
+}
+window.toggleQuickActionsFromSwitch = toggleQuickActionsFromSwitch;
+
 function toggleQuickActions(explicitState) {
     const section = document.getElementById('dashboardQuickActionsSection');
-    const unhideBar = document.getElementById('quickActionsUnhideBar');
-    const headerBtnText = document.getElementById('textToggleQuickActions');
-    const headerBtnIcon = document.getElementById('iconToggleQuickActions');
     if (!section) return;
 
     let isHidden;
     if (typeof explicitState === 'boolean') {
         isHidden = explicitState;
     } else {
-        isHidden = section.style.display !== 'none';
+        const currentHidden = section.style.display === 'none' || localStorage.getItem('mdsj_hide_quick_actions') === 'true';
+        isHidden = !currentHidden;
     }
 
+    localStorage.setItem('mdsj_hide_quick_actions', isHidden ? 'true' : 'false');
+    applyQuickActionsVisibility();
+
     if (isHidden) {
-        section.style.display = 'none';
-        if (unhideBar) {
-            unhideBar.style.display = 'flex';
-        }
-        if (headerBtnText) headerBtnText.textContent = 'Unhide Quick Actions';
-        if (headerBtnIcon) {
-            headerBtnIcon.className = 'fas fa-eye';
-        }
-        localStorage.setItem('mdsj_hide_quick_actions', 'true');
         showToast('Quick Access & Actions portion hidden.', 'info');
     } else {
-        section.style.display = 'block';
-        if (unhideBar) {
-            unhideBar.style.display = 'none';
-        }
-        if (headerBtnText) headerBtnText.textContent = 'Hide Quick Actions';
-        if (headerBtnIcon) {
-            headerBtnIcon.className = 'fas fa-eye-slash';
-        }
-        localStorage.setItem('mdsj_hide_quick_actions', 'false');
         showToast('Quick Access & Actions portion displayed.', 'success');
     }
 }
@@ -2220,21 +2208,56 @@ window.toggleQuickActions = toggleQuickActions;
 function applyQuickActionsVisibility() {
     const isHidden = localStorage.getItem('mdsj_hide_quick_actions') === 'true';
     const section = document.getElementById('dashboardQuickActionsSection');
-    const unhideBar = document.getElementById('quickActionsUnhideBar');
+    const statusPill = document.getElementById('quickActionsStatusPill');
+    const checkboxDedicated = document.getElementById('qaVisibilityToggleCheckbox');
+    const checkboxHeader = document.getElementById('qaVisibilityToggleHeaderCheckbox');
+    const checkboxInner = document.getElementById('qaVisibilityToggleInnerCheckbox');
+    const btnDedicated = document.getElementById('btnToggleQuickActionsDedicated');
+    const btnDedicatedText = document.getElementById('textToggleQuickActionsDedicated');
+    const btnDedicatedIcon = document.getElementById('iconToggleQuickActionsDedicated');
     const headerBtnText = document.getElementById('textToggleQuickActions');
     const headerBtnIcon = document.getElementById('iconToggleQuickActions');
-    if (!section) return;
+    const unhideBar = document.getElementById('quickActionsUnhideBar');
 
-    if (isHidden) {
-        section.style.display = 'none';
-        if (unhideBar) unhideBar.style.display = 'flex';
-        if (headerBtnText) headerBtnText.textContent = 'Unhide Quick Actions';
-        if (headerBtnIcon) headerBtnIcon.className = 'fas fa-eye';
-    } else {
-        section.style.display = 'block';
-        if (unhideBar) unhideBar.style.display = 'none';
-        if (headerBtnText) headerBtnText.textContent = 'Hide Quick Actions';
-        if (headerBtnIcon) headerBtnIcon.className = 'fas fa-eye-slash';
+    if (section) {
+        section.style.display = isHidden ? 'none' : 'block';
+    }
+
+    if (statusPill) {
+        if (isHidden) {
+            statusPill.className = 'qa-status-pill hidden';
+            statusPill.innerHTML = '<i class="fas fa-eye-slash"></i> Hidden';
+        } else {
+            statusPill.className = 'qa-status-pill visible';
+            statusPill.innerHTML = '<i class="fas fa-check-circle"></i> Visible';
+        }
+    }
+
+    if (checkboxDedicated) checkboxDedicated.checked = !isHidden;
+    if (checkboxHeader) checkboxHeader.checked = !isHidden;
+    if (checkboxInner) checkboxInner.checked = !isHidden;
+
+    if (btnDedicated) {
+        if (isHidden) {
+            btnDedicated.className = 'btn-sm btn-qa-action state-unhide';
+            if (btnDedicatedText) btnDedicatedText.textContent = 'Unhide Quick Actions';
+            if (btnDedicatedIcon) btnDedicatedIcon.className = 'fas fa-eye';
+        } else {
+            btnDedicated.className = 'btn-sm btn-qa-action state-hide';
+            if (btnDedicatedText) btnDedicatedText.textContent = 'Hide Quick Actions';
+            if (btnDedicatedIcon) btnDedicatedIcon.className = 'fas fa-eye-slash';
+        }
+    }
+
+    if (headerBtnText) {
+        headerBtnText.textContent = isHidden ? 'Unhide Quick Actions' : 'Hide Quick Actions';
+    }
+    if (headerBtnIcon) {
+        headerBtnIcon.className = isHidden ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+
+    if (unhideBar) {
+        unhideBar.style.display = 'none';
     }
 }
 window.applyQuickActionsVisibility = applyQuickActionsVisibility;
