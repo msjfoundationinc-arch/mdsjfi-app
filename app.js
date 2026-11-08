@@ -75,15 +75,6 @@ const DASHBOARD_QUICK_ACTIONS = [
         action: () => printSOAPageSummary()
     },
     {
-        id: 'export-options',
-        name: 'Export Data & Reports',
-        category: 'Data Management & Export',
-        keywords: 'export data options download excel csv students soa cash flow activities payroll',
-        icon: 'fas fa-file-export',
-        color: '#16a34a',
-        action: () => openExportOptionsModal()
-    },
-    {
         id: 'cash-flow',
         name: 'Daily Cash In & Out Flow',
         category: 'Financial & Accounting',
@@ -621,10 +612,10 @@ function showApp(user) {
             avatarEl.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div>';
             avatarEl.classList.remove('has-image');
         } else if (isRegistrar()) {
-            avatarEl.innerHTML = '<img src="registrar-avatar.jpg" alt="' + (currentUser.displayName || 'Registrar') + '" class="president-avatar-img">';
+            avatarEl.innerHTML = '<img src="registrar-avatar.jpg" alt="' + (currentUser.displayName || 'Registrar') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
             avatarEl.classList.add('has-image');
         } else {
-            avatarEl.innerHTML = '<img src="president-avatar.jpg" alt="' + (currentUser.displayName || 'President') + '" class="president-avatar-img">';
+            avatarEl.innerHTML = '<img src="president-avatar.jpg" alt="' + (currentUser.displayName || 'President') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
             avatarEl.classList.add('has-image');
         }
     }
@@ -7627,9 +7618,81 @@ function getCountdownBadge(dueDateStr) {
     }
 }
 
+function renderClearanceTableHead() {
+    const thead = document.getElementById('clearanceTableHead');
+    if (!thead) return;
+    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
+    if (isUserTeacher) {
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 4%; text-align:center;">#</th>
+                <th style="width: 34%;">Learner Name &amp; LRN</th>
+                <th style="width: 18%; text-align:center;">Grade &amp; Section</th>
+                <th style="width: 12%; text-align:center;">ESC Status</th>
+                <th style="width: 18%; text-align:center;">Exam Clearance Status</th>
+                <th style="width: 14%; text-align:center;">Actions</th>
+            </tr>
+        `;
+    } else {
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 3.5%; text-align:center;">#</th>
+                <th style="width: 21.5%;">Learner Name &amp; LRN</th>
+                <th style="width: 10.5%; text-align:center;">Grade &amp; Section</th>
+                <th style="width: 7.5%; text-align:center;">ESC Status</th>
+                <th style="width: 9%;" class="text-right">Net Tuition</th>
+                <th style="width: 9%;" class="text-right">Total Paid</th>
+                <th style="width: 10%;" class="text-right">SOA Balance</th>
+                <th style="width: 14.5%; text-align:center;">Exam Clearance Status</th>
+                <th style="width: 14.5%; text-align:center;">Actions</th>
+            </tr>
+        `;
+    }
+}
+window.renderClearanceTableHead = renderClearanceTableHead;
+
+function renderPromissoryTableHead() {
+    const thead = document.getElementById('promissoryTableHead');
+    if (!thead) return;
+    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
+    if (isUserTeacher) {
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 3.5%; text-align:center;">#</th>
+                <th style="width: 18%;">Learner Name &amp; LRN</th>
+                <th style="width: 10%; text-align:center;">Grade &amp; Section</th>
+                <th style="width: 17%;">Override Basis / Reason</th>
+                <th style="width: 14%;">Authorized By</th>
+                <th style="width: 9%; text-align:center;">Promised Pay Date</th>
+                <th style="width: 8.5%; text-align:center;">Remaining Days</th>
+                <th style="width: 10%;">Remarks &amp; Agreement Terms</th>
+                <th style="width: 10%; text-align:center;">Actions</th>
+            </tr>
+        `;
+    } else {
+        thead.innerHTML = `
+            <tr>
+                <th style="width: 3%; text-align:center;">#</th>
+                <th style="width: 16%;">Learner Name &amp; LRN</th>
+                <th style="width: 9%; text-align:center;">Grade &amp; Section</th>
+                <th style="width: 8%;" class="text-right">Balance (&#8369;)</th>
+                <th style="width: 15%;">Override Basis / Reason</th>
+                <th style="width: 13%;">Authorized By</th>
+                <th style="width: 8.5%; text-align:center;">Promised Pay Date</th>
+                <th style="width: 8%; text-align:center;">Remaining Days</th>
+                <th style="width: 9.5%;">Remarks &amp; Agreement Terms</th>
+                <th style="width: 10%; text-align:center;">Actions</th>
+            </tr>
+        `;
+    }
+}
+window.renderPromissoryTableHead = renderPromissoryTableHead;
+
 function renderPromissoryClearanceTable() {
     const tbody = document.getElementById('promissoryTableBody');
     if (!tbody) return;
+
+    renderPromissoryTableHead();
 
     const data = getClearanceRosterData();
     const searchVal = (document.getElementById('clearanceSearchInput')?.value || '').toLowerCase().trim();
@@ -7645,10 +7708,12 @@ function renderPromissoryClearanceTable() {
         return true;
     });
 
+    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
+
     if (promissoryList.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" style="text-align: center; padding: 40px 16px; color: #64748b;">
+                <td colspan="${isUserTeacher ? 9 : 10}" style="text-align: center; padding: 40px 16px; color: #64748b;">
                     <i class="fas fa-handshake-slash" style="font-size: 2.2rem; color: #94a3b8; display: block; margin-bottom: 10px;"></i>
                     <strong style="font-size:0.95rem; color:#1e293b;">No Promissory Notes or Clearance Overrides on File</strong>
                     <p style="font-size: 0.85rem; margin-top: 4px; max-width:540px; margin-left:auto; margin-right:auto;">
@@ -7660,28 +7725,31 @@ function renderPromissoryClearanceTable() {
         return;
     }
 
-    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
-
     tbody.innerHTML = promissoryList.map((item, idx) => {
         const ov = item.override || {};
         const countdownHtml = getCountdownBadge(ov.dueDate);
 
-        let actionBtns = `
+        let actionBtns = isUserTeacher ? `
+            <button type="button" class="btn-icon" onclick="viewStudent('${item.id}')" title="View Learner Profile" style="background:#f1f5f9; color:#0b2545; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                <i class="fas fa-eye"></i>
+            </button>
+        ` : `
             <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Statement of Account" style="background:#ecfdf5; color:#15803d; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
                 <i class="fas fa-file-invoice-dollar"></i>
             </button>
+            <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                <i class="fas fa-user-edit"></i>
+            </button>
+            <button type="button" class="btn-icon delete" onclick="revokeClearanceOverrideById('${item.id}')" title="Revoke Clearance Override (Admin Authorization Required)" style="background:#fee2e2; color:#dc2626; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                <i class="fas fa-trash-alt"></i>
+            </button>
         `;
 
-        if (!isUserTeacher) {
-            actionBtns += `
-                <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
-                    <i class="fas fa-user-edit"></i>
-                </button>
-                <button type="button" class="btn-icon delete" onclick="revokeClearanceOverrideById('${item.id}')" title="Revoke Clearance Override (Admin Authorization Required)" style="background:#fee2e2; color:#dc2626; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            `;
-        }
+        const balanceCell = isUserTeacher ? '' : `
+            <td class="text-right text-danger" style="font-weight:700; font-size:0.80rem;">
+                &#8369;${formatNumber(item.remainingBalance)}
+            </td>
+        `;
 
         return `
             <tr>
@@ -7693,9 +7761,7 @@ function renderPromissoryClearanceTable() {
                 <td style="text-align:center;">
                     <span class="badge-grade" style="font-weight:600; font-size:0.72rem; white-space:nowrap; padding:2px 6px;">Grade ${escapeHtml(item.gradeLevel)} - ${escapeHtml(item.section)}</span>
                 </td>
-                <td class="text-right text-danger" style="font-weight:700; font-size:0.80rem;">
-                    &#8369;${formatNumber(item.remainingBalance)}
-                </td>
+                ${balanceCell}
                 <td style="overflow:hidden;">
                     <span style="display:inline-block; max-width:100%; padding:2.5px 6px; border-radius:4px; background:#fef3c7; color:#92400e; font-weight:700; font-size:0.72rem; border:1px solid #fde68a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-sizing:border-box; vertical-align:middle;" title="${escapeHtml(ov.reason || 'Promissory Note Filed')}">
                         <i class="fas fa-file-signature"></i> ${escapeHtml(ov.reason || 'Promissory Note Filed')}
@@ -7730,6 +7796,8 @@ function filterClearanceTable() {
     const tbody = document.getElementById('clearanceTableBody');
     if (!tbody) return;
 
+    renderClearanceTableHead();
+
     const data = getClearanceRosterData();
     const searchVal = (document.getElementById('clearanceSearchInput')?.value || '').toLowerCase().trim();
     const gradeVal = document.getElementById('clearanceFilterGrade')?.value || '';
@@ -7746,10 +7814,12 @@ function filterClearanceTable() {
         return true;
     });
 
+    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
+
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" style="text-align: center; padding: 36px 16px; color: #64748b;">
+                <td colspan="${isUserTeacher ? 6 : 9}" style="text-align: center; padding: 36px 16px; color: #64748b;">
                     <i class="fas fa-clipboard-list" style="font-size: 2rem; color: #94a3b8; display: block; margin-bottom: 8px;"></i>
                     <strong>No students found for this clearance criteria</strong>
                     <p style="font-size: 0.85rem; margin-top: 4px;">Try clearing filters or search term.</p>
@@ -7758,8 +7828,6 @@ function filterClearanceTable() {
         `;
         return;
     }
-
-    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
 
     tbody.innerHTML = filtered.map((item, idx) => {
         const escBadge = item.isEsc
@@ -7786,9 +7854,16 @@ function filterClearanceTable() {
                 </span>`;
         }
 
-        // Action buttons: SOA for all; Override buttons only for Admin and Registrar
-        let overrideBtn = '';
-        if (!isUserTeacher) {
+        // Action buttons: Teacher sees View Profile; Admin and Registrar see SOA and Override buttons
+        let actionsHtml = '';
+        if (isUserTeacher) {
+            actionsHtml = `
+                <button type="button" class="btn-icon" onclick="viewStudent('${item.id}')" title="View Learner Profile" style="background:#f1f5f9; color:#0b2545; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                    <i class="fas fa-eye"></i>
+                </button>
+            `;
+        } else {
+            let overrideBtn = '';
             if (item.isOverridden) {
                 overrideBtn = `
                     <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
@@ -7805,7 +7880,19 @@ function filterClearanceTable() {
                     </button>
                 `;
             }
+            actionsHtml = `
+                <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Student Statement of Account" style="background:#ecfdf5; color:#15803d; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </button>
+                ${overrideBtn}
+            `;
         }
+
+        const financialCells = isUserTeacher ? '' : `
+            <td class="text-right" style="font-weight:600; color:#1e293b; font-size:0.80rem;">&#8369;${formatNumber(item.netTuition)}</td>
+            <td class="text-right text-success" style="font-weight:700; font-size:0.80rem;">&#8369;${formatNumber(item.totalPaid)}</td>
+            <td class="text-right text-danger" style="font-weight:700; font-size:0.80rem;">&#8369;${formatNumber(item.remainingBalance)}</td>
+        `;
 
         return `
             <tr>
@@ -7818,17 +7905,12 @@ function filterClearanceTable() {
                     <span class="badge-grade" style="font-weight:600; font-size:0.72rem; white-space:nowrap; padding:2px 6px;">Grade ${escapeHtml(item.gradeLevel)} - ${escapeHtml(item.section)}</span>
                 </td>
                 <td style="text-align:center;">${escBadge}</td>
-                <td class="text-right" style="font-weight:600; color:#1e293b; font-size:0.80rem;">&#8369;${formatNumber(item.netTuition)}</td>
-                <td class="text-right text-success" style="font-weight:700; font-size:0.80rem;">&#8369;${formatNumber(item.totalPaid)}</td>
-                <td class="text-right text-danger" style="font-weight:700; font-size:0.80rem;">&#8369;${formatNumber(item.remainingBalance)}</td>
+                ${financialCells}
                 <td style="text-align:center;">
                     ${clearanceBadge}
                 </td>
                 <td class="text-center actions-cell" style="white-space:nowrap !important; overflow:visible !important;">
-                    <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Student Statement of Account" style="background:#ecfdf5; color:#15803d; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                    </button>
-                    ${overrideBtn}
+                    ${actionsHtml}
                 </td>
             </tr>
         `;
@@ -8078,7 +8160,12 @@ function exportClearanceCSV() {
     }
 
     const syVal = document.getElementById('clearanceFilterSy')?.value || currentSchoolYear || '2026-2027';
-    const headers = ['#', 'LRN', 'Learner Full Name', 'Grade Level', 'Section', 'School Year', 'ESC Grantee', 'Net Tuition (PHP)', 'Total Paid (PHP)', 'Remaining Balance (PHP)', 'Exam Clearance Status', 'Override Details / Notes'];
+    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
+
+    const headers = isUserTeacher
+        ? ['#', 'LRN', 'Learner Full Name', 'Grade Level', 'Section', 'School Year', 'ESC Grantee', 'Exam Clearance Status', 'Override Details / Notes']
+        : ['#', 'LRN', 'Learner Full Name', 'Grade Level', 'Section', 'School Year', 'ESC Grantee', 'Net Tuition (PHP)', 'Total Paid (PHP)', 'Remaining Balance (PHP)', 'Exam Clearance Status', 'Override Details / Notes'];
+
     const rows = data.map((d, i) => {
         let statusText = 'NOT CLEARED (WITH BALANCE)';
         let overrideNotes = '';
@@ -8088,6 +8175,20 @@ function exportClearanceCSV() {
             const ov = d.override || {};
             statusText = `CLEARED (OVERRIDE: ${ov.reason || 'Promissory Agreement'})`;
             overrideNotes = `Authorized by: ${ov.authorizedBy || ''}; Due: ${ov.dueDate || 'N/A'}; Notes: ${ov.notes || ''}`;
+        }
+
+        if (isUserTeacher) {
+            return [
+                i + 1,
+                `"${d.lrn || ''}"`,
+                `"${d.fullName.replace(/"/g, '""')}"`,
+                `"Grade ${d.gradeLevel}"`,
+                `"${(d.section || '').replace(/"/g, '""')}"`,
+                `"${d.schoolYear}"`,
+                `"${d.isEsc ? 'YES' : 'NO'}"`,
+                `"${statusText}"`,
+                `"${overrideNotes.replace(/"/g, '""')}"`
+            ];
         }
 
         return [
@@ -8123,6 +8224,7 @@ function exportClearanceCSV() {
 function printClearanceRoster() {
     const data = getClearanceRosterData();
     const syVal = document.getElementById('clearanceFilterSy')?.value || currentSchoolYear || '2026-2027';
+    const isUserTeacher = (typeof isTeacher === 'function' && isTeacher());
     const clearedCount = data.filter(d => d.isCleared).length;
     const pendingCount = data.length - clearedCount;
 
@@ -8143,6 +8245,12 @@ function printClearanceRoster() {
             statusColor = '#d97706';
         }
 
+        const tdFinancials = isUserTeacher ? '' : `
+            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:right;">&#8369;${formatNumber(d.netTuition)}</td>
+            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:right; color:#15803d; font-weight:bold;">&#8369;${formatNumber(d.totalPaid)}</td>
+            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:right; color:#dc2626; font-weight:bold;">&#8369;${formatNumber(d.remainingBalance)}</td>
+        `;
+
         return `
         <tr>
             <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px;">${idx + 1}</td>
@@ -8150,15 +8258,19 @@ function printClearanceRoster() {
             <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px;"><strong>${escapeHtml(d.fullName)}</strong></td>
             <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px;">Grade ${escapeHtml(d.gradeLevel)} - ${escapeHtml(d.section)}</td>
             <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px;">${d.isEsc ? 'YES' : 'NO'}</td>
-            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:right;">&#8369;${formatNumber(d.netTuition)}</td>
-            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:right; color:#15803d; font-weight:bold;">&#8369;${formatNumber(d.totalPaid)}</td>
-            <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:right; color:#dc2626; font-weight:bold;">&#8369;${formatNumber(d.remainingBalance)}</td>
+            ${tdFinancials}
             <td style="padding:6px 8px; border-bottom:1px solid #e2e8f0; font-size:11px; text-align:center; font-weight:bold; color:${statusColor};">
                 ${statusLabel}
             </td>
         </tr>
     `;
     }).join('');
+
+    const thFinancials = isUserTeacher ? '' : `
+        <th style="text-align:right;">Tuition</th>
+        <th style="text-align:right;">Paid</th>
+        <th style="text-align:right;">Balance</th>
+    `;
 
     printWin.document.write(`
         <!DOCTYPE html>
@@ -8209,9 +8321,7 @@ function printClearanceRoster() {
                         <th>Learner Name</th>
                         <th>Grade &amp; Section</th>
                         <th>ESC</th>
-                        <th style="text-align:right;">Tuition</th>
-                        <th style="text-align:right;">Paid</th>
-                        <th style="text-align:right;">Balance</th>
+                        ${thFinancials}
                         <th style="text-align:center;">Exam Status</th>
                     </tr>
                 </thead>
@@ -10238,26 +10348,50 @@ function renderTeachersPage(list) {
                 </div>
             `;
         } else {
+            const isUserTeacher = typeof isTeacher === 'function' && isTeacher();
             cardsGrid.innerHTML = list.map(emp => {
                 const initials = (emp.name || 'T').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
                 const photoSrc = emp.photo || '';
+                const isLocked = emp.profileLocked || emp.teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + emp.id) === 'true');
                 const avatarHtml = photoSrc
                     ? `<img src="${photoSrc}" alt="${escapeHtml(emp.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
                     : `<span style="font-weight:700; font-size:1.4rem; color:var(--primary);">${initials}</span>`;
 
+                const editBtnHtml = (isUserTeacher && isLocked)
+                    ? `<button type="button" class="btn-sm btn-secondary" onclick="handleLockedTeacherEdit('${emp.id}')" title="Profile finalized and locked. Coordinate with Administration for edits." style="padding:5px 9px; font-size:0.78rem; background:#f1f5f9; color:#64748b; border-color:#cbd5e1; cursor:not-allowed;">
+                        <i class="fas fa-lock"></i> Locked
+                       </button>`
+                    : `<button type="button" class="btn-sm btn-secondary" onclick="openEditTeacherDetailsModal('${emp.id}')" title="${isUserTeacher ? 'Edit and finalize profile (Editable once)' : 'Edit Teacher\'s Profile & Credentials'}" style="padding:5px 9px; font-size:0.78rem; background:#eff6ff; color:#2563eb; border-color:#93c5fd;">
+                        <i class="fas fa-user-edit"></i> Edit${isUserTeacher ? ' (1x)' : ''}
+                       </button>`;
+
+                const photoBtnHtml = (isUserTeacher && isLocked)
+                    ? `<button type="button" class="btn-sm btn-secondary" onclick="handleLockedTeacherPhoto('${emp.id}')" title="Photo finalized and locked" style="padding:5px 9px; font-size:0.78rem; background:#f1f5f9; color:#64748b; border-color:#cbd5e1; cursor:not-allowed;">
+                        <i class="fas fa-lock"></i> Photo
+                       </button>`
+                    : `<button type="button" class="btn-sm btn-secondary" onclick="openTeacherPhotoModal('${emp.id}')" title="Upload / change photo" style="padding:5px 9px; font-size:0.78rem;">
+                        <i class="fas fa-camera"></i> Photo
+                       </button>`;
+
+                const statusBadgeHtml = isLocked
+                    ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #fde68a;" title="Profile finalized and locked from further edits"><i class="fas fa-lock"></i> Finalized</span>`
+                    : (isUserTeacher
+                        ? `<span class="status-badge" style="background:#dbeafe; color:#1e40af; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #bfdbfe;" title="You can edit and finalize your profile once"><i class="fas fa-edit"></i> Edit (1x)</span>`
+                        : `<span class="status-badge" style="background:#dcfce7; color:#15803d; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:12px;"><i class="fas fa-check-circle"></i> Active</span>`);
+
                 return `
                     <div class="teacher-profile-card" style="background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:18px; box-shadow:0 3px 10px rgba(0,0,0,0.04); display:flex; flex-direction:column; transition:transform 0.15s, box-shadow 0.15s; position:relative;">
                         <div style="display:flex; gap:14px; align-items:flex-start; margin-bottom:12px;">
-                            <div class="teacher-card-avatar" onclick="openTeacherPhotoModal('${emp.id}')" title="Click to view or upload photo" style="width:68px; height:68px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:2.5px solid #2563eb; position:relative; cursor:pointer; overflow:hidden;">
+                            <div class="teacher-card-avatar" onclick="openTeacherProfileModal('${emp.id}')" title="Click to view full profile" style="width:68px; height:68px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:2.5px solid #2563eb; position:relative; cursor:pointer; overflow:hidden;">
                                 ${avatarHtml}
-                                <span style="position:absolute; bottom:0; right:0; background:#2563eb; color:#fff; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.60rem; border:1.5px solid #fff;"><i class="fas fa-camera"></i></span>
+                                <span style="position:absolute; bottom:0; right:0; background:#2563eb; color:#fff; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.60rem; border:1.5px solid #fff;"><i class="fas fa-eye"></i></span>
                             </div>
                             <div style="flex:1; min-width:0;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
                                     <span style="font-family:monospace; font-size:0.80rem; font-weight:700; color:#0b2545; background:#e0f2fe; padding:2px 7px; border-radius:4px;">${escapeHtml(emp.employeeNo)}</span>
-                                    <span class="status-badge" style="background:#dcfce7; color:#15803d; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:12px;"><i class="fas fa-check-circle"></i> Active</span>
+                                    ${statusBadgeHtml}
                                 </div>
-                                <h4 style="margin:6px 0 2px 0; font-size:0.98rem; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</h4>
+                                <h4 style="margin:6px 0 2px 0; font-size:0.98rem; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;" onclick="openTeacherProfileModal('${emp.id}')" title="View Profile: ${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</h4>
                                 <div style="font-size:0.78rem; font-weight:600; color:#0284c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(emp.position)}</div>
                             </div>
                         </div>
@@ -10281,12 +10415,8 @@ function renderTeachersPage(list) {
                             <button type="button" class="btn-sm btn-outline-primary" onclick="openTeacherProfileModal('${emp.id}')" style="flex:1; padding:5px 8px; font-size:0.78rem; text-align:center;">
                                 <i class="fas fa-id-card"></i> Profile
                             </button>
-                            <button type="button" class="btn-sm btn-secondary" onclick="openEditTeacherDetailsModal('${emp.id}')" title="Edit Teacher's Profile & Credentials" style="padding:5px 9px; font-size:0.78rem; background:#eff6ff; color:#2563eb; border-color:#93c5fd;">
-                                <i class="fas fa-user-edit"></i> Edit
-                            </button>
-                            <button type="button" class="btn-sm btn-secondary" onclick="openTeacherPhotoModal('${emp.id}')" title="Upload / change photo" style="padding:5px 9px; font-size:0.78rem;">
-                                <i class="fas fa-camera"></i> Photo
-                            </button>
+                            ${editBtnHtml}
+                            ${photoBtnHtml}
                             <button type="button" class="btn-sm btn-secondary" onclick="printTeacherProfile('${emp.id}')" title="Print Profile Sheet" style="padding:5px 9px; font-size:0.78rem;">
                                 <i class="fas fa-print"></i>
                             </button>
@@ -10303,12 +10433,34 @@ function renderTeachersPage(list) {
         if (!list || list.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No teacher records found.</td></tr>`;
         } else {
+            const isUserTeacher = typeof isTeacher === 'function' && isTeacher();
             tbody.innerHTML = list.map((emp, idx) => {
                 const initials = (emp.name || 'T').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
                 const photoSrc = emp.photo || '';
+                const isLocked = emp.profileLocked || emp.teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + emp.id) === 'true');
                 const thumbHtml = photoSrc
-                    ? `<img src="${photoSrc}" alt="${escapeHtml(emp.name)}" style="width:24px; height:24px; border-radius:50%; object-fit:cover; border:1px solid #2563eb;">`
-                    : `<div style="width:24px; height:24px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.65rem; display:flex; align-items:center; justify-content:center; margin:auto;">${initials}</div>`;
+                    ? `<img src="${photoSrc}" alt="${escapeHtml(emp.name)}" style="width:24px; height:24px; border-radius:50%; object-fit:cover; border:1px solid #2563eb; cursor:pointer;" onclick="openTeacherProfileModal('${emp.id}')">`
+                    : `<div style="width:24px; height:24px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.65rem; display:flex; align-items:center; justify-content:center; margin:auto; cursor:pointer;" onclick="openTeacherProfileModal('${emp.id}')">${initials}</div>`;
+
+                const tblEditBtn = (isUserTeacher && isLocked)
+                    ? `<button type="button" class="btn-icon" onclick="handleLockedTeacherEdit('${emp.id}')" title="Profile finalized and locked. Coordinate with Administration for edits." style="background:#f1f5f9; color:#94a3b8; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px; cursor:not-allowed;">
+                        <i class="fas fa-lock"></i>
+                       </button>`
+                    : `<button type="button" class="btn-icon edit" onclick="openEditTeacherDetailsModal('${emp.id}')" title="${isUserTeacher ? 'Edit Profile (1x)' : 'Edit Teacher\'s Profile & Credentials'}" style="background:#eff6ff; color:#2563eb; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px;">
+                        <i class="fas fa-user-edit"></i>
+                       </button>`;
+
+                const tblPhotoBtn = (isUserTeacher && isLocked)
+                    ? `<button type="button" class="btn-icon" onclick="handleLockedTeacherPhoto('${emp.id}')" title="Photo finalized and locked" style="background:#f1f5f9; color:#94a3b8; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px; cursor:not-allowed;">
+                        <i class="fas fa-lock"></i>
+                       </button>`
+                    : `<button type="button" class="btn-icon" onclick="openTeacherPhotoModal('${emp.id}')" title="Change Photo" style="background:#f1f5f9; color:#475569; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px;">
+                        <i class="fas fa-camera"></i>
+                       </button>`;
+
+                const tblStatusBadge = isLocked
+                    ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; font-size:0.63rem; font-weight:700; padding:1.5px 4px;"><i class="fas fa-lock" style="font-size:0.60rem;"></i> Finalized</span>`
+                    : `<span class="status-badge" style="background:#dcfce7; color:#15803d; font-size:0.63rem; font-weight:700; padding:1.5px 4px;"><i class="fas fa-check-circle" style="font-size:0.60rem;"></i> Active</span>`;
 
                 return `
                     <tr data-emp-id="${emp.id}">
@@ -10316,7 +10468,7 @@ function renderTeachersPage(list) {
                         <td style="text-align:center;">${thumbHtml}</td>
                         <td><strong style="font-family: monospace; font-size: 0.68rem; color: #0b2545;">${escapeHtml(emp.employeeNo)}</strong></td>
                         <td>
-                            <div style="font-weight: 700; color: #0f172a; font-size: 0.68rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</div>
+                            <div style="font-weight: 700; color: #0f172a; font-size: 0.68rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;" onclick="openTeacherProfileModal('${emp.id}')" title="View Profile: ${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</div>
                         </td>
                         <td>
                             <span style="display:inline-block; padding: 1.5px 5px; border-radius: 3px; background: #e0f2fe; color: #0369a1; font-weight: 600; font-size: 0.65rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(emp.position)}">
@@ -10325,17 +10477,13 @@ function renderTeachersPage(list) {
                         </td>
                         <td style="font-size:0.68rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(emp.department || 'Faculty')}</td>
                         <td><span class="sy-pill" style="font-size:0.63rem; padding:1.5px 4px;">${escapeHtml(emp.schoolYear || '2026-2027')}</span></td>
-                        <td style="text-align:center;"><span class="status-badge" style="background:#dcfce7; color:#15803d; font-size:0.63rem; font-weight:700; padding:1.5px 4px;"><i class="fas fa-check-circle" style="font-size:0.60rem;"></i> Active</span></td>
+                        <td style="text-align:center;">${tblStatusBadge}</td>
                         <td class="text-center actions-cell">
                             <button type="button" class="btn-icon" onclick="openTeacherProfileModal('${emp.id}')" title="View Teacher Profile" style="background:#e0f2fe; color:#0369a1; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px;">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button type="button" class="btn-icon edit" onclick="openEditTeacherDetailsModal('${emp.id}')" title="Edit Teacher's Profile & Credentials" style="background:#eff6ff; color:#2563eb; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px;">
-                                <i class="fas fa-user-edit"></i>
-                            </button>
-                            <button type="button" class="btn-icon" onclick="openTeacherPhotoModal('${emp.id}')" title="Change Photo" style="background:#f1f5f9; color:#475569; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px;">
-                                <i class="fas fa-camera"></i>
-                            </button>
+                            ${tblEditBtn}
+                            ${tblPhotoBtn}
                             <button type="button" class="btn-icon" onclick="printTeacherProfile('${emp.id}')" title="Print Profile Sheet" style="background:#f8fafc; color:#334155; width:21px; height:21px; border-radius:3px; font-size:0.64rem; margin:0 1px;">
                                 <i class="fas fa-print"></i>
                             </button>
@@ -10357,44 +10505,106 @@ function openTeacherProfileModal(empId) {
     const body = document.getElementById('teacherProfileBody');
     if (!modal || !body) return;
 
+    const isUserTeacher = typeof isTeacher === 'function' && isTeacher();
+    const isLocked = emp.profileLocked || emp.teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + emp.id) === 'true');
+
+    // Update Modal Title
+    const titleEl = document.getElementById('teacherProfileModalTitle');
+    if (titleEl) {
+        titleEl.textContent = `Teacher Profile Sheet - ${emp.name}`;
+    }
+
+    // Configure Footer Action Buttons based on permissions
+    const btnEditFromProf = document.getElementById('btnEditDetailsFromProfile');
+    const btnPhotoFromProf = document.getElementById('btnUploadPhotoFromProfile');
+
+    if (btnEditFromProf) {
+        if (isUserTeacher && isLocked) {
+            btnEditFromProf.disabled = false;
+            btnEditFromProf.onclick = function() { handleLockedTeacherEdit(emp.id); };
+            btnEditFromProf.innerHTML = '<i class="fas fa-lock"></i> Profile Finalized (Locked)';
+            btnEditFromProf.style.background = '#f1f5f9';
+            btnEditFromProf.style.color = '#64748b';
+            btnEditFromProf.style.borderColor = '#cbd5e1';
+            btnEditFromProf.style.cursor = 'not-allowed';
+            btnEditFromProf.title = 'You have already edited and saved your profile. Contact Administration for further changes.';
+        } else if (isUserTeacher && !isLocked) {
+            btnEditFromProf.disabled = false;
+            btnEditFromProf.onclick = openEditTeacherDetailsModalFromProfile;
+            btnEditFromProf.innerHTML = '<i class="fas fa-user-edit"></i> Edit Details (1x Allowed)';
+            btnEditFromProf.style.background = '#fef3c7';
+            btnEditFromProf.style.color = '#92400e';
+            btnEditFromProf.style.borderColor = '#fde68a';
+            btnEditFromProf.style.cursor = 'pointer';
+            btnEditFromProf.title = 'Edit your profile details once before final lock';
+        } else {
+            btnEditFromProf.disabled = false;
+            btnEditFromProf.onclick = openEditTeacherDetailsModalFromProfile;
+            btnEditFromProf.innerHTML = '<i class="fas fa-user-edit"></i> Edit Teacher Details';
+            btnEditFromProf.style.background = '#fef3c7';
+            btnEditFromProf.style.color = '#92400e';
+            btnEditFromProf.style.borderColor = '#fde68a';
+            btnEditFromProf.style.cursor = 'pointer';
+            btnEditFromProf.title = 'Edit Teacher Profile & Credentials';
+        }
+    }
+
+    if (btnPhotoFromProf) {
+        if (isUserTeacher && isLocked) {
+            btnPhotoFromProf.onclick = function() { handleLockedTeacherPhoto(emp.id); };
+            btnPhotoFromProf.innerHTML = '<i class="fas fa-lock"></i> Photo Locked';
+            btnPhotoFromProf.style.opacity = '0.7';
+            btnPhotoFromProf.style.cursor = 'not-allowed';
+        } else {
+            btnPhotoFromProf.onclick = triggerPhotoUploadFromProfile;
+            btnPhotoFromProf.innerHTML = '<i class="fas fa-camera"></i> Change Photo';
+            btnPhotoFromProf.style.opacity = '1';
+            btnPhotoFromProf.style.cursor = 'pointer';
+        }
+    }
+
     const initials = (emp.name || 'T').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
     const photoSrc = emp.photo || '';
     const avatarHtml = photoSrc
-        ? `<img src="${photoSrc}" alt="${escapeHtml(emp.name)}" style="width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid #2563eb; box-shadow:0 4px 12px rgba(0,0,0,0.12);">`
-        : `<div style="width:110px; height:110px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:2.2rem; display:flex; align-items:center; justify-content:center; border:3px solid #2563eb; box-shadow:0 4px 12px rgba(0,0,0,0.12);">${initials}</div>`;
+        ? `<img src="${photoSrc}" alt="${escapeHtml(emp.name)}" style="width:105px; height:105px; border-radius:50%; object-fit:cover; border:3px solid #2563eb; box-shadow:0 4px 12px rgba(0,0,0,0.12);">`
+        : `<div style="width:105px; height:105px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:2.2rem; display:flex; align-items:center; justify-content:center; border:3px solid #2563eb; box-shadow:0 4px 12px rgba(0,0,0,0.12);">${initials}</div>`;
+
+    const statusPill = isLocked
+        ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #fde68a;"><i class="fas fa-lock"></i> Finalized &amp; Locked</span>`
+        : (isUserTeacher ? `<span class="status-badge" style="background:#dbeafe; color:#1e40af; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #bfdbfe;"><i class="fas fa-edit"></i> Editable (1x)</span>` : '');
 
     body.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:16px;">
             <!-- Header with Photo and Core Info -->
-            <div style="display:flex; gap:18px; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:14px;">
-                <div style="flex-shrink:0; cursor:pointer; position:relative;" onclick="triggerPhotoUploadFromProfile()" title="Click to upload or replace photo">
+            <div style="display:flex; gap:18px; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:14px; flex-wrap:wrap;">
+                <div style="flex-shrink:0; position:relative; ${(!isUserTeacher || !isLocked) ? 'cursor:pointer;' : ''}" onclick="${(!isUserTeacher || !isLocked) ? 'triggerPhotoUploadFromProfile()' : 'handleLockedTeacherPhoto(\'' + emp.id + '\')'}" title="${(!isUserTeacher || !isLocked) ? 'Click to upload or replace photo' : 'Photo finalized and locked'}">
                     ${avatarHtml}
-                    <span style="position:absolute; bottom:2px; right:2px; background:#2563eb; color:#fff; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.75rem; border:2px solid #fff;"><i class="fas fa-camera"></i></span>
+                    ${(!isUserTeacher || !isLocked) ? `<span style="position:absolute; bottom:2px; right:2px; background:#2563eb; color:#fff; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.75rem; border:2px solid #fff;"><i class="fas fa-camera"></i></span>` : ''}
                 </div>
-                <div style="flex:1;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
-                        <span style="font-family:monospace; font-size:0.88rem; font-weight:700; color:#0b2545; background:#e0f2fe; padding:2px 8px; border-radius:4px;">Employee ID: ${escapeHtml(emp.employeeNo)}</span>
+                <div style="flex:1; min-width:240px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                        <span style="font-family:monospace; font-size:0.86rem; font-weight:700; color:#0b2545; background:#e0f2fe; padding:2px 8px; border-radius:4px;">Employee ID: ${escapeHtml(emp.employeeNo)}</span>
                         <span class="status-badge" style="background:#dcfce7; color:#15803d; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:12px;"><i class="fas fa-check-circle"></i> ${escapeHtml(emp.employmentStatus || 'Active')}</span>
                         <span class="sy-pill" style="font-size:0.74rem;">S.Y. ${escapeHtml(emp.schoolYear || '2026-2027')}</span>
+                        ${statusPill}
                     </div>
-                    <h3 style="margin:0 0 3px 0; color:#0f172a; font-size:1.35rem; font-weight:800;">${escapeHtml(emp.name)}</h3>
+                    <h3 style="margin:0 0 3px 0; color:#0f172a; font-size:1.35rem; font-weight:800; line-height:1.2;">${escapeHtml(emp.name)}</h3>
                     <p style="margin:0 0 4px 0; color:#0284c7; font-weight:700; font-size:0.95rem;">${escapeHtml(emp.position)}</p>
                     <span style="font-size:0.80rem; color:#64748b;"><i class="fas fa-building" style="margin-right:4px;"></i> ${escapeHtml(emp.department || 'Junior High School Faculty')} &bull; Advisory: <strong>${escapeHtml(emp.advisoryClass || 'None')}</strong></span>
                 </div>
             </div>
 
-            <!-- 5 Detailed Categories Grid -->
             <!-- 1. Personal Information -->
             <div style="background:#f8fafc; border-radius:8px; padding:12px 14px; border:1px solid #e2e8f0;">
                 <h5 style="margin:0 0 10px 0; color:#0b2545; font-size:0.85rem; font-weight:700; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; display:flex; align-items:center; gap:6px;">
                     <i class="fas fa-user" style="color:#0284c7;"></i> 1. Personal Information
                 </h5>
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; font-size:0.82rem;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.82rem;">
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Gender:</span><strong>${escapeHtml(emp.gender || 'Not specified')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Date of Birth:</span><strong>${escapeHtml(emp.dob || 'Not specified')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Civil Status:</span><strong>${escapeHtml(emp.civilStatus || 'Single')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Contact Number:</span><strong>${escapeHtml(emp.phone || 'None')}</strong></div>
-                    <div style="grid-column: span 2;"><span style="color:#64748b; font-size:0.73rem; display:block;">Email Address:</span><strong>${escapeHtml(emp.email || 'None')}</strong></div>
+                    <div style="grid-column: 1 / -1;"><span style="color:#64748b; font-size:0.73rem; display:block;">Email Address:</span><strong>${escapeHtml(emp.email || 'None')}</strong></div>
                     <div style="grid-column: 1 / -1;"><span style="color:#64748b; font-size:0.73rem; display:block;">Residential Address:</span><strong>${escapeHtml(emp.address || 'San Jose, Occidental Mindoro')}</strong></div>
                 </div>
             </div>
@@ -10404,7 +10614,7 @@ function openTeacherProfileModal(empId) {
                 <h5 style="margin:0 0 10px 0; color:#0b2545; font-size:0.85rem; font-weight:700; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; display:flex; align-items:center; gap:6px;">
                     <i class="fas fa-certificate" style="color:#d97706;"></i> 2. Professional Credentials &amp; Education
                 </h5>
-                <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; font-size:0.82rem;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.82rem;">
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">PRC License No.:</span><strong style="font-family:monospace; color:#0b2545;">${escapeHtml(emp.prcNo || 'N/A')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">PRC License Expiry:</span><strong>${escapeHtml(emp.prcExpiry || 'N/A')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Highest Degree:</span><strong>${escapeHtml(emp.degree || 'Bachelor of Secondary Education')}</strong></div>
@@ -10418,7 +10628,7 @@ function openTeacherProfileModal(empId) {
                 <h5 style="margin:0 0 10px 0; color:#0b2545; font-size:0.85rem; font-weight:700; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; display:flex; align-items:center; gap:6px;">
                     <i class="fas fa-id-card" style="color:#059669;"></i> 3. Statutory Government Identification
                 </h5>
-                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; font-size:0.82rem;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; font-size:0.82rem;">
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">SSS No.:</span><strong style="font-family:monospace;">${escapeHtml(emp.sss || 'N/A')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">PhilHealth:</span><strong style="font-family:monospace;">${escapeHtml(emp.philhealth || 'N/A')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Pag-IBIG:</span><strong style="font-family:monospace;">${escapeHtml(emp.pagibig || 'N/A')}</strong></div>
@@ -10431,15 +10641,15 @@ function openTeacherProfileModal(empId) {
                 <h5 style="margin:0 0 10px 0; color:#0b2545; font-size:0.85rem; font-weight:700; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; display:flex; align-items:center; gap:6px;">
                     <i class="fas fa-chalkboard-teacher" style="color:#6366f1;"></i> 4. Institutional Assignment &amp; Load
                 </h5>
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; font-size:0.82rem;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.82rem;">
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Official Designation:</span><strong>${escapeHtml(emp.position)}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Department / Division:</span><strong>${escapeHtml(emp.department || 'Faculty')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Advisory Section:</span><strong>${escapeHtml(emp.advisoryClass || 'None')}</strong></div>
-                    <div style="grid-column: 1 / span 2;"><span style="color:#64748b; font-size:0.73rem; display:block;">Subjects Handled:</span><strong>${escapeHtml(emp.subjects || 'General Curriculum')}</strong></div>
-                    <div><span style="color:#64748b; font-size:0.73rem; display:block;">Daily Rate:</span><strong style="color:#16a34a;">&#8369;${(emp.dailyRate || 363.60).toFixed(2)} / attended day</strong></div>
+                    <div><span style="color:#64748b; font-size:0.73rem; display:block;">Assigned S.Y.:</span><strong>S.Y. ${escapeHtml(emp.schoolYear || '2026-2027')}</strong></div>
+                    <div style="grid-column: 1 / -1;"><span style="color:#64748b; font-size:0.73rem; display:block;">Subjects Handled:</span><strong>${escapeHtml(emp.subjects || 'General Curriculum')}</strong></div>
+                    <div><span style="color:#64748b; font-size:0.73rem; display:block;">Compensation Rate:</span><strong style="color:#16a34a;">&#8369;${(emp.dailyRate || 363.60).toFixed(2)} / attended day</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Payout Schedule:</span><strong>Semi-Monthly (15th &amp; 30th)</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Date of Appointment:</span><strong>${escapeHtml(emp.dateHired || '2024-06-10')}</strong></div>
-                    <div><span style="color:#64748b; font-size:0.73rem; display:block;">Assigned S.Y.:</span><strong>S.Y. ${escapeHtml(emp.schoolYear || '2026-2027')}</strong></div>
                 </div>
             </div>
 
@@ -10448,7 +10658,7 @@ function openTeacherProfileModal(empId) {
                 <h5 style="margin:0 0 10px 0; color:#0b2545; font-size:0.85rem; font-weight:700; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px; display:flex; align-items:center; gap:6px;">
                     <i class="fas fa-phone-alt" style="color:#ef4444;"></i> 5. Emergency Contact
                 </h5>
-                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; font-size:0.82rem;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.82rem;">
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Contact Person:</span><strong>${escapeHtml(emp.emergencyName || 'N/A')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Relationship:</span><strong>${escapeHtml(emp.emergencyRelation || 'N/A')}</strong></div>
                     <div><span style="color:#64748b; font-size:0.73rem; display:block;">Emergency Contact No.:</span><strong>${escapeHtml(emp.emergencyPhone || 'N/A')}</strong></div>
@@ -10486,17 +10696,91 @@ function openEditTeacherDetailsModalFromProfile() {
     }
 }
 
-function openEditTeacherDetailsModal(empId) {
-    if (typeof isTeacher === 'function' && isTeacher()) {
-        showToast('Access Restricted: Teachers cannot edit faculty professional credentials.', 'warning');
+function handleLockedTeacherEdit(empId) {
+    showToast('Profile Locked: You have already edited and saved your profile. For any further changes, please coordinate with the Administration Office.', 'warning');
+}
+window.handleLockedTeacherEdit = handleLockedTeacherEdit;
+
+function handleLockedTeacherPhoto(empId) {
+    showToast('Photo Locked: Your profile picture is finalized. For any photo changes, please coordinate with the Administration Office.', 'warning');
+}
+window.handleLockedTeacherPhoto = handleLockedTeacherPhoto;
+
+function adminUnlockTeacherProfile(empId) {
+    if (!empId) return;
+    const all = getPayrollEmployees();
+    const idx = all.findIndex(x => x.id === empId || x.employeeNo === empId);
+    if (idx === -1) {
+        showToast('Teacher record not found.', 'error');
         return;
     }
+    all[idx].profileLocked = false;
+    all[idx].teacherEditedOnce = false;
+    delete all[idx].teacherEditedAt;
+    savePayrollEmployees(all);
+
+    try {
+        localStorage.removeItem('mdsj_teacher_profile_saved_' + all[idx].id);
+        const savedByAcc = localStorage.getItem('mdsj_teacher_account_saved_emp_id');
+        if (savedByAcc === all[idx].id) {
+            localStorage.removeItem('mdsj_teacher_account_saved_emp_id');
+        }
+    } catch(e) {}
+
+    filterTeachersPage();
+    filterPayrollTable();
+    closeEditTeacherDetailsModal();
+
+    if (activeTeacherProfileEmp && (activeTeacherProfileEmp.id === all[idx].id || activeTeacherProfileEmp.employeeNo === all[idx].employeeNo)) {
+        openTeacherProfileModal(all[idx].id);
+    }
+    showToast(`Profile unlocked! Faculty can now re-edit their details once.`, 'success');
+}
+window.adminUnlockTeacherProfile = adminUnlockTeacherProfile;
+
+function openEditTeacherDetailsModal(empId) {
     const all = getPayrollEmployees();
     const emp = all.find(e => e.id === empId || e.employeeNo === empId);
     if (!emp) return;
 
+    const isUserTeacher = typeof isTeacher === 'function' && isTeacher();
+    const isLocked = emp.profileLocked || emp.teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + emp.id) === 'true');
+
+    if (isUserTeacher && isLocked) {
+        showToast('Profile Locked: You have already edited and saved your profile. For any further changes, please coordinate with the Administration Office.', 'warning');
+        return;
+    }
+
+    const savedEmpIdByTeacher = localStorage.getItem('mdsj_teacher_account_saved_emp_id');
+    if (isUserTeacher && savedEmpIdByTeacher && savedEmpIdByTeacher !== emp.id) {
+        showToast('Profile Locked: You have already finalized your faculty profile record. You cannot edit other faculty records.', 'warning');
+        return;
+    }
+
     document.getElementById('editTeacherEmpId').value = emp.id;
     document.getElementById('editTeacherDetailsTitle').textContent = `Edit Profile: ${emp.name} (${emp.employeeNo})`;
+
+    // Banner visibility
+    const teacherNotice = document.getElementById('teacherOneTimeNotice');
+    if (teacherNotice) {
+        teacherNotice.style.display = isUserTeacher ? 'block' : 'none';
+    }
+    const adminNotice = document.getElementById('adminUnlockNotice');
+    if (adminNotice) {
+        adminNotice.style.display = (!isUserTeacher && isLocked) ? 'flex' : 'none';
+    }
+
+    // Role-based controls: lock compensation & administrative status from teachers
+    const dailyRateInp = document.getElementById('tEditDailyRate');
+    const statusSel = document.getElementById('tEditStatus');
+    if (dailyRateInp) {
+        dailyRateInp.readOnly = isUserTeacher;
+        dailyRateInp.title = isUserTeacher ? 'Managed by School Administration' : '';
+    }
+    if (statusSel) {
+        statusSel.disabled = isUserTeacher;
+        statusSel.title = isUserTeacher ? 'Managed by School Administration' : '';
+    }
 
     // Section 1: Personal
     document.getElementById('tEditName').value = emp.name || '';
@@ -10528,7 +10812,7 @@ function openEditTeacherDetailsModal(empId) {
     document.getElementById('tEditSubjects').value = emp.subjects || '';
     document.getElementById('tEditStatus').value = emp.employmentStatus || 'Active';
     document.getElementById('tEditDateHired').value = emp.dateHired || '';
-    document.getElementById('tEditDailyRate').value = emp.dailyRate || 363.60;
+    document.getElementById('tEditDailyRate').value = (emp.dailyRate !== undefined) ? emp.dailyRate : 363.60;
     document.getElementById('tEditSchoolYear').value = emp.schoolYear || '2026-2027';
 
     // Section 5: Emergency
@@ -10547,16 +10831,20 @@ function closeEditTeacherDetailsModal() {
 
 function handleSaveTeacherDetails(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (typeof isTeacher === 'function' && isTeacher()) {
-        showToast('Access Restricted: Teachers cannot modify faculty credentials.', 'warning');
-        return;
-    }
 
     const empId = document.getElementById('editTeacherEmpId').value;
     const all = getPayrollEmployees();
     const idx = all.findIndex(x => x.id === empId);
     if (idx === -1) {
         showToast('Teacher record not found.', 'error');
+        return;
+    }
+
+    const isUserTeacher = typeof isTeacher === 'function' && isTeacher();
+    const isLocked = all[idx].profileLocked || all[idx].teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + empId) === 'true');
+
+    if (isUserTeacher && isLocked) {
+        showToast('Profile Locked: You have already edited and saved your profile. For any further changes, please coordinate with the Administration Office.', 'warning');
         return;
     }
 
@@ -10593,15 +10881,37 @@ function handleSaveTeacherDetails(e) {
         department: document.getElementById('tEditDept').value,
         advisoryClass: document.getElementById('tEditAdvisory').value.trim(),
         subjects: document.getElementById('tEditSubjects').value.trim(),
-        employmentStatus: document.getElementById('tEditStatus').value,
+        employmentStatus: isUserTeacher ? (all[idx].employmentStatus || 'Active') : document.getElementById('tEditStatus').value,
         dateHired: document.getElementById('tEditDateHired').value,
-        dailyRate: parseFloat(document.getElementById('tEditDailyRate').value) || 363.60,
+        dailyRate: isUserTeacher ? (all[idx].dailyRate || 363.60) : (parseFloat(document.getElementById('tEditDailyRate').value) || 363.60),
         schoolYear: document.getElementById('tEditSchoolYear').value.trim() || '2026-2027',
 
         emergencyName: document.getElementById('tEditEmergencyName').value.trim(),
         emergencyRelation: document.getElementById('tEditEmergencyRelation').value.trim(),
         emergencyPhone: document.getElementById('tEditEmergencyPhone').value.trim()
     };
+
+    // If edited by a teacher, lock it permanently from further edits!
+    if (isUserTeacher) {
+        updatedEmp.profileLocked = true;
+        updatedEmp.teacherEditedOnce = true;
+        updatedEmp.teacherEditedAt = new Date().toISOString();
+        try {
+            localStorage.setItem('mdsj_teacher_profile_saved_' + empId, 'true');
+            localStorage.setItem('mdsj_teacher_account_saved_emp_id', empId);
+        } catch(e) {}
+
+        try {
+            const u = getCurrentUser();
+            if (u && (u.username === 'teacher' || (u.role && u.role.toLowerCase().includes('teacher')))) {
+                u.displayName = name;
+                sessionStorage.setItem('currentUser', JSON.stringify(u));
+                localStorage.setItem('currentUser', JSON.stringify(u));
+                const nameEl = document.getElementById('sidebarUserName');
+                if (nameEl) nameEl.textContent = name;
+            }
+        } catch(e) {}
+    }
 
     all[idx] = updatedEmp;
     savePayrollEmployees(all);
@@ -10617,7 +10927,11 @@ function handleSaveTeacherDetails(e) {
         openTeacherProfileModal(updatedEmp.id);
     }
 
-    showToast(`Profile details for ${updatedEmp.name} updated successfully!`, 'success');
+    if (isUserTeacher) {
+        showToast(`Profile details saved and finalized successfully! Your profile is now locked from further edits.`, 'success');
+    } else {
+        showToast(`Profile details for ${updatedEmp.name} updated successfully!`, 'success');
+    }
 }
 
 function printTeacherProfile(empId) {
@@ -10747,14 +11061,22 @@ function printTeacherProfile(empId) {
 let teacherPhotoPendingDataUrl = '';
 
 function openTeacherPhotoModal(empId) {
-    if (typeof isTeacher === 'function' && isTeacher()) {
-        showToast('Access Restricted: Teachers cannot change faculty identification pictures.', 'warning');
-        return;
-    }
-
     const all = getPayrollEmployees();
     const emp = all.find(e => e.id === empId || e.employeeNo === empId);
     if (!emp) return;
+
+    if (typeof isTeacher === 'function' && isTeacher()) {
+        const isLocked = emp.profileLocked || emp.teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + emp.id) === 'true');
+        if (isLocked) {
+            showToast('Photo Locked: Your profile picture is finalized and cannot be modified. Please coordinate with Administration.', 'warning');
+            return;
+        }
+        const savedEmpIdByTeacher = localStorage.getItem('mdsj_teacher_account_saved_emp_id');
+        if (savedEmpIdByTeacher && savedEmpIdByTeacher !== emp.id) {
+            showToast('Access Restricted: You cannot modify pictures of other faculty members.', 'warning');
+            return;
+        }
+    }
 
     activePhotoUploadEmp = emp;
     teacherPhotoPendingDataUrl = emp.photo || '';
@@ -10970,6 +11292,14 @@ function saveTeacherPhotoModal() {
     if (!emp) {
         showToast('Unable to find teacher record to save photo.', 'error');
         return;
+    }
+
+    if (typeof isTeacher === 'function' && isTeacher()) {
+        const isLocked = emp.profileLocked || emp.teacherEditedOnce || (localStorage.getItem('mdsj_teacher_profile_saved_' + emp.id) === 'true');
+        if (isLocked) {
+            showToast('Photo Locked: Your profile picture is finalized and cannot be modified.', 'warning');
+            return;
+        }
     }
 
     emp.photo = teacherPhotoPendingDataUrl || '';
@@ -12098,6 +12428,13 @@ function deleteActiveArchiveSnapshot() {
 }
 
 // Window exports for Teacher Details & Payroll Archives
+window.openTeacherProfileModal = openTeacherProfileModal;
+window.closeTeacherProfileModal = closeTeacherProfileModal;
+window.triggerPhotoUploadFromProfile = triggerPhotoUploadFromProfile;
+window.printActiveTeacherProfile = printActiveTeacherProfile;
+window.handleLockedTeacherEdit = handleLockedTeacherEdit;
+window.handleLockedTeacherPhoto = handleLockedTeacherPhoto;
+window.adminUnlockTeacherProfile = adminUnlockTeacherProfile;
 window.openEditTeacherDetailsModalFromProfile = openEditTeacherDetailsModalFromProfile;
 window.openEditTeacherDetailsModal = openEditTeacherDetailsModal;
 window.closeEditTeacherDetailsModal = closeEditTeacherDetailsModal;

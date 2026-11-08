@@ -28,6 +28,13 @@
             try { if (s) parsed = JSON.parse(s); } catch(e){}
             if (parsed && parsed.username) {
                 document.documentElement.classList.add('user-logged-in');
+                var un = (parsed.username || '').toLowerCase();
+                var r = (parsed.role || '').toLowerCase();
+                if (un === 'teacher' || r.includes('teacher') || r.includes('faculty')) {
+                    document.documentElement.classList.add('role-teacher');
+                } else {
+                    document.documentElement.classList.remove('role-teacher');
+                }
                 window.activePrecheckSession = parsed;
                 try {
                     sessionStorage.setItem('mdsj_session', s);
@@ -37,10 +44,12 @@
                 } catch(e) {}
             } else {
                 document.documentElement.classList.remove('user-logged-in');
+                document.documentElement.classList.remove('role-teacher');
                 window.activePrecheckSession = null;
             }
         } catch (e) {
             document.documentElement.classList.remove('user-logged-in');
+            document.documentElement.classList.remove('role-teacher');
         }
     })();
     </script>
@@ -90,7 +99,11 @@
                     </div>
                     <h1>Montessori de San Jose</h1>
                     <h2>Foundation Inc.</h2>
-                    <p class="login-tagline">Student Database Management System</p>
+                    <p class="login-tagline">Database Management System</p>
+                    <div class="login-welcome-banner">
+                        <div class="login-welcome-title">Welcome back, Personnel!</div>
+                        <div class="login-welcome-sub">Sign in to start your session</div>
+                    </div>
                 </div>
                 <form id="loginForm" class="login-form" novalidate onsubmit="handleLoginSubmit(event); return false;">
                     <div class="login-field">
@@ -106,6 +119,16 @@
                             </button>
                         </div>
                     </div>
+                    <div class="login-options-row">
+                        <label class="remember-me-toggle" for="rememberMe" title="Remember username for future sign-ins">
+                            <input type="checkbox" id="rememberMe">
+                            <span class="toggle-slider"></span>
+                            <span class="remember-label">Remember me</span>
+                        </label>
+                        <button type="button" class="forgot-password-btn" id="btnForgotPassword" onclick="handleForgotPassword(event)" title="Password assistance and recovery">
+                            Forgot password?
+                        </button>
+                    </div>
                     <div class="login-error" id="loginError" style="display: none;">
                         <i class="fas fa-exclamation-triangle"></i>
                         <span id="loginErrorMsg">Invalid username or password. Please try again.</span>
@@ -116,6 +139,52 @@
                 </form>
                 <div class="login-footer">
                     <p><i class="fas fa-shield-alt"></i> Authorized personnel only</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== FORGOT PASSWORD MODAL ==================== -->
+        <div class="modal-overlay" id="forgotPasswordModal" style="display:none; z-index: 6000; align-items: center; justify-content: center;">
+            <div class="modal-content modal-sm" style="max-width: 440px; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.35); background:#fff;">
+                <button type="button" class="modal-close" onclick="closeForgotPasswordModal()" aria-label="Close">&times;</button>
+                <div class="modal-header" style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); color: #fff; padding: 18px 22px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:#93c5fd;">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#fff;">Password Assistance</h3>
+                            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#cbd5e1;">MDSJFI Database Personnel Support</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding: 22px;">
+                    <p style="font-size: 0.88rem; color: #334155; line-height: 1.5; margin-bottom: 16px;">
+                        For institutional security and data privacy compliance, password resets are handled directly by authorized school administrators.
+                    </p>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
+                        <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 8px; letter-spacing: 0.5px;">
+                            <i class="fas fa-user-shield" style="color:#0284c7; margin-right:4px;"></i> Authorized Administrative Officers
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:10px; font-size:0.85rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #edf2f7; padding-bottom:6px;">
+                                <span style="font-weight:700; color:#0f172a;">NI&Ntilde;O ALOYSIUS B. COLEGADO</span>
+                                <span style="font-size:0.75rem; color:#0284c7; font-weight:600;">School President</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-weight:700; color:#0f172a;">CARRELLE B. COLEGADO</span>
+                                <span style="font-size:0.75rem; color:#059669; font-weight:600;">Registrar / Accounting</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.82rem; color: #64748b; line-height: 1.4; margin: 0;">
+                        <i class="fas fa-info-circle" style="color:#3b82f6; margin-right:4px;"></i> Please visit the School Administration Office or contact administration directly to have your account credentials updated.
+                    </p>
+                </div>
+                <div class="modal-footer" style="padding: 12px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+                    <button type="button" class="btn btn-primary" onclick="closeForgotPasswordModal()" style="padding: 8px 18px; font-weight: 600; font-size: 0.88rem;">
+                        <i class="fas fa-check"></i> Understood
+                    </button>
                 </div>
             </div>
         </div>
@@ -212,6 +281,36 @@
             if (typeof updateAddressHidden === 'function') updateAddressHidden();
         }
     };
+    window.handleForgotPassword = function(event) {
+        if (event) {
+            if (typeof event.preventDefault === 'function') event.preventDefault();
+            if (typeof event.stopPropagation === 'function') event.stopPropagation();
+        }
+        var modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        } else {
+            alert('Password Assistance:\nPlease coordinate with the School President (Niño Aloysius B. Colegado) or Registrar (Carrelle B. Colegado) to reset your database password.');
+        }
+    };
+    window.closeForgotPasswordModal = function() {
+        var modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+    };
+    window.toggleLoginPassword = function() {
+        var pEl = document.getElementById('loginPassword');
+        var toggleBtn = document.getElementById('togglePassword');
+        if (!pEl) return;
+        var isPass = pEl.type === 'password';
+        pEl.type = isPass ? 'text' : 'password';
+        if (toggleBtn) {
+            toggleBtn.innerHTML = isPass ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        }
+    };
     (function() {
         var AUTH_ACCOUNTS = [
             {
@@ -299,10 +398,10 @@
                     avatarEl.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div>';
                     avatarEl.classList.remove("has-image");
                 } else if (user.role && user.role.indexOf("Registrar") !== -1) {
-                    avatarEl.innerHTML = '<img src="registrar-avatar.jpg" alt="' + user.displayName + '" class="president-avatar-img">';
+                    avatarEl.innerHTML = '<img src="registrar-avatar.jpg" alt="' + user.displayName + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
                     avatarEl.classList.add("has-image");
                 } else {
-                    avatarEl.innerHTML = '<img src="president-avatar.jpg" alt="' + user.displayName + '" class="president-avatar-img">';
+                    avatarEl.innerHTML = '<img src="president-avatar.jpg" alt="' + user.displayName + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
                     avatarEl.classList.add("has-image");
                 }
             }
@@ -375,7 +474,16 @@
             var pEl = document.getElementById("loginPassword");
             var errEl = document.getElementById("loginError");
             var btnEl = document.getElementById("loginBtn");
-            if (uEl) { uEl.value = ""; uEl.style.borderColor = ""; }
+            var remMe = document.getElementById("rememberMe");
+            var isRemembered = false;
+            try { isRemembered = localStorage.getItem("mdsj_remember_me") === "true"; } catch(e){}
+            if (remMe) remMe.checked = isRemembered;
+            if (uEl) {
+                var savedUser = "";
+                try { if (isRemembered) savedUser = localStorage.getItem("mdsj_remembered_username") || ""; } catch(e){}
+                uEl.value = savedUser;
+                uEl.style.borderColor = "";
+            }
             if (pEl) { pEl.value = ""; pEl.style.borderColor = ""; }
             if (errEl) { errEl.style.display = "none"; errEl.classList.remove("show"); }
             if (btnEl) {
@@ -384,7 +492,8 @@
             }
 
             setTimeout(function() {
-                if (uEl) uEl.focus();
+                if (uEl && !uEl.value) uEl.focus();
+                else if (pEl) pEl.focus();
             }, 60);
 
             return false;
@@ -401,8 +510,6 @@
                 window.navigateTo(actionId);
             } else if (actionId === 'print-financial-summary' && typeof window.printSOAPageSummary === 'function') {
                 window.printSOAPageSummary();
-            } else if (actionId === 'export-options' && typeof window.openExportOptionsModal === 'function') {
-                window.openExportOptionsModal();
             } else if (actionId === 'promissory') {
                 window.navigateTo('clearance');
                 if (typeof window.switchClearanceSubTab === 'function') window.switchClearanceSubTab('promissory');
@@ -640,6 +747,17 @@
             try { localStorage.setItem("mdsj_currentUser", JSON.stringify(sess)); } catch (e) {}
             try { localStorage.setItem("mdsj_active_page", "dashboard"); } catch (e) {}
 
+            var remMe = document.getElementById("rememberMe");
+            try {
+                if (remMe && remMe.checked) {
+                    localStorage.setItem("mdsj_remember_me", "true");
+                    localStorage.setItem("mdsj_remembered_username", userVal);
+                } else {
+                    localStorage.setItem("mdsj_remember_me", "false");
+                    localStorage.removeItem("mdsj_remembered_username");
+                }
+            } catch (e) {}
+
             unlockDashboardUI(matched);
 
             function triggerShowApp() {
@@ -697,6 +815,33 @@
             var toggleBtn = document.getElementById("togglePassword");
             var formEl = document.getElementById("loginForm");
             var btnEl = document.getElementById("loginBtn");
+            var remMe = document.getElementById("rememberMe");
+
+            try {
+                var isRemembered = localStorage.getItem("mdsj_remember_me") === "true";
+                var savedUser = localStorage.getItem("mdsj_remembered_username") || "";
+                if (remMe) remMe.checked = isRemembered;
+                if (isRemembered && savedUser && uEl && !uEl.value) {
+                    uEl.value = savedUser;
+                }
+            } catch (e) {}
+
+            var forgotModal = document.getElementById("forgotPasswordModal");
+            if (forgotModal) {
+                forgotModal.addEventListener("click", function(e) {
+                    if (e.target === forgotModal) {
+                        window.closeForgotPasswordModal();
+                    }
+                });
+            }
+            document.addEventListener("keydown", function(e) {
+                if (e.key === "Escape") {
+                    var m = document.getElementById("forgotPasswordModal");
+                    if (m && (m.classList.contains("active") || m.style.display === "flex")) {
+                        window.closeForgotPasswordModal();
+                    }
+                }
+            });
 
             // If active session, ensure sidebar user info is populated once DOM elements exist
             if (activeSession) {
@@ -867,22 +1012,13 @@
         <div class="sidebar-footer">
             <div class="sidebar-user">
                 <div class="user-avatar" id="sidebarUserAvatar">
-                    <img src="president-avatar.jpg" alt="NI&Ntilde;O ALOYSIUS B. COLEGADO" class="president-avatar-img">
+                    <img src="president-avatar.jpg" alt="NI&Ntilde;O ALOYSIUS B. COLEGADO" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">
                 </div>
                 <div class="user-info">
                     <span class="user-name" id="loggedInUser">NI&Ntilde;O ALOYSIUS B. COLEGADO</span>
                     <span class="user-role" id="loggedInRole">School President</span>
                 </div>
             </div>
-            <button class="btn-export" id="btnExportAll" title="Export Options &amp; Formats" onclick="openExportOptionsModal()">
-                <i class="fas fa-file-export"></i>
-                <span>Export Data</span>
-            </button>
-            <button class="btn-import" id="btnImportData" title="Import Data" onclick="handleImportClick()">
-                <i class="fas fa-file-import"></i>
-                <span>Import Data</span>
-            </button>
-            <input type="file" id="importFileInput" accept=".json,.csv,.xlsx,.xls" style="display:none;" onchange="importData(event)">
             <button class="btn-logout" id="btnLogout" title="Sign Out" onclick="handleLogout(event)">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Sign Out</span>
@@ -4946,7 +5082,7 @@
             <div id="clearanceAllTabContainer">
                 <div class="table-wrapper">
                     <table class="data-table" id="clearanceTable">
-                        <thead>
+                        <thead id="clearanceTableHead">
                             <tr>
                                 <th style="width: 3.5%; text-align:center;">#</th>
                                 <th style="width: 21.5%;">Learner Name &amp; LRN</th>
@@ -4968,7 +5104,7 @@
             <div id="clearancePromissoryTabContainer" class="tab-hidden" style="display:none;">
                 <div class="table-wrapper">
                     <table class="data-table" id="promissoryClearanceTable">
-                        <thead>
+                        <thead id="promissoryTableHead">
                             <tr>
                                 <th style="width: 3%; text-align:center;">#</th>
                                 <th style="width: 16%;">Learner Name &amp; LRN</th>
@@ -5484,18 +5620,18 @@
 
     <!-- ==================== TEACHER PROFILE DETAILS MODAL ==================== -->
     <div class="modal-overlay" id="teacherProfileModal" style="display:none; z-index:9994; align-items:center; justify-content:center; overflow-y:auto; padding:20px 10px;" onclick="if(event.target===this) closeTeacherProfileModal()">
-        <div class="modal-content" style="max-width: 680px; width: 100%; border-radius: 14px; overflow: hidden; padding: 0; box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 1px solid #cbd5e1; margin: auto;" onclick="event.stopPropagation()">
-            <div class="modal-header" style="background: linear-gradient(135deg, #0b2545 0%, #1e3a5f 100%); color: #fff; padding: 18px 22px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-content" style="max-width: 740px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; padding: 0; box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 1px solid #cbd5e1; margin: auto; background: #ffffff;" onclick="event.stopPropagation()">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0b2545 0%, #1e3a5f 100%); color: #fff; padding: 16px 22px; display:flex; justify-content:space-between; align-items:center; flex-shrink: 0;">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <i class="fas fa-id-card-alt" style="color:#60a5fa; font-size:1.3rem;"></i>
                     <h3 style="font-size:1.15rem; font-weight:700; margin:0; color:#fff;" id="teacherProfileModalTitle">Teacher Profile Sheet</h3>
                 </div>
                 <button type="button" class="modal-close" onclick="closeTeacherProfileModal()" style="color:#cbd5e1; font-size:1.5rem;">&times;</button>
             </div>
-            <div class="modal-body" id="teacherProfileBody" style="padding: 22px; background: #ffffff;">
+            <div class="modal-body" id="teacherProfileBody" style="padding: 22px; background: #ffffff; overflow-y: auto; flex: 1 1 auto; -webkit-overflow-scrolling: touch;">
                 <!-- Populated dynamically by openTeacherProfileModal -->
             </div>
-            <div class="modal-footer" style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display:flex; justify-content: flex-end; gap: 10px;">
+            <div class="modal-footer" style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display:flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; flex-wrap: wrap;">
                 <button type="button" class="btn btn-secondary" onclick="closeTeacherProfileModal()">Close</button>
                 <button type="button" class="btn btn-secondary" id="btnUploadPhotoFromProfile" onclick="triggerPhotoUploadFromProfile()">
                     <i class="fas fa-camera"></i> Change Photo
@@ -5731,6 +5867,24 @@
             <form id="editTeacherDetailsForm" onsubmit="handleSaveTeacherDetails(event)" style="display:flex; flex-direction:column; max-height: calc(100vh - 160px);">
                 <input type="hidden" id="editTeacherEmpId" value="">
                 <div class="modal-body" style="padding: 22px 26px; overflow-y: auto; background: #ffffff;">
+                    <!-- One-Time Teacher Notice Banner -->
+                    <div id="teacherOneTimeNotice" style="display:none; margin-bottom:18px; background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; padding:12px 16px; border-radius:8px; font-size:0.83rem; color:#92400e;">
+                        <div style="display:flex; align-items:flex-start; gap:10px;">
+                            <i class="fas fa-info-circle" style="font-size:1.2rem; color:#d97706; margin-top:1px; flex-shrink:0;"></i>
+                            <div>
+                                <strong style="display:block; font-size:0.88rem; color:#78350f; margin-bottom:2px;">One-Time Faculty Profile Encoding</strong>
+                                <span>As authorized faculty personnel, you may encode and update your complete profile details once. Upon clicking <strong>Save Profile Details</strong>, this profile will be finalized and permanently locked from subsequent direct edits.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Admin Unlock Control Banner -->
+                    <div id="adminUnlockNotice" style="display:none; margin-bottom:18px; background:#f0fdf4; border:1px solid #bbf7d0; padding:10px 14px; border-radius:8px; align-items:center; justify-content:space-between;">
+                        <span style="font-size:0.84rem; color:#166534;"><i class="fas fa-lock" style="color:#15803d; margin-right:6px;"></i> <strong>Status:</strong> Finalized &amp; Locked by Faculty</span>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="adminUnlockTeacherProfile(document.getElementById('editTeacherEmpId').value)" style="background:#ffffff; color:#15803d; border-color:#86efac; font-size:0.78rem; font-weight:600; padding:4px 10px;">
+                            <i class="fas fa-unlock"></i> Unlock Profile (Allow Re-edit)
+                        </button>
+                    </div>
+
                     <!-- Section 1: Personal Information -->
                     <div style="margin-bottom: 20px;">
                         <h4 style="margin: 0 0 10px 0; color: #0b2545; font-size: 0.95rem; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; display:flex; align-items:center; gap:6px;">

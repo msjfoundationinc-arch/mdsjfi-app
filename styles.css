@@ -147,9 +147,35 @@ img, canvas, svg, video, picture {
 }
 
 .login-tagline {
-    font-size: 0.78rem;
-    opacity: 0.7;
+    font-size: 0.82rem;
+    font-weight: 600;
+    opacity: 0.85;
     margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
+.login-welcome-banner {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.login-welcome-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.2px;
+}
+
+.login-welcome-sub {
+    font-size: 0.82rem;
+    color: #dbeafe;
+    opacity: 0.9;
+    font-weight: 400;
 }
 
 .login-form {
@@ -232,6 +258,104 @@ img, canvas, svg, video, picture {
 .toggle-password:hover {
     color: var(--primary);
     background: var(--primary-bg);
+}
+
+.login-options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: -6px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.remember-me-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.remember-me-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.toggle-slider {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 22px;
+    background-color: #cbd5e1;
+    border-radius: 22px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.remember-me-toggle input:checked + .toggle-slider {
+    background-color: var(--primary);
+}
+
+.remember-me-toggle input:checked + .toggle-slider::before {
+    transform: translateX(16px);
+}
+
+.remember-me-toggle input:focus-visible + .toggle-slider {
+    box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.2);
+}
+
+.remember-me-toggle .remember-label {
+    color: #475569;
+    font-size: 0.84rem;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.remember-me-toggle:hover .remember-label {
+    color: #0f172a;
+}
+
+.forgot-password-btn {
+    background: none;
+    border: none;
+    padding: 4px 2px;
+    color: var(--primary);
+    font-size: 0.84rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+}
+
+.forgot-password-btn:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.forgot-password-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 .login-error {
@@ -321,19 +445,21 @@ img, canvas, svg, video, picture {
 }
 
 .user-avatar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     background: rgba(255,255,255,0.12);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 1.15rem;
     color: var(--accent);
     border: 2px solid var(--accent);
     flex-shrink: 0;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
 .user-avatar img,
@@ -341,9 +467,16 @@ img, canvas, svg, video, picture {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center 15%;
+    object-position: center center;
     display: block;
     border-radius: 50%;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: auto;
+    image-rendering: smooth;
+    image-rendering: high-quality;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 .user-info {
@@ -6910,6 +7043,24 @@ body:has(#page-cash-flow.active) .main-content {
 #promissoryClearanceTable th:nth-child(9), #promissoryClearanceTable td:nth-child(9) { width: 9.5% !important; }
 #promissoryClearanceTable th:nth-child(10), #promissoryClearanceTable td:nth-child(10) { width: 10% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
 
+/* 6c. Teacher Role Student Clearance Tables (Net Tuition, Total Paid, SOA Balance Excluded) */
+body.role-teacher #clearanceTable th:nth-child(1), body.role-teacher #clearanceTable td:nth-child(1) { width: 4% !important; text-align: center !important; }
+body.role-teacher #clearanceTable th:nth-child(2), body.role-teacher #clearanceTable td:nth-child(2) { width: 34% !important; text-align: left !important; }
+body.role-teacher #clearanceTable th:nth-child(3), body.role-teacher #clearanceTable td:nth-child(3) { width: 18% !important; text-align: center !important; }
+body.role-teacher #clearanceTable th:nth-child(4), body.role-teacher #clearanceTable td:nth-child(4) { width: 12% !important; text-align: center !important; }
+body.role-teacher #clearanceTable th:nth-child(5), body.role-teacher #clearanceTable td:nth-child(5) { width: 18% !important; text-align: center !important; }
+body.role-teacher #clearanceTable th:nth-child(6), body.role-teacher #clearanceTable td:nth-child(6) { width: 14% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
+
+body.role-teacher #promissoryClearanceTable th:nth-child(1), body.role-teacher #promissoryClearanceTable td:nth-child(1) { width: 3.5% !important; text-align: center !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(2), body.role-teacher #promissoryClearanceTable td:nth-child(2) { width: 18% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(3), body.role-teacher #promissoryClearanceTable td:nth-child(3) { width: 10% !important; text-align: center !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(4), body.role-teacher #promissoryClearanceTable td:nth-child(4) { width: 17% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(5), body.role-teacher #promissoryClearanceTable td:nth-child(5) { width: 14% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(6), body.role-teacher #promissoryClearanceTable td:nth-child(6) { width: 9% !important; text-align: center !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(7), body.role-teacher #promissoryClearanceTable td:nth-child(7) { width: 8.5% !important; text-align: center !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(8), body.role-teacher #promissoryClearanceTable td:nth-child(8) { width: 10% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #promissoryClearanceTable td:nth-child(9) { width: 10% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
+
 /* 7. Faculty & Staff Payroll Table */
 /* 7a. Standard / ALL Mode (12 columns) */
 #payrollTable:not(.cutoff-mode):not(.bonus-mode) th:nth-child(1), #payrollTable:not(.cutoff-mode):not(.bonus-mode) td:nth-child(1) { width: 3% !important; text-align: center; }
@@ -8462,6 +8613,88 @@ td.actions-cell > .btn-sm,
         border-radius: 4px !important;
     }
 }
+
+/* ==========================================================================
+   TEACHER & FACULTY PROFILE MODAL - FULLY SCROLLABLE & VIEWABLE
+   ========================================================================== */
+#teacherProfileModal {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto !important;
+    padding: 20px 10px;
+    z-index: 9994;
+}
+
+#teacherProfileModal .modal-content {
+    max-width: 740px !important;
+    width: 100% !important;
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid #cbd5e1 !important;
+    margin: auto !important;
+    background: #ffffff !important;
+}
+
+#teacherProfileModal .modal-header {
+    flex-shrink: 0 !important;
+    background: linear-gradient(135deg, #0b2545 0%, #1e3a5f 100%) !important;
+    color: #fff !important;
+    padding: 16px 22px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+#teacherProfileModal #teacherProfileBody {
+    flex: 1 1 auto !important;
+    padding: 22px 24px !important;
+    background: #ffffff !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: calc(90vh - 130px) !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+#teacherProfileModal .modal-footer {
+    flex-shrink: 0 !important;
+    padding: 12px 20px !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+@media (max-width: 768px) {
+    #teacherProfileModal {
+        align-items: flex-start !important;
+        padding: 10px 6px !important;
+    }
+    #teacherProfileModal .modal-content {
+        max-width: 96vw !important;
+        max-height: 92vh !important;
+        margin: 8px auto !important;
+    }
+    #teacherProfileModal #teacherProfileBody {
+        padding: 14px !important;
+        max-height: calc(92vh - 130px) !important;
+    }
+    #teacherProfileModal .modal-footer {
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+        padding: 10px 14px !important;
+    }
+    #teacherProfileModal .modal-footer .btn {
+        width: 100% !important;
+    }
+}
+
 
 
 
