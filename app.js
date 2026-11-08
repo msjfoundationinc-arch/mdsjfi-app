@@ -536,6 +536,7 @@ function initApp() {
     try { getPayrollEmployees(); } catch(e) {}
     try { initDashboardQuickSearch(); } catch(e) {}
     try { applySidebarCollapseState(); } catch(e) {}
+    try { if (typeof window.initThemeMode === 'function') window.initThemeMode(); } catch(e) {}
 
     // Check for direct mobile QR scan (?lrn=...)
     try {
@@ -624,6 +625,15 @@ function showApp(user) {
             avatarEl.classList.add('has-image');
         }
     }
+
+    try {
+        if (typeof window.updateTopUserProfileUI === 'function') {
+            window.updateTopUserProfileUI(currentUser);
+        }
+        if (typeof window.initThemeMode === 'function') {
+            window.initThemeMode();
+        }
+    } catch(e) {}
 
     try { initNavigation(); } catch (e) {}
     try { initForm(); } catch (e) {}
@@ -718,6 +728,31 @@ function navigateTo(pageId) {
         localStorage.setItem('mdsj_active_page', pageId);
         if (window.location.hash !== '#' + pageId) {
             history.replaceState(null, null, '#' + pageId);
+        }
+    } catch(e) {}
+
+    try {
+        const pageTitles = {
+            'dashboard': 'Dashboard',
+            'students': 'All Students',
+            'grade7': 'Grade 7 Students',
+            'grade8': 'Grade 8 Students',
+            'grade9': 'Grade 9 Students',
+            'grade10': 'Grade 10 Students',
+            'add-student': 'Enroll Student',
+            'soa': 'Statement of Account',
+            'cash-flow': 'Cash In & Out Flow',
+            'clearance': 'Student Clearance (Examination)',
+            'payroll': 'Faculty & Staff Payroll',
+            'teachers': 'Teachers & Faculty Directory',
+            'activities': 'Current Activities Log',
+            'promote': 'Advance / Promote S.Y.',
+            'alumni': 'JHS Finisher / Alumni Directory',
+            'archive': 'Archived Records'
+        };
+        const breadcrumbEl = document.getElementById('topUtilityPageTitle');
+        if (breadcrumbEl && pageTitles[pageId]) {
+            breadcrumbEl.textContent = pageTitles[pageId];
         }
     } catch(e) {}
 

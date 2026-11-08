@@ -405,7 +405,255 @@
                     avatarEl.classList.add("has-image");
                 }
             }
+
+            // Update Top Header Avatar Chip & Dropdown Details
+            if (typeof window.updateTopUserProfileUI === "function") {
+                window.updateTopUserProfileUI(user);
+            }
         }
+
+        // ==================== USER PROFILE DROPDOWN & ACCOUNT CONTROLS ====================
+        window.toggleUserProfileDropdown = function(event) {
+            if (event) {
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+            var dropdown = document.getElementById('userProfileDropdown');
+            var chipBtn = document.getElementById('userAvatarChipBtn');
+            if (!dropdown) return;
+            var isOpen = dropdown.classList.toggle('open');
+            if (chipBtn) chipBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        };
+
+        window.closeUserProfileDropdown = function() {
+            var dropdown = document.getElementById('userProfileDropdown');
+            var chipBtn = document.getElementById('userAvatarChipBtn');
+            if (dropdown) dropdown.classList.remove('open');
+            if (chipBtn) chipBtn.setAttribute('aria-expanded', 'false');
+        };
+
+        window.openUserProfileModal = function() {
+            var modal = document.getElementById('userProfileModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.add('active', 'show');
+            }
+        };
+
+        window.closeUserProfileModal = function() {
+            var modal = document.getElementById('userProfileModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('active', 'show');
+            }
+        };
+
+        window.openChangePasswordModal = function() {
+            var modal = document.getElementById('changePasswordModal');
+            var errBox = document.getElementById('cpErrorMessage');
+            if (errBox) { errBox.style.display = 'none'; errBox.textContent = ''; }
+            var cur = document.getElementById('cpCurrentPassword');
+            if (cur) cur.value = '';
+            var np = document.getElementById('cpNewPassword');
+            if (np) np.value = '';
+            var cp = document.getElementById('cpConfirmPassword');
+            if (cp) cp.value = '';
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.add('active', 'show');
+                if (cur) setTimeout(function() { cur.focus(); }, 100);
+            }
+        };
+
+        window.closeChangePasswordModal = function() {
+            var modal = document.getElementById('changePasswordModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('active', 'show');
+            }
+        };
+
+        window.handleChangePasswordSubmit = function(e) {
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            var cur = (document.getElementById('cpCurrentPassword') || {}).value || '';
+            var newP = (document.getElementById('cpNewPassword') || {}).value || '';
+            var confP = (document.getElementById('cpConfirmPassword') || {}).value || '';
+            var errBox = document.getElementById('cpErrorMessage');
+
+            if (!newP || newP.length < 6) {
+                if (errBox) {
+                    errBox.textContent = 'New password must be at least 6 characters.';
+                    errBox.style.display = 'block';
+                }
+                return false;
+            }
+            if (newP !== confP) {
+                if (errBox) {
+                    errBox.textContent = 'New password and confirmation do not match.';
+                    errBox.style.display = 'block';
+                }
+                return false;
+            }
+
+            var u = window.currentUser || null;
+            if (!u) {
+                try {
+                    var raw = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session');
+                    if (raw) u = JSON.parse(raw);
+                } catch(err) {}
+            }
+            if (u && u.password && cur !== u.password) {
+                if (errBox) {
+                    errBox.textContent = 'Incorrect current password.';
+                    errBox.style.display = 'block';
+                }
+                return false;
+            }
+
+            if (u) {
+                u.password = newP;
+                try {
+                    var uStr = JSON.stringify(u);
+                    sessionStorage.setItem('mdsj_session', uStr);
+                    localStorage.setItem('mdsj_session', uStr);
+                    window.currentUser = u;
+                } catch(err) {}
+            }
+
+            if (errBox) errBox.style.display = 'none';
+            window.closeChangePasswordModal();
+            if (typeof showToast === 'function') {
+                showToast('Password updated successfully!', 'success');
+            } else {
+                alert('Password updated successfully!');
+            }
+            return false;
+        };
+
+        window.toggleDarkMode = function(enable) {
+            var isDark;
+            if (typeof enable === 'boolean') {
+                isDark = enable;
+            } else {
+                isDark = !document.documentElement.classList.contains('dark-theme');
+            }
+            if (isDark) {
+                document.documentElement.classList.add('dark-theme');
+                document.body.classList.add('dark-theme');
+                try { localStorage.setItem('mdsj_theme', 'dark'); } catch(e) {}
+            } else {
+                document.documentElement.classList.remove('dark-theme');
+                document.body.classList.remove('dark-theme');
+                try { localStorage.setItem('mdsj_theme', 'light'); } catch(e) {}
+            }
+            var cb = document.getElementById('themeToggleCheckbox');
+            if (cb) cb.checked = isDark;
+            var icon = document.getElementById('themeMenuIcon');
+            if (icon) icon.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon"></i>';
+            var label = document.getElementById('themeMenuLabel');
+            if (label) label.textContent = isDark ? 'Dark Mode (On)' : 'Dark Mode';
+        };
+
+        window.initThemeMode = function() {
+            try {
+                var saved = localStorage.getItem('mdsj_theme');
+                if (saved === 'dark') {
+                    window.toggleDarkMode(true);
+                } else {
+                    window.toggleDarkMode(false);
+                }
+            } catch(e) {}
+        };
+
+        window.updateTopUserProfileUI = function(user) {
+            if (!user) user = window.currentUser || null;
+            if (!user) {
+                try {
+                    var raw = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session');
+                    if (raw) user = JSON.parse(raw);
+                } catch(err) {}
+            }
+            if (!user) return;
+
+            var displayName = user.displayName || 'NI\u00D1O ALOYSIUS B. COLEGADO';
+            var role = user.role || 'School President';
+            var isUserTeacher = user.username === 'teacher' || (role && (role.indexOf('Teacher') !== -1 || role.indexOf('Faculty') !== -1));
+            var isUserRegistrar = role && role.indexOf('Registrar') !== -1;
+
+            var email = isUserTeacher ? 'teacher@mdsjfi.edu.ph' : (isUserRegistrar ? 'registrar@mdsjfi.edu.ph' : 'president@mdsjfi.edu.ph');
+            var dept = isUserTeacher ? 'Academic & Teaching Faculty' : (isUserRegistrar ? 'Registrar & Accounting Office' : 'Administration');
+            var photo = isUserRegistrar ? 'registrar-avatar.jpg' : 'president-avatar.jpg';
+
+            // Top Avatar Chip
+            var chipName = document.getElementById('topHeaderUserName');
+            if (chipName) chipName.textContent = displayName;
+            var chipRole = document.getElementById('topHeaderUserRole');
+            if (chipRole) chipRole.textContent = role;
+            var chipWrap = document.getElementById('topHeaderAvatarWrap');
+            if (chipWrap) {
+                if (isUserTeacher) {
+                    chipWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot" title="Online"></span>';
+                } else {
+                    chipWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="topHeaderUserAvatarImg"><span class="online-status-dot" title="Online"></span>';
+                }
+            }
+
+            // Mobile Header Avatar Wrap
+            var mobWrap = document.getElementById('mobileHeaderAvatarWrap');
+            if (mobWrap) {
+                if (isUserTeacher) {
+                    mobWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:0.95rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot"></span>';
+                } else {
+                    mobWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="mobileHeaderUserAvatarImg"><span class="online-status-dot"></span>';
+                }
+            }
+
+            // Dropdown Header Details
+            var ddName = document.getElementById('dropdownUserName');
+            if (ddName) ddName.textContent = displayName;
+            var ddTitle = document.getElementById('dropdownUserTitle');
+            if (ddTitle) ddTitle.textContent = role;
+            var ddDept = document.getElementById('dropdownUserDept');
+            if (ddDept) ddDept.innerHTML = '<i class="fas fa-building" style="margin-right:5px;"></i><span>' + dept + '</span>';
+            var ddEmail = document.getElementById('dropdownUserEmail');
+            if (ddEmail) ddEmail.textContent = email;
+            var ddWrap = document.getElementById('dropdownAvatarWrap');
+            if (ddWrap) {
+                if (isUserTeacher) {
+                    ddWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot lg" title="Online"></span>';
+                } else {
+                    ddWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="up-dropdown-avatar-img" id="dropdownUserAvatarImg"><span class="online-status-dot lg" title="Online"></span>';
+                }
+            }
+
+            // Profile Details Modal
+            var mPhoto = document.getElementById('modalUserProfilePhoto');
+            if (mPhoto && !isUserTeacher) mPhoto.src = photo;
+            var mName = document.getElementById('modalUserProfileName');
+            if (mName) mName.textContent = displayName;
+            var mRole = document.getElementById('modalUserProfileRole');
+            if (mRole) mRole.textContent = role;
+            var mDept = document.getElementById('modalUserProfileDept');
+            if (mDept) mDept.textContent = dept;
+            var mEmail = document.getElementById('modalUserProfileEmail');
+            if (mEmail) mEmail.textContent = email;
+        };
+
+        // Click outside & Escape key listeners
+        document.addEventListener('click', function(e) {
+            var wrap = document.getElementById('userProfileTriggerWrap');
+            var mobTrigger = document.querySelector('.mobile-user-trigger');
+            if ((!wrap || !wrap.contains(e.target)) && (!mobTrigger || !mobTrigger.contains(e.target))) {
+                window.closeUserProfileDropdown();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                window.closeUserProfileDropdown();
+                window.closeUserProfileModal();
+                window.closeChangePasswordModal();
+            }
+        });
 
         // Safe, Immediate Sign Out Handler
         window.isAppExiting = false;
@@ -563,6 +811,30 @@
             var targetPage = document.getElementById('page-' + pageId);
             if (targetPage) {
                 targetPage.classList.add('active');
+            }
+
+            // Update Top Utility Breadcrumb
+            var pageTitles = {
+                'dashboard': 'Dashboard',
+                'students': 'All Students',
+                'grade7': 'Grade 7 Students',
+                'grade8': 'Grade 8 Students',
+                'grade9': 'Grade 9 Students',
+                'grade10': 'Grade 10 Students',
+                'add-student': 'Enroll Student',
+                'soa': 'Statement of Account',
+                'cash-flow': 'Cash In & Out Flow',
+                'clearance': 'Student Clearance (Examination)',
+                'payroll': 'Faculty & Staff Payroll',
+                'teachers': 'Teachers & Faculty Directory',
+                'activities': 'Current Activities Log',
+                'promote': 'Advance / Promote S.Y.',
+                'alumni': 'JHS Finisher / Alumni Directory',
+                'archive': 'Archived Records'
+            };
+            var breadcrumbEl = document.getElementById('topUtilityPageTitle');
+            if (breadcrumbEl && pageTitles[pageId]) {
+                breadcrumbEl.textContent = pageTitles[pageId];
             }
 
             // Toggle view-fit-window mode for fixed-height single-window views
@@ -1075,21 +1347,6 @@
                 <span>Archived</span>
             </a>
         </nav>
-        <div class="sidebar-footer">
-            <div class="sidebar-user">
-                <div class="user-avatar" id="sidebarUserAvatar">
-                    <img src="president-avatar.jpg" alt="NI&Ntilde;O ALOYSIUS B. COLEGADO" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">
-                </div>
-                <div class="user-info">
-                    <span class="user-name" id="loggedInUser">NI&Ntilde;O ALOYSIUS B. COLEGADO</span>
-                    <span class="user-role" id="loggedInRole">School President</span>
-                </div>
-            </div>
-            <button class="btn-logout" id="btnLogout" title="Sign Out" onclick="handleLogout(event)">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Sign Out</span>
-            </button>
-        </div>
     </aside>
 
     <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileSidebar(false)"></div>
@@ -1101,10 +1358,127 @@
         </button>
         <img src="school-logo.png" alt="Logo" class="mobile-logo" onclick="navigateToDashboardFromLogo()" style="cursor: pointer;" title="Return to General Dashboard">
         <h1>MDSJ Student DB</h1>
+        <div class="mobile-user-trigger" onclick="toggleUserProfileDropdown(event)" title="User Profile &amp; Account Settings">
+            <div class="avatar-chip-photo-wrap" id="mobileHeaderAvatarWrap" style="width:34px; height:34px;">
+                <img src="president-avatar.jpg" alt="Profile" class="avatar-chip-img" id="mobileHeaderUserAvatarImg">
+                <span class="online-status-dot"></span>
+            </div>
+        </div>
     </header>
 
     <!-- Main Content -->
     <main class="main-content" id="mainContent">
+
+        <!-- Top Utility Header Bar with User Profile Avatar Chip & Account Dropdown -->
+        <header class="top-utility-bar" id="topUtilityBar">
+            <div class="top-utility-left">
+                <div class="top-utility-breadcrumb" id="topUtilityBreadcrumb">
+                    <i class="fas fa-school top-utility-icon"></i>
+                    <span class="top-utility-school">Montessori De San Jose</span>
+                    <span class="top-utility-sep"><i class="fas fa-chevron-right" style="font-size:0.65rem;"></i></span>
+                    <span class="top-utility-page" id="topUtilityPageTitle">Dashboard</span>
+                </div>
+            </div>
+            <div class="top-utility-right">
+                <!-- Global Live Clock Badge -->
+                <div class="current-datetime-badge" id="dashboardLiveClock">
+                    <div class="live-date">
+                        <i class="far fa-calendar-alt"></i>
+                        <span id="currentDate">--</span>
+                    </div>
+                    <div class="live-divider"></div>
+                    <div class="live-time">
+                        <i class="far fa-clock"></i>
+                        <span id="currentTime">--:--:-- --</span>
+                        <span class="live-indicator-dot" title="Live Clock"></span>
+                    </div>
+                </div>
+
+                <!-- User Profile Trigger / Avatar Chip -->
+                <div class="user-profile-trigger-wrap" id="userProfileTriggerWrap">
+                    <button type="button" class="user-avatar-chip" id="userAvatarChipBtn" onclick="toggleUserProfileDropdown(event)" aria-expanded="false" aria-haspopup="true" title="Account Menu">
+                        <div class="avatar-chip-photo-wrap" id="topHeaderAvatarWrap">
+                            <img src="president-avatar.jpg" alt="NI&Ntilde;O ALOYSIUS B. COLEGADO" class="avatar-chip-img" id="topHeaderUserAvatarImg">
+                            <span class="online-status-dot" title="Online"></span>
+                        </div>
+                        <div class="avatar-chip-text">
+                            <span class="avatar-chip-name" id="topHeaderUserName">NI&Ntilde;O ALOYSIUS B. COLEGADO</span>
+                            <span class="avatar-chip-role" id="topHeaderUserRole">School President</span>
+                        </div>
+                        <i class="fas fa-chevron-down avatar-chip-chevron" id="avatarChipChevron"></i>
+                    </button>
+
+                    <!-- Floating User Profile Dropdown / Account Menu Card -->
+                    <div class="user-profile-dropdown" id="userProfileDropdown" role="menu">
+                        <!-- User Metadata Header -->
+                        <div class="up-dropdown-header">
+                            <div class="up-dropdown-avatar-wrap" id="dropdownAvatarWrap">
+                                <img src="president-avatar.jpg" alt="Profile" class="up-dropdown-avatar-img" id="dropdownUserAvatarImg">
+                                <span class="online-status-dot lg" title="Online"></span>
+                            </div>
+                            <div class="up-dropdown-user-details">
+                                <h4 class="up-dropdown-name" id="dropdownUserName">NI&Ntilde;O ALOYSIUS B. COLEGADO</h4>
+                                <div class="up-dropdown-title" id="dropdownUserTitle">School President</div>
+                                <div class="up-dropdown-dept" id="dropdownUserDept"><i class="fas fa-building" style="margin-right:4px;"></i><span>Administration</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Verification & Status Badges -->
+                        <div class="up-dropdown-badges">
+                            <span class="up-badge verified" id="dropdownEmailBadge" title="Google Email Verified">
+                                <i class="fab fa-google"></i>
+                                <span id="dropdownUserEmail">president@mdsjfi.edu.ph</span>
+                                <i class="fas fa-check-circle" style="color:#16a34a; font-size:0.75rem;"></i>
+                            </span>
+                            <span class="up-badge online">
+                                <span class="online-pulse-dot"></span>
+                                <span>Online</span>
+                            </span>
+                        </div>
+
+                        <div class="up-dropdown-divider"></div>
+
+                        <!-- Quick Actions Menu -->
+                        <div class="up-dropdown-menu">
+                            <button type="button" class="up-dropdown-item" onclick="openUserProfileModal(); closeUserProfileDropdown();">
+                                <div class="up-item-left">
+                                    <div class="up-item-icon"><i class="fas fa-user-circle"></i></div>
+                                    <div class="up-item-label">My Profile</div>
+                                </div>
+                                <i class="fas fa-chevron-right" style="font-size:0.7rem; color:#94a3b8;"></i>
+                            </button>
+                            <button type="button" class="up-dropdown-item" onclick="openChangePasswordModal(); closeUserProfileDropdown();">
+                                <div class="up-item-left">
+                                    <div class="up-item-icon"><i class="fas fa-key"></i></div>
+                                    <div class="up-item-label">Change Password</div>
+                                </div>
+                                <i class="fas fa-chevron-right" style="font-size:0.7rem; color:#94a3b8;"></i>
+                            </button>
+                            <div class="up-dropdown-item up-item-theme">
+                                <div class="up-item-left">
+                                    <div class="up-item-icon" id="themeMenuIcon"><i class="fas fa-moon"></i></div>
+                                    <div class="up-item-label" id="themeMenuLabel">Dark Mode</div>
+                                </div>
+                                <label class="theme-switch" title="Toggle Dark Mode">
+                                    <input type="checkbox" id="themeToggleCheckbox" onchange="toggleDarkMode(this.checked)">
+                                    <span class="theme-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="up-dropdown-divider"></div>
+
+                        <!-- Footer Action: Log Out -->
+                        <div class="up-dropdown-footer">
+                            <button type="button" class="up-dropdown-logout-btn" onclick="handleLogout(event)">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Log Out</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
         
         <!-- ==================== DASHBOARD PAGE ==================== -->
         <section class="page active" id="page-dashboard">
@@ -1146,18 +1520,6 @@
                             <option value="2026-2027" selected>S.Y. 2026-2027 (Current)</option>
                             <option value="2027-2028">S.Y. 2027-2028 (Upcoming)</option>
                         </select>
-                    </div>
-                    <div class="current-datetime-badge" id="dashboardLiveClock">
-                        <div class="live-date">
-                            <i class="far fa-calendar-alt"></i>
-                            <span id="currentDate">--</span>
-                        </div>
-                        <div class="live-divider"></div>
-                        <div class="live-time">
-                            <i class="far fa-clock"></i>
-                            <span id="currentTime">--:--:-- --</span>
-                            <span class="live-indicator-dot" title="Live Clock"></span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -5531,6 +5893,89 @@
             </div>
         </section>
     </main>
+
+    <!-- ==================== USER PROFILE DETAILS MODAL (MY PROFILE) ==================== -->
+    <div class="modal-overlay" id="userProfileModal" style="display:none; z-index:9996; align-items:center; justify-content:center; overflow-y:auto; padding:20px 10px;" onclick="if(event.target===this) closeUserProfileModal()">
+        <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 16px; overflow: hidden; padding: 0; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid #cbd5e1; margin: auto; background: #ffffff;" onclick="event.stopPropagation()">
+            <div style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%); padding: 26px 24px 22px; color: #fff; position: relative;">
+                <button type="button" class="modal-close" onclick="closeUserProfileModal()" style="position:absolute; top:14px; right:16px; color:#cbd5e1; font-size:1.5rem; background:none; border:none; cursor:pointer;" aria-label="Close">&times;</button>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="position: relative; flex-shrink: 0;">
+                        <img src="president-avatar.jpg" alt="Profile" id="modalUserProfilePhoto" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                        <span style="position: absolute; bottom: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #22c55e; border: 2.5px solid #ffffff;"></span>
+                    </div>
+                    <div>
+                        <h3 id="modalUserProfileName" style="margin: 0; font-size: 1.12rem; font-weight: 800; color: #ffffff; line-height: 1.25;">NI&Ntilde;O ALOYSIUS B. COLEGADO</h3>
+                        <div id="modalUserProfileRole" style="font-size: 0.82rem; color: #93c5fd; font-weight: 600; margin-top: 3px;">School President</div>
+                        <div style="display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; color: #f8fafc; font-weight: 600;">
+                            <i class="fas fa-shield-alt" style="color: #60a5fa;"></i> Authenticated Personnel
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 22px 24px; background: #ffffff;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+                        <div style="font-size: 0.70rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Department</div>
+                        <div id="modalUserProfileDept" style="font-size: 0.88rem; color: #0f172a; font-weight: 700; margin-top: 2px;">Administration</div>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+                        <div style="font-size: 0.70rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Active S.Y.</div>
+                        <div style="font-size: 0.88rem; color: #0f172a; font-weight: 700; margin-top: 2px;">2026-2027</div>
+                    </div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 18px;">
+                    <div style="font-size: 0.70rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Official Google Email</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; gap: 8px;">
+                        <span id="modalUserProfileEmail" style="font-size: 0.88rem; color: #0f172a; font-weight: 600;">president@mdsjfi.edu.ph</span>
+                        <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.72rem; padding: 3px 9px; border-radius: 12px; font-weight: 700; border: 1px solid #bbf7d0; flex-shrink: 0;">
+                            <i class="fas fa-check-circle"></i> Verified
+                        </span>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserProfileModal()" style="padding: 8px 18px; border-radius: 8px; font-weight: 600;">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== CHANGE PASSWORD MODAL ==================== -->
+    <div class="modal-overlay" id="changePasswordModal" style="display:none; z-index:9996; align-items:center; justify-content:center; overflow-y:auto; padding:20px 10px;" onclick="if(event.target===this) closeChangePasswordModal()">
+        <div class="modal-content" style="max-width: 440px; width: 100%; border-radius: 16px; overflow: hidden; padding: 0; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid #cbd5e1; margin: auto; background: #ffffff;" onclick="event.stopPropagation()">
+            <div style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%); padding: 20px 24px; color: #fff; position: relative;">
+                <button type="button" class="modal-close" onclick="closeChangePasswordModal()" style="position:absolute; top:14px; right:16px; color:#cbd5e1; font-size:1.5rem; background:none; border:none; cursor:pointer;" aria-label="Close">&times;</button>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#93c5fd;">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#fff;">Change Account Password</h3>
+                        <p style="margin:2px 0 0; font-size:0.78rem; color:#cbd5e1;">Update personnel security credentials</p>
+                    </div>
+                </div>
+            </div>
+            <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)" style="padding: 22px 24px; background: #ffffff;">
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#334155; margin-bottom:6px;">Current Password</label>
+                    <input type="password" id="cpCurrentPassword" required placeholder="Enter current password" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:0.9rem; outline:none;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#334155; margin-bottom:6px;">New Password</label>
+                    <input type="password" id="cpNewPassword" required minlength="6" placeholder="At least 6 characters" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:0.9rem; outline:none;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display:block; font-size:0.8rem; font-weight:700; color:#334155; margin-bottom:6px;">Confirm New Password</label>
+                    <input type="password" id="cpConfirmPassword" required minlength="6" placeholder="Re-enter new password" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; font-size:0.9rem; outline:none;">
+                </div>
+                <div id="cpErrorMessage" style="display:none; color:#dc2626; font-size:0.8rem; font-weight:600; margin-bottom:14px; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px;"></div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()" style="padding:8px 16px; border-radius:8px; font-weight:600;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="padding:8px 20px; border-radius:8px; font-weight:700; background:var(--primary); color:#fff; border:none; cursor:pointer;">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- ==================== EXAMINATION CLEARANCE OVERRIDE MODAL (ADMIN & REGISTRAR ONLY) ==================== -->
     <div class="modal-overlay" id="clearanceOverrideModal" style="display:none; z-index:9992; align-items:center; justify-content:center; overflow-y:auto; padding:20px 10px;" onclick="if(event.target===this) closeClearanceOverrideModal()">
