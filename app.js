@@ -45,15 +45,6 @@ const USERS = [
         avatar: "registrar-avatar.jpg"
     },
     {
-        id: "teacher",
-        username: "teacher",
-        password: "mdsjfiteacher",
-        displayName: "FACULTY TEACHER",
-        role: "Faculty / Class Adviser",
-        department: "Junior High School Faculty",
-        avatar: ""
-    },
-    {
         id: "emp-t001",
         empId: "EMP-T001",
         employeeNo: "T001",
@@ -64,7 +55,7 @@ const USERS = [
         role: "Faculty / Class Adviser",
         department: "Junior High School Faculty",
         position: "AP Teacher",
-        avatar: ""
+        avatar: "t001-avatar.jpg"
     },
     {
         id: "emp-t002",
@@ -77,7 +68,7 @@ const USERS = [
         role: "Faculty / Class Adviser",
         department: "Junior High School Faculty",
         position: "Science, MAPEH & ESP Teacher",
-        avatar: ""
+        avatar: "t002-avatar.jpg"
     },
     {
         id: "emp-t004",
@@ -90,7 +81,7 @@ const USERS = [
         role: "Faculty / Class Adviser",
         department: "Junior High School Faculty",
         position: "TLE, ESP & MAPEH Teacher",
-        avatar: ""
+        avatar: "t004-avatar.jpg"
     },
     {
         id: "emp-t005",
@@ -103,7 +94,7 @@ const USERS = [
         role: "Faculty / Class Adviser",
         department: "Junior High School Faculty",
         position: "Filipino & ESP Teacher",
-        avatar: ""
+        avatar: "t005-avatar.jpg"
     },
     {
         id: "emp-t006",
@@ -116,7 +107,7 @@ const USERS = [
         role: "Faculty / Class Adviser",
         department: "Junior High School Faculty",
         position: "English & ESP Teacher",
-        avatar: ""
+        avatar: "t006-avatar.jpg"
     },
     {
         id: "emp-t007",
@@ -129,7 +120,7 @@ const USERS = [
         role: "Faculty / Class Adviser",
         department: "Junior High School Faculty",
         position: "Math & MAPEH Teacher",
-        avatar: ""
+        avatar: "t007-avatar.jpg"
     },
     {
         id: "emp-t008",
@@ -142,7 +133,7 @@ const USERS = [
         role: "School Principal / Academic Head",
         department: "School Administration & Faculty",
         position: "School Principal",
-        avatar: ""
+        avatar: "principal-avatar.jpg"
     }
 ];
 
@@ -729,12 +720,20 @@ function showApp(user) {
     if (roleEl) roleEl.textContent = currentUser.role || (isAdmin() ? 'School President' : 'Registrar / In-Charge, Accounting');
     const avatarEl = document.getElementById('sidebarUserAvatar');
     if (avatarEl) {
-        if (isTeacher()) {
-            avatarEl.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div>';
-            avatarEl.classList.remove('has-image');
-        } else if (isRegistrar()) {
-            avatarEl.innerHTML = '<img src="registrar-avatar.jpg" alt="' + (currentUser.displayName || 'Registrar') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
+        if (isRegistrar()) {
+            avatarEl.innerHTML = '<img src="' + (currentUser.avatar || 'registrar-avatar.jpg') + '" alt="' + (currentUser.displayName || 'Registrar') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
             avatarEl.classList.add('has-image');
+        } else if (currentUser.role && currentUser.role.indexOf('Principal') !== -1) {
+            avatarEl.innerHTML = '<img src="' + (currentUser.avatar || 'principal-avatar.jpg') + '" alt="' + (currentUser.displayName || 'Principal') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
+            avatarEl.classList.add('has-image');
+        } else if (isTeacher()) {
+            if (currentUser.avatar) {
+                avatarEl.innerHTML = '<img src="' + currentUser.avatar + '" alt="' + (currentUser.displayName || 'Teacher') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
+                avatarEl.classList.add('has-image');
+            } else {
+                avatarEl.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div>';
+                avatarEl.classList.remove('has-image');
+            }
         } else {
             avatarEl.innerHTML = '<img src="president-avatar.jpg" alt="' + (currentUser.displayName || 'President') + '" class="president-avatar-img" width="48" height="48" loading="eager" decoding="sync">';
             avatarEl.classList.add('has-image');
@@ -8854,7 +8853,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'Araling Panlipunan 7, 8, 9, 10',
         emergencyName: 'Remedios Esteban',
         emergencyRelation: 'Mother',
-        emergencyPhone: '0918-234-5678'
+        emergencyPhone: '0918-234-5678',
+        photo: 't001-avatar.jpg'
     },
     {
         id: 'EMP-T002',
@@ -8893,7 +8893,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'Science 7, Science 8, MAPEH 8, ESP 8',
         emergencyName: 'Manuel Barel',
         emergencyRelation: 'Father',
-        emergencyPhone: '0920-123-4567'
+        emergencyPhone: '0920-123-4567',
+        photo: 't002-avatar.jpg'
     },
     {
         id: 'EMP-T004',
@@ -8932,7 +8933,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'TLE 7, 8, 9, 10, ESP 9, MAPEH 9',
         emergencyName: 'Irene Bartolo',
         emergencyRelation: 'Mother',
-        emergencyPhone: '0928-456-7890'
+        emergencyPhone: '0928-456-7890',
+        photo: 't004-avatar.jpg'
     },
     {
         id: 'EMP-T005',
@@ -8971,7 +8973,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'Filipino 7, 8, 9, 10, ESP 7, 10',
         emergencyName: 'Eduardo Aguilana',
         emergencyRelation: 'Spouse',
-        emergencyPhone: '0930-678-9012'
+        emergencyPhone: '0930-678-9012',
+        photo: 't005-avatar.jpg'
     },
     {
         id: 'EMP-T006',
@@ -9010,7 +9013,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'English 7, 8, 9, 10',
         emergencyName: 'Merlita Asong',
         emergencyRelation: 'Mother',
-        emergencyPhone: '0946-789-0123'
+        emergencyPhone: '0946-789-0123',
+        photo: 't006-avatar.jpg'
     },
     {
         id: 'EMP-T007',
@@ -9049,7 +9053,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'Mathematics 7, 8, 9, 10, MAPEH 10',
         emergencyName: 'Gary Fabrigas',
         emergencyRelation: 'Father',
-        emergencyPhone: '0950-890-1234'
+        emergencyPhone: '0950-890-1234',
+        photo: 't007-avatar.jpg'
     },
     {
         id: 'EMP-T008',
@@ -9088,7 +9093,8 @@ const DEFAULT_FACULTY_MEMBERS = [
         subjects: 'School Leadership & Administration',
         emergencyName: 'Grace Cansuncad',
         emergencyRelation: 'Spouse',
-        emergencyPhone: '0999-012-3456'
+        emergencyPhone: '0999-012-3456',
+        photo: 'principal-avatar.jpg'
     }
 ];
 
@@ -9137,6 +9143,10 @@ function getPayrollEmployees() {
             }
             if (!existing.id) {
                 existing.id = defEmp.id;
+                needsSave = true;
+            }
+            if (!existing.photo && defEmp.photo) {
+                existing.photo = defEmp.photo;
                 needsSave = true;
             }
             if (existing.position !== defEmp.position) {
