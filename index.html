@@ -432,6 +432,18 @@
         };
 
         window.openUserProfileModal = function() {
+            var raw = null;
+            try { raw = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session'); } catch(e){}
+            var user = null;
+            try { if (raw) user = JSON.parse(raw); } catch(e){}
+            if (!user && window.currentUser) user = window.currentUser;
+
+            var isUserTeacher = user && (user.username === 'teacher' || (user.role && (user.role.indexOf('Teacher') !== -1 || user.role.indexOf('Faculty') !== -1)));
+            if (isUserTeacher && typeof window.openTeacherProfileModal === 'function') {
+                window.openTeacherProfileModal('EMP-T001');
+                return;
+            }
+
             var modal = document.getElementById('userProfileModal');
             if (modal) {
                 modal.style.display = 'flex';
@@ -579,9 +591,21 @@
             var isUserTeacher = user.username === 'teacher' || (role && (role.indexOf('Teacher') !== -1 || role.indexOf('Faculty') !== -1));
             var isUserRegistrar = role && role.indexOf('Registrar') !== -1;
 
-            var email = isUserTeacher ? 'teacher@mdsjfi.edu.ph' : (isUserRegistrar ? 'registrar@mdsjfi.edu.ph' : 'president@mdsjfi.edu.ph');
-            var dept = isUserTeacher ? 'Academic & Teaching Faculty' : (isUserRegistrar ? 'Registrar & Accounting Office' : 'Administration');
-            var photo = isUserRegistrar ? 'registrar-avatar.jpg' : 'president-avatar.jpg';
+            var teacherEmp = null;
+            if (isUserTeacher && typeof getPayrollEmployees === 'function') {
+                try {
+                    var empList = getPayrollEmployees();
+                    teacherEmp = empList.find(function(e) { return e.id === 'EMP-T001' || e.employeeNo === 'T001'; }) || empList[0];
+                } catch(e){}
+            }
+            if (isUserTeacher && teacherEmp && teacherEmp.name) {
+                displayName = teacherEmp.name;
+                role = teacherEmp.position || 'AP Teacher';
+            }
+
+            var email = isUserTeacher ? (teacherEmp && teacherEmp.email ? teacherEmp.email : 'teacher@mdsjfi.edu.ph') : (isUserRegistrar ? 'registrar@mdsjfi.edu.ph' : 'president@mdsjfi.edu.ph');
+            var dept = isUserTeacher ? (teacherEmp && teacherEmp.department ? teacherEmp.department : 'Academic & Teaching Faculty') : (isUserRegistrar ? 'Registrar & Accounting Office' : 'Administration');
+            var photo = isUserTeacher ? (teacherEmp && teacherEmp.photo ? teacherEmp.photo : '') : (isUserRegistrar ? 'registrar-avatar.jpg' : 'president-avatar.jpg');
 
             // Top Avatar Chip
             var chipName = document.getElementById('topHeaderUserName');
@@ -590,7 +614,9 @@
             if (chipRole) chipRole.textContent = role;
             var chipWrap = document.getElementById('topHeaderAvatarWrap');
             if (chipWrap) {
-                if (isUserTeacher) {
+                if (photo) {
+                    chipWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="topHeaderUserAvatarImg"><span class="online-status-dot" title="Online"></span>';
+                } else if (isUserTeacher) {
                     chipWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot" title="Online"></span>';
                 } else {
                     chipWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="topHeaderUserAvatarImg"><span class="online-status-dot" title="Online"></span>';
@@ -600,7 +626,9 @@
             // Mobile Header Avatar Wrap
             var mobWrap = document.getElementById('mobileHeaderAvatarWrap');
             if (mobWrap) {
-                if (isUserTeacher) {
+                if (photo) {
+                    mobWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="mobileHeaderUserAvatarImg"><span class="online-status-dot"></span>';
+                } else if (isUserTeacher) {
                     mobWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:0.95rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot"></span>';
                 } else {
                     mobWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="mobileHeaderUserAvatarImg"><span class="online-status-dot"></span>';
@@ -618,7 +646,9 @@
             if (ddEmail) ddEmail.textContent = email;
             var ddWrap = document.getElementById('dropdownAvatarWrap');
             if (ddWrap) {
-                if (isUserTeacher) {
+                if (photo) {
+                    ddWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="up-dropdown-avatar-img" id="dropdownUserAvatarImg"><span class="online-status-dot lg" title="Online"></span>';
+                } else if (isUserTeacher) {
                     ddWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot lg" title="Online"></span>';
                 } else {
                     ddWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="up-dropdown-avatar-img" id="dropdownUserAvatarImg"><span class="online-status-dot lg" title="Online"></span>';
@@ -627,7 +657,15 @@
 
             // Profile Details Modal
             var mPhoto = document.getElementById('modalUserProfilePhoto');
-            if (mPhoto && !isUserTeacher) mPhoto.src = photo;
+            if (mPhoto) {
+                if (photo) {
+                    mPhoto.src = photo;
+                } else if (isUserTeacher) {
+                    mPhoto.src = 'carrelle-avatar.jpg';
+                } else {
+                    mPhoto.src = photo;
+                }
+            }
             var mName = document.getElementById('modalUserProfileName');
             if (mName) mName.textContent = displayName;
             var mRole = document.getElementById('modalUserProfileRole');

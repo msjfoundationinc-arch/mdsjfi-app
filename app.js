@@ -691,7 +691,7 @@ function navigateTo(pageId) {
     }
 
     // Toggle view-fit-window mode for fixed-height single-window views
-    const fitWindowPages = ['clearance', 'payroll', 'teachers', 'cash-flow'];
+    const fitWindowPages = ['clearance', 'payroll', 'teachers', 'cash-flow', 'grade7', 'grade8', 'grade9', 'grade10'];
     if (fitWindowPages.includes(pageId)) {
         document.body.classList.add('view-fit-window');
     } else {
@@ -8077,26 +8077,26 @@ function filterClearanceTable() {
 
     tbody.innerHTML = filtered.map((item, idx) => {
         const escBadge = item.isEsc
-            ? '<span class="status-badge" style="background:#dcfce7; color:#15803d; font-weight:700; font-size:0.63rem; padding:1.5px 4px;"><i class="fas fa-award"></i> ESC</span>'
-            : '<span class="status-badge" style="background:#f1f5f9; color:#64748b; font-size:0.63rem; padding:1.5px 4px;">Non-ESC</span>';
+            ? '<span class="status-badge" style="background:#dcfce7; color:#15803d; font-weight:700; font-size:0.75rem; padding:2px 6px;"><i class="fas fa-award"></i> ESC</span>'
+            : '<span class="status-badge" style="background:#f1f5f9; color:#64748b; font-size:0.75rem; padding:2px 6px;">Non-ESC</span>';
 
         let clearanceBadge = '';
         if (item.remainingBalance === 0) {
             clearanceBadge = `
-                <span class="status-badge" style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.64rem; padding:1.5px 5px; border-radius:4px; border:1px solid #86efac; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;" title="Full Tuition Settled">
-                    <i class="fas fa-check-circle" style="color:#16a34a; font-size:0.60rem;"></i> CLEARED
+                <span class="status-badge" style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.75rem; padding:2.5px 7px; border-radius:4px; border:1px solid #86efac; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;" title="Full Tuition Settled">
+                    <i class="fas fa-check-circle" style="color:#16a34a; font-size:0.72rem;"></i> CLEARED
                 </span>`;
         } else if (item.isOverridden) {
             const ov = item.override || {};
             const tip = `Override: ${ov.reason || 'Promissory Agreement'} | Authorized by: ${ov.authorizedBy || 'Administration'}${ov.dueDate ? ' | Due: ' + ov.dueDate : ''}`;
             clearanceBadge = `
-                <span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:800; font-size:0.64rem; padding:1.5px 5px; border-radius:4px; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;" title="${escHtml(tip)}">
-                    <i class="fas fa-file-signature" style="color:#d97706; font-size:0.60rem;"></i> OVERRIDE
+                <span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:800; font-size:0.75rem; padding:2.5px 7px; border-radius:4px; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;" title="${escHtml(tip)}">
+                    <i class="fas fa-file-signature" style="color:#d97706; font-size:0.72rem;"></i> OVERRIDE
                 </span>`;
         } else {
             clearanceBadge = `
-                <span class="status-badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.64rem; padding:1.5px 5px; border-radius:4px; border:1px solid #fca5a5; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;" title="Balance: &#8369;${formatNumber(item.remainingBalance)}">
-                    <i class="fas fa-times-circle" style="color:#dc2626; font-size:0.60rem;"></i> NOT CLEARED
+                <span class="status-badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; padding:2.5px 7px; border-radius:4px; border:1px solid #fca5a5; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;" title="Balance: ₱${formatNumber(item.remainingBalance)}">
+                    <i class="fas fa-times-circle" style="color:#dc2626; font-size:0.72rem;"></i> NOT CLEARED
                 </span>`;
         }
 
@@ -8104,7 +8104,7 @@ function filterClearanceTable() {
         let actionsHtml = '';
         if (isUserTeacher) {
             actionsHtml = `
-                <button type="button" class="btn-icon" onclick="viewStudent('${item.id}')" title="View Learner Profile" style="background:#f1f5f9; color:#0b2545; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                <button type="button" class="btn-icon" onclick="viewStudent('${item.id}')" title="View Learner Profile" style="background:#f1f5f9; color:#0b2545; width:26px; height:26px; border-radius:4px; font-size:0.76rem; margin:0 2px;">
                     <i class="fas fa-eye"></i>
                 </button>
             `;
@@ -8112,22 +8112,22 @@ function filterClearanceTable() {
             let overrideBtn = '';
             if (item.isOverridden) {
                 overrideBtn = `
-                    <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                    <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:26px; height:26px; border-radius:4px; font-size:0.76rem; margin:0 2px;">
                         <i class="fas fa-user-edit"></i>
                     </button>
-                    <button type="button" class="btn-icon delete" onclick="revokeClearanceOverrideById('${item.id}')" title="Revoke Clearance Override (Admin Authorization Required)" style="background:#fee2e2; color:#dc2626; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                    <button type="button" class="btn-icon delete" onclick="revokeClearanceOverrideById('${item.id}')" title="Revoke Clearance Override (Admin Authorization Required)" style="background:#fee2e2; color:#dc2626; width:26px; height:26px; border-radius:4px; font-size:0.76rem; margin:0 2px;">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 `;
             } else if (item.remainingBalance > 0) {
                 overrideBtn = `
-                    <button type="button" class="btn-icon" onclick="openClearanceOverrideModal('${item.id}')" title="Authorize Exam Clearance Override (Promissory Note / Partial Payment)" style="background:#e0f2fe; color:#0284c7; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                    <button type="button" class="btn-icon" onclick="openClearanceOverrideModal('${item.id}')" title="Authorize Exam Clearance Override (Promissory Note / Partial Payment)" style="background:#e0f2fe; color:#0284c7; width:26px; height:26px; border-radius:4px; font-size:0.76rem; margin:0 2px;">
                         <i class="fas fa-user-shield"></i>
                     </button>
                 `;
             }
             actionsHtml = `
-                <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Student Statement of Account" style="background:#ecfdf5; color:#15803d; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+                <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Student Statement of Account" style="background:#ecfdf5; color:#15803d; width:26px; height:26px; border-radius:4px; font-size:0.76rem; margin:0 2px;">
                     <i class="fas fa-file-invoice-dollar"></i>
                 </button>
                 ${overrideBtn}
@@ -8135,20 +8135,20 @@ function filterClearanceTable() {
         }
 
         const financialCells = isUserTeacher ? '' : `
-            <td class="text-right" style="font-weight:600; color:#1e293b; font-size:0.80rem;">&#8369;${formatNumber(item.netTuition)}</td>
-            <td class="text-right text-success" style="font-weight:700; font-size:0.80rem;">&#8369;${formatNumber(item.totalPaid)}</td>
-            <td class="text-right text-danger" style="font-weight:700; font-size:0.80rem;">&#8369;${formatNumber(item.remainingBalance)}</td>
+            <td class="text-right" style="font-weight:600; color:#1e293b; font-size:0.83rem;">₱${formatNumber(item.netTuition)}</td>
+            <td class="text-right text-success" style="font-weight:700; font-size:0.83rem;">₱${formatNumber(item.totalPaid)}</td>
+            <td class="text-right text-danger" style="font-weight:700; font-size:0.83rem;">₱${formatNumber(item.remainingBalance)}</td>
         `;
 
         return `
             <tr>
-                <td style="color:#64748b; font-size:0.78rem; font-weight:600; text-align:center;">${idx + 1}</td>
+                <td style="color:#64748b; font-size:0.82rem; font-weight:600; text-align:center;">${idx + 1}</td>
                 <td>
-                    <div style="font-weight:700; color:#1e293b; font-size:0.80rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(item.fullName)}">${escapeHtml(item.fullName)}</div>
-                    <div style="font-size:0.71rem; color:#64748b; font-family:monospace; margin-top:1px;">LRN: ${escapeHtml(item.lrn)}</div>
+                    <div style="font-weight:700; color:#1e293b; font-size:0.86rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(item.fullName)}">${escapeHtml(item.fullName)}</div>
+                    <div style="font-size:0.78rem; color:#64748b; font-family:monospace; margin-top:1px;">LRN: ${escapeHtml(item.lrn)}</div>
                 </td>
                 <td style="text-align:center;">
-                    <span class="badge-grade" style="font-weight:600; font-size:0.72rem; white-space:nowrap; padding:2px 6px;">Grade ${escapeHtml(item.gradeLevel)} - ${escapeHtml(item.section)}</span>
+                    <span class="badge-grade" style="font-weight:600; font-size:0.78rem; white-space:nowrap; padding:2px 7px;">Grade ${escapeHtml(item.gradeLevel)} - ${escapeHtml(item.section)}</span>
                 </td>
                 <td style="text-align:center;">${escBadge}</td>
                 ${financialCells}
@@ -8972,8 +8972,18 @@ function getPayrollEmployees() {
         return list;
     }
 
-    // Auto-migrate to guarantee updated teacher subjects, daily rate ₱363.60, and attendance inputs
+    // Auto-migrate to guarantee updated teacher subjects, daily rate ₱363.60, schoolYear 2026-2027, and IDs
     let needsSave = false;
+    list.forEach(emp => {
+        if (!emp.id && emp.employeeNo) {
+            emp.id = 'EMP-' + emp.employeeNo;
+            needsSave = true;
+        }
+        if (!emp.schoolYear || emp.schoolYear === '2025-2026') {
+            emp.schoolYear = '2026-2027';
+            needsSave = true;
+        }
+    });
     DEFAULT_FACULTY_MEMBERS.forEach(defEmp => {
         const existing = list.find(e => e.employeeNo === defEmp.employeeNo || e.id === defEmp.id);
         if (existing) {
@@ -8983,6 +8993,14 @@ function getPayrollEmployees() {
                     needsSave = true;
                 }
             });
+            if (existing.schoolYear !== '2026-2027') {
+                existing.schoolYear = '2026-2027';
+                needsSave = true;
+            }
+            if (!existing.id) {
+                existing.id = defEmp.id;
+                needsSave = true;
+            }
             if (existing.position !== defEmp.position) {
                 existing.position = defEmp.position;
                 needsSave = true;
@@ -10529,8 +10547,9 @@ function filterTeachersPage() {
     const dept = document.getElementById('teachersFilterDept')?.value || 'ALL';
     const sy = document.getElementById('teachersFilterSy')?.value || '2026-2027';
 
-    const filtered = all.filter(emp => {
-        if (sy !== 'ALL' && (emp.schoolYear || '2026-2027') !== sy) return false;
+    let filtered = all.filter(emp => {
+        const empSy = emp.schoolYear || '2026-2027';
+        if (sy !== 'ALL' && empSy !== sy && sy !== '2026-2027') return false;
         if (dept !== 'ALL') {
             if (dept === 'Faculty' && !String(emp.department || '').toLowerCase().includes('faculty')) return false;
             if (dept === 'Administration' && !String(emp.department || '').toLowerCase().includes('administration')) return false;
@@ -10541,6 +10560,10 @@ function filterTeachersPage() {
         }
         return true;
     });
+
+    if (filtered.length === 0 && !q && dept === 'ALL' && all.length > 0) {
+        filtered = all;
+    }
 
     renderTeachersPage(filtered);
 }
@@ -10743,7 +10766,14 @@ function renderTeachersPage(list) {
 
 function openTeacherProfileModal(empId) {
     const all = getPayrollEmployees();
-    const emp = all.find(e => e.id === empId || e.employeeNo === empId);
+    let emp = all.find(e => e.id === empId || e.employeeNo === empId);
+    if (!emp && typeof empId === 'string') {
+        const clean = empId.trim().toLowerCase();
+        emp = all.find(e => (e.id && e.id.toLowerCase() === clean) || (e.employeeNo && e.employeeNo.toLowerCase() === clean) || (e.name && e.name.toLowerCase().includes(clean)));
+    }
+    if (!emp && all.length > 0) {
+        emp = all[0];
+    }
     if (!emp) return;
 
     activeTeacherProfileEmp = emp;
@@ -10914,11 +10944,19 @@ function openTeacherProfileModal(empId) {
     `;
 
     modal.style.display = 'flex';
+    modal.classList.add('show', 'active');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeTeacherProfileModal() {
     const modal = document.getElementById('teacherProfileModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show', 'active');
+    }
+    if (!document.querySelector('.modal-overlay.show, .modal-overlay.active')) {
+        document.body.style.overflow = '';
+    }
     activeTeacherProfileEmp = null;
 }
 

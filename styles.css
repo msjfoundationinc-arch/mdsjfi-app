@@ -6722,6 +6722,10 @@ body.role-teacher .teacher-hidden {
    ========================================================================== */
 body.view-fit-window,
 body:has(#page-clearance.active),
+body:has(#page-grade7.active),
+body:has(#page-grade8.active),
+body:has(#page-grade9.active),
+body:has(#page-grade10.active),
 body:has(#page-payroll.active),
 body:has(#page-teachers.active),
 body:has(#page-cash-flow.active) {
@@ -6732,6 +6736,10 @@ body:has(#page-cash-flow.active) {
 
 body.view-fit-window .main-content,
 body:has(#page-clearance.active) .main-content,
+body:has(#page-grade7.active) .main-content,
+body:has(#page-grade8.active) .main-content,
+body:has(#page-grade9.active) .main-content,
+body:has(#page-grade10.active) .main-content,
 body:has(#page-payroll.active) .main-content,
 body:has(#page-teachers.active) .main-content,
 body:has(#page-cash-flow.active) .main-content {
@@ -6745,6 +6753,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance.active,
+#page-grade7.active,
+#page-grade8.active,
+#page-grade9.active,
+#page-grade10.active,
 #page-payroll.active,
 #page-teachers.active,
 #page-cash-flow.active {
@@ -6760,6 +6772,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .page-header,
+#page-grade7 .page-header,
+#page-grade8 .page-header,
+#page-grade9 .page-header,
+#page-grade10 .page-header,
 #page-payroll .page-header,
 #page-teachers .page-header,
 #page-cash-flow .page-header {
@@ -6769,6 +6785,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .page-title,
+#page-grade7 .page-title,
+#page-grade8 .page-title,
+#page-grade9 .page-title,
+#page-grade10 .page-title,
 #page-payroll .page-title,
 #page-teachers .page-title,
 #page-cash-flow .page-title {
@@ -6777,6 +6797,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .page-desc,
+#page-grade7 .page-desc,
+#page-grade8 .page-desc,
+#page-grade9 .page-desc,
+#page-grade10 .page-desc,
 #page-payroll .page-desc,
 #page-teachers .page-desc,
 #page-cash-flow .page-desc {
@@ -6785,6 +6809,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .stats-grid,
+#page-grade7 .stats-grid,
+#page-grade8 .stats-grid,
+#page-grade9 .stats-grid,
+#page-grade10 .stats-grid,
 #page-payroll .stats-grid,
 #page-teachers .stats-grid,
 #page-cash-flow .stats-grid {
@@ -6794,6 +6822,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .stats-grid .stat-card,
+#page-grade7 .stats-grid .stat-card,
+#page-grade8 .stats-grid .stat-card,
+#page-grade9 .stats-grid .stat-card,
+#page-grade10 .stats-grid .stat-card,
 #page-payroll .stats-grid .stat-card,
 #page-teachers .stats-grid .stat-card,
 #page-cash-flow .stats-grid .stat-card {
@@ -6802,6 +6834,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .stats-grid .stat-card h3,
+#page-grade7 .stats-grid .stat-card h3,
+#page-grade8 .stats-grid .stat-card h3,
+#page-grade9 .stats-grid .stat-card h3,
+#page-grade10 .stats-grid .stat-card h3,
 #page-payroll .stats-grid .stat-card h3,
 #page-teachers .stats-grid .stat-card h3,
 #page-cash-flow .stats-grid .stat-card h3 {
@@ -6810,6 +6846,10 @@ body:has(#page-cash-flow.active) .main-content {
 }
 
 #page-clearance .stats-grid .stat-card p,
+#page-grade7 .stats-grid .stat-card p,
+#page-grade8 .stats-grid .stat-card p,
+#page-grade9 .stats-grid .stat-card p,
+#page-grade10 .stats-grid .stat-card p,
 #page-payroll .stats-grid .stat-card p,
 #page-teachers .stats-grid .stat-card p,
 #page-cash-flow .stats-grid .stat-card p {
@@ -6824,6 +6864,18 @@ body:has(#page-cash-flow.active) .main-content {
     flex-shrink: 0 !important;
     margin-bottom: 6px !important;
     padding: 6px 12px !important;
+}
+
+#page-grade7 .grade-search-bar,
+#page-grade8 .grade-search-bar,
+#page-grade9 .grade-search-bar,
+#page-grade10 .grade-search-bar {
+    flex-shrink: 0 !important;
+    margin-bottom: 6px !important;
+    padding: 6px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
 }
 
 #page-clearance .subtabs-bar,
@@ -6997,19 +7049,19 @@ body:has(#page-cash-flow.active) .main-content {
 #recentTable th:nth-child(8), #recentTable td:nth-child(8) { width: 8% !important; text-align: center; }
 #recentTable th:nth-child(9), #recentTable td:nth-child(9) { width: 20% !important; text-align: center; }
 
-/* 3. Grade 7, 8, 9, 10 Tables (9 cols) */
+/* 3. Grade 7, 8, 9, 10 Tables (9 cols - Strict 100% Fit, Zero Horizontal Scroll) */
 #page-grade7 .data-table th:nth-child(1), #page-grade7 .data-table td:nth-child(1),
 #page-grade8 .data-table th:nth-child(1), #page-grade8 .data-table td:nth-child(1),
 #page-grade9 .data-table th:nth-child(1), #page-grade9 .data-table td:nth-child(1),
-#page-grade10 .data-table th:nth-child(1), #page-grade10 .data-table td:nth-child(1) { width: 4.5% !important; text-align: center; }
+#page-grade10 .data-table th:nth-child(1), #page-grade10 .data-table td:nth-child(1) { width: 5% !important; text-align: center; }
 #page-grade7 .data-table th:nth-child(2), #page-grade7 .data-table td:nth-child(2),
 #page-grade8 .data-table th:nth-child(2), #page-grade8 .data-table td:nth-child(2),
 #page-grade9 .data-table th:nth-child(2), #page-grade9 .data-table td:nth-child(2),
-#page-grade10 .data-table th:nth-child(2), #page-grade10 .data-table td:nth-child(2) { width: 12.5% !important; }
+#page-grade10 .data-table th:nth-child(2), #page-grade10 .data-table td:nth-child(2) { width: 13% !important; text-align: center; }
 #page-grade7 .data-table th:nth-child(3), #page-grade7 .data-table td:nth-child(3),
 #page-grade8 .data-table th:nth-child(3), #page-grade8 .data-table td:nth-child(3),
 #page-grade9 .data-table th:nth-child(3), #page-grade9 .data-table td:nth-child(3),
-#page-grade10 .data-table th:nth-child(3), #page-grade10 .data-table td:nth-child(3) { width: 23% !important; }
+#page-grade10 .data-table th:nth-child(3), #page-grade10 .data-table td:nth-child(3) { width: 23% !important; text-align: left; }
 #page-grade7 .data-table th:nth-child(4), #page-grade7 .data-table td:nth-child(4),
 #page-grade8 .data-table th:nth-child(4), #page-grade8 .data-table td:nth-child(4),
 #page-grade9 .data-table th:nth-child(4), #page-grade9 .data-table td:nth-child(4),
@@ -7017,15 +7069,15 @@ body:has(#page-cash-flow.active) .main-content {
 #page-grade7 .data-table th:nth-child(5), #page-grade7 .data-table td:nth-child(5),
 #page-grade8 .data-table th:nth-child(5), #page-grade8 .data-table td:nth-child(5),
 #page-grade9 .data-table th:nth-child(5), #page-grade9 .data-table td:nth-child(5),
-#page-grade10 .data-table th:nth-child(5), #page-grade10 .data-table td:nth-child(5) { width: 9% !important; }
+#page-grade10 .data-table th:nth-child(5), #page-grade10 .data-table td:nth-child(5) { width: 9% !important; text-align: center; }
 #page-grade7 .data-table th:nth-child(6), #page-grade7 .data-table td:nth-child(6),
 #page-grade8 .data-table th:nth-child(6), #page-grade8 .data-table td:nth-child(6),
 #page-grade9 .data-table th:nth-child(6), #page-grade9 .data-table td:nth-child(6),
-#page-grade10 .data-table th:nth-child(6), #page-grade10 .data-table td:nth-child(6) { width: 8% !important; }
+#page-grade10 .data-table th:nth-child(6), #page-grade10 .data-table td:nth-child(6) { width: 7.5% !important; text-align: center; }
 #page-grade7 .data-table th:nth-child(7), #page-grade7 .data-table td:nth-child(7),
 #page-grade8 .data-table th:nth-child(7), #page-grade8 .data-table td:nth-child(7),
 #page-grade9 .data-table th:nth-child(7), #page-grade9 .data-table td:nth-child(7),
-#page-grade10 .data-table th:nth-child(7), #page-grade10 .data-table td:nth-child(7) { width: 8% !important; text-align: center; }
+#page-grade10 .data-table th:nth-child(7), #page-grade10 .data-table td:nth-child(7) { width: 7.5% !important; text-align: center; }
 #page-grade7 .data-table th:nth-child(8), #page-grade7 .data-table td:nth-child(8),
 #page-grade8 .data-table th:nth-child(8), #page-grade8 .data-table td:nth-child(8),
 #page-grade9 .data-table th:nth-child(8), #page-grade9 .data-table td:nth-child(8),
@@ -7034,6 +7086,96 @@ body:has(#page-cash-flow.active) .main-content {
 #page-grade8 .data-table th:nth-child(9), #page-grade8 .data-table td:nth-child(9),
 #page-grade9 .data-table th:nth-child(9), #page-grade9 .data-table td:nth-child(9),
 #page-grade10 .data-table th:nth-child(9), #page-grade10 .data-table td:nth-child(9) { width: 18% !important; text-align: center; }
+
+/* Dedicated Larger Readable Text for Grade 7-10 and Student Clearance Tables */
+#page-grade7 .data-table thead th,
+#page-grade8 .data-table thead th,
+#page-grade9 .data-table thead th,
+#page-grade10 .data-table thead th,
+#clearanceTable thead th,
+#promissoryClearanceTable thead th {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    padding: 6px 4px !important;
+    letter-spacing: 0.01em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#page-grade7 .data-table tbody td,
+#page-grade8 .data-table tbody td,
+#page-grade9 .data-table tbody td,
+#page-grade10 .data-table tbody td,
+#clearanceTable tbody td,
+#promissoryClearanceTable tbody td {
+    font-size: 0.83rem !important;
+    line-height: 1.25 !important;
+    padding: 5px 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+#page-grade7 .data-table tbody td .table-student-name,
+#page-grade8 .data-table tbody td .table-student-name,
+#page-grade9 .data-table tbody td .table-student-name,
+#page-grade10 .data-table tbody td .table-student-name {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+}
+
+#page-grade7 .data-table tbody td code,
+#page-grade8 .data-table tbody td code,
+#page-grade9 .data-table tbody td code,
+#page-grade10 .data-table tbody td code {
+    font-size: 0.80rem !important;
+}
+
+#page-grade7 .data-table .badge-esc,
+#page-grade8 .data-table .badge-esc,
+#page-grade9 .data-table .badge-esc,
+#page-grade10 .data-table .badge-esc,
+#page-grade7 .data-table .status-badge,
+#page-grade8 .data-table .status-badge,
+#page-grade9 .data-table .status-badge,
+#page-grade10 .data-table .status-badge,
+#page-grade7 .data-table .sy-pill,
+#page-grade8 .data-table .sy-pill,
+#page-grade9 .data-table .sy-pill,
+#page-grade10 .data-table .sy-pill,
+#clearanceTable .badge,
+#clearanceTable .status-badge,
+#promissoryClearanceTable .badge,
+#promissoryClearanceTable .status-badge {
+    font-size: 0.74rem !important;
+    padding: 2px 6px !important;
+}
+
+#page-grade7 .actions-cell .btn-icon,
+#page-grade8 .actions-cell .btn-icon,
+#page-grade9 .actions-cell .btn-icon,
+#page-grade10 .actions-cell .btn-icon,
+#clearanceTable .actions-cell .btn-icon,
+#promissoryClearanceTable .actions-cell .btn-icon {
+    width: 25px !important;
+    height: 25px !important;
+    font-size: 0.74rem !important;
+    margin: 0 1px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#page-grade7 .student-table-thumb,
+#page-grade8 .student-table-thumb,
+#page-grade9 .student-table-thumb,
+#page-grade10 .student-table-thumb {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.70rem !important;
+    margin: auto !important;
+}
 
 /* 4. Statement of Account Table (.soa-hub-table: 9 cols - Concise 100% Fit) */
 .soa-hub-table th:nth-child(1), .soa-hub-table td:nth-child(1) { width: 21% !important; }
@@ -8769,6 +8911,14 @@ td.actions-cell > .btn-sm,
     overflow-y: auto !important;
     padding: 20px 10px;
     z-index: 9994;
+}
+
+#teacherProfileModal.show,
+#teacherProfileModal.active {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
 }
 
 #teacherProfileModal .modal-content {
