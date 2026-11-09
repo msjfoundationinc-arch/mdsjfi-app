@@ -8382,24 +8382,44 @@ td.actions-cell > .btn-sm,
     }
 }
 
-/* Mobile Devices & Tablets (<= 768px) */
+/* ==========================================================================
+   COMPREHENSIVE MOBILE RESPONSIVE AUDIT & OVERLAP ELIMINATION (<= 768px)
+   Covers standard mobile viewports from 768px down to 375px
+   ========================================================================== */
 @media (max-width: 768px) {
-    /* Fluid Reset Overrides */
+    /* 1. Global Viewport & Reset Overrides */
+    *, *::before, *::after {
+        box-sizing: border-box !important;
+    }
+
     html, body {
         width: 100% !important;
         max-width: 100vw !important;
         overflow-x: hidden !important;
+        position: relative !important;
+        -webkit-text-size-adjust: 100%;
     }
 
-    /* Unlock Single-Window 100vh Lock on Mobile */
+    /* Unlock Single-Window 100vh Lock on Mobile across ALL pages */
     html, body,
     body.view-fit-window,
     body:has(#page-clearance.active),
+    body:has(#page-grade7.active),
+    body:has(#page-grade8.active),
+    body:has(#page-grade9.active),
+    body:has(#page-grade10.active),
     body:has(#page-payroll.active),
     body:has(#page-teachers.active),
-    body:has(#page-cash-flow.active) {
+    body:has(#page-cash-flow.active),
+    body:has(#page-students.active),
+    body:has(#page-soa.active),
+    body:has(#page-activities.active),
+    body:has(#page-alumni.active),
+    body:has(#page-archive.active),
+    body:has(#page-dashboard.active),
+    body:has(.page.active) {
         height: auto !important;
-        min-height: 100vh !important;
+        min-height: 100% !important;
         max-height: none !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
@@ -8409,12 +8429,23 @@ td.actions-cell > .btn-sm,
         overflow: hidden !important;
     }
 
-    /* Main Content Reset & Sticky Header Top Padding */
+    /* Main Content Reset & Fixed Mobile Header Offset (Top padding 72px) */
     body.view-fit-window .main-content,
     body:has(#page-clearance.active) .main-content,
+    body:has(#page-grade7.active) .main-content,
+    body:has(#page-grade8.active) .main-content,
+    body:has(#page-grade9.active) .main-content,
+    body:has(#page-grade10.active) .main-content,
     body:has(#page-payroll.active) .main-content,
     body:has(#page-teachers.active) .main-content,
     body:has(#page-cash-flow.active) .main-content,
+    body:has(#page-students.active) .main-content,
+    body:has(#page-soa.active) .main-content,
+    body:has(#page-activities.active) .main-content,
+    body:has(#page-alumni.active) .main-content,
+    body:has(#page-archive.active) .main-content,
+    body:has(#page-dashboard.active) .main-content,
+    body:has(.page.active) .main-content,
     .main-content {
         margin-left: 0 !important;
         width: 100% !important;
@@ -8428,7 +8459,30 @@ td.actions-cell > .btn-sm,
         box-sizing: border-box !important;
     }
 
-    /* Replace fixed container heights with fluid min-height */
+    /* Unlock Active Pages from Desktop 100vh flex lock */
+    #page-clearance.active,
+    #page-grade7.active,
+    #page-grade8.active,
+    #page-grade9.active,
+    #page-grade10.active,
+    #page-payroll.active,
+    #page-teachers.active,
+    #page-cash-flow.active,
+    #page-students.active,
+    #page-soa.active,
+    #page-activities.active,
+    #page-alumni.active,
+    #page-archive.active,
+    #page-dashboard.active,
+    .page.active {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        display: block !important;
+        flex: none !important;
+    }
+
+    /* Replace fixed container heights with fluid auto/min-height */
     .card,
     .stat-card,
     .chart-card,
@@ -8442,71 +8496,59 @@ td.actions-cell > .btn-sm,
         height: auto !important;
         min-height: auto !important;
         max-height: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    /* Enable flex-wrap: wrap across all mobile flex containers */
-    .page-header,
-    .header-controls,
-    .filters-bar,
-    .filter-group,
-    .table-info,
-    .table-controls,
-    .pagination,
-    .payroll-subtabs,
-    .clearance-subtabs,
-    .view-tabs,
-    .modal-header,
-    .modal-footer,
-    .student-profile-header,
-    .view-header,
-    .photo-uploader-card,
-    .photo-uploader-box,
-    .photo-uploader-actions,
-    .login-options-row,
-    .dashboard-quick-search-section > div,
-    .sy-selector-wrap,
-    .btn-group,
-    .action-btn-group,
-    .user-avatar-chip,
-    .up-dropdown-badges,
-    .table-actions-cell,
-    .form-actions {
-        flex-wrap: wrap !important;
-    }
-
-    /* Remove desktop-only negative margins and overlap hazards */
-    .login-options-row {
-        margin-top: 0 !important;
-        margin-bottom: 16px !important;
+    /* 2. Fixed Mobile Header Bar */
+    .mobile-header {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 56px !important;
+        background: var(--primary) !important;
+        z-index: 1030 !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+        padding: 0 12px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         gap: 8px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100vw !important;
     }
 
-    .app-refresh-spinner-sub {
+    .mobile-header h1 {
+        font-size: clamp(0.85rem, 3.8vw, 1.05rem) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
         margin: 0 !important;
     }
 
-    /* Mobile Toast Notifications offset below sticky header */
-    .toast-container {
-        top: 68px !important;
-        right: 12px !important;
-        left: 12px !important;
-        z-index: 3000 !important;
+    .mobile-logo {
+        width: 32px !important;
+        height: 32px !important;
+        flex-shrink: 0 !important;
     }
 
-    /* Active Pages Expansion */
-    #page-clearance.active,
-    #page-payroll.active,
-    #page-teachers.active,
-    #page-cash-flow.active,
-    .page.active {
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
+    .hamburger {
+        flex-shrink: 0 !important;
+        padding: 8px !important;
+        font-size: 1.2rem !important;
+    }
+
+    .mobile-user-trigger {
         display: block !important;
-        flex: none !important;
+        flex-shrink: 0 !important;
     }
 
-    /* Off-Canvas Mobile Sidebar */
+    /* Off-Canvas Mobile Drawer Sidebar */
     .sidebar {
         position: fixed !important;
         top: 0 !important;
@@ -8532,20 +8574,57 @@ td.actions-cell > .btn-sm,
         display: flex !important;
     }
 
-    /* Fixed Mobile Header */
-    .mobile-header {
-        display: flex !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: 56px !important;
-        background: var(--primary) !important;
-        z-index: 1030 !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+    .sidebar-collapse-toggle {
+        display: none !important;
     }
 
-    /* Mobile Page Header & Action Controls */
+    /* Hide Desktop Top Utility Bar Breadcrumbs and Avatar Button */
+    .top-utility-bar {
+        display: block !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        position: static !important;
+        overflow: visible !important;
+    }
+
+    .top-utility-left,
+    #dashboardLiveClock,
+    #userAvatarChipBtn {
+        display: none !important;
+    }
+
+    .user-profile-trigger-wrap {
+        position: static !important;
+    }
+
+    .user-profile-dropdown {
+        position: fixed !important;
+        top: 60px !important;
+        right: 10px !important;
+        left: auto !important;
+        width: calc(100vw - 20px) !important;
+        max-width: 320px !important;
+        z-index: 1100 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Toast Notifications Offset */
+    .toast-container {
+        top: 66px !important;
+        right: 10px !important;
+        left: 10px !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+        z-index: 3000 !important;
+    }
+
+    /* 3. Page Header, Controls & Flex Wrapping */
     .page-header {
         flex-direction: column !important;
         align-items: stretch !important;
@@ -8563,24 +8642,29 @@ td.actions-cell > .btn-sm,
     .header-controls .btn,
     .header-controls button {
         flex: 1 1 auto !important;
-        min-width: 120px !important;
+        min-width: 110px !important;
     }
 
     .sy-selector-wrap {
         width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
         justify-content: space-between !important;
     }
 
     .sy-select {
-        flex: 1 !important;
+        flex: 1 1 180px !important;
+        width: 100% !important;
     }
 
-    /* Search & Filter Controls */
+    /* Search & Filter Bars (Full Width, Zero Squeeze) */
     .filters-bar {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 10px !important;
         padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .filter-group {
@@ -8591,59 +8675,94 @@ td.actions-cell > .btn-sm,
 
     .filter-select,
     .filter-group select,
+    .filter-select[style],
     .search-box,
+    .search-box[style],
     .search-input {
         width: 100% !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .table-info {
         flex-direction: column !important;
         gap: 8px !important;
         align-items: flex-start !important;
+        width: 100% !important;
     }
 
     .table-controls {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 10px !important;
+        width: 100% !important;
     }
 
     .pagination {
         flex-wrap: wrap !important;
         justify-content: center !important;
         gap: 4px !important;
+        width: 100% !important;
     }
 
-    /* Grid Layouts to Single Column */
-    .form-grid {
+    /* 4. Grid Reflow to Single / Double Column */
+    .form-grid,
+    .detail-grid,
+    .charts-row,
+    .docs-upload-row,
+    .signature-form-wrap,
+    .profile-auth-signatories,
+    .profile-grid-1,
+    .profile-grid-2,
+    .parent-guardian-grid,
+    .fin-metrics-grid,
+    .export-format-row,
+    .teachers-cards-grid,
+    .cashflow-stats-grid,
+    .export-options-grid,
+    .soa-summary-grid-3,
+    .soa-page-summary-grid,
+    #page-soa .soa-page-summary-grid {
         grid-template-columns: 1fr !important;
-        gap: 14px !important;
+        gap: 12px !important;
+        width: 100% !important;
     }
 
-    .stats-grid {
+    .form-grid > *,
+    .form-group.col-span-2,
+    .form-group.col-span-3,
+    .col-span-2,
+    .col-span-3,
+    .full-width,
+    [style*="grid-column"] {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Stats Grids: 2 columns on tablets, 1 column on smaller phones */
+    .stats-grid,
+    #page-clearance .stats-grid,
+    #page-grade7 .stats-grid,
+    #page-grade8 .stats-grid,
+    #page-grade9 .stats-grid,
+    #page-grade10 .stats-grid,
+    #page-payroll .stats-grid,
+    #page-teachers .stats-grid,
+    #page-cash-flow .stats-grid {
+        display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 12px !important;
-    }
-
-    .cashflow-stats-grid {
-        grid-template-columns: 1fr !important;
-        gap: 12px !important;
-    }
-
-    .detail-grid {
-        grid-template-columns: 1fr !important;
-    }
-
-    .teachers-cards-grid {
-        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        width: 100% !important;
+        margin-bottom: 14px !important;
     }
 
     /* Subtabs Fluid Navigation */
     .payroll-subtabs,
     .clearance-subtabs,
     .view-tabs {
+        display: flex !important;
         flex-wrap: wrap !important;
         gap: 6px !important;
         width: 100% !important;
@@ -8654,13 +8773,17 @@ td.actions-cell > .btn-sm,
     .view-tab {
         flex: 1 1 auto !important;
         text-align: center !important;
-        min-width: 120px !important;
-        padding: 8px 12px !important;
-        font-size: 0.8rem !important;
+        min-width: 110px !important;
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
     }
 
-    /* Touch-Scrollable Data Tables Container */
+    /* 5. Touch-Scrollable Data Tables Container (Zero Page Horizontal Overflow) */
     .table-wrapper,
+    #page-grade7 .table-wrapper,
+    #page-grade8 .table-wrapper,
+    #page-grade9 .table-wrapper,
+    #page-grade10 .table-wrapper,
     #page-cash-flow .table-wrapper,
     #page-payroll .table-wrapper,
     #page-activities .table-wrapper,
@@ -8685,9 +8808,9 @@ td.actions-cell > .btn-sm,
         max-height: none !important;
         border-radius: var(--radius-sm) !important;
         margin-bottom: 16px !important;
+        box-sizing: border-box !important;
     }
 
-    /* Responsive Data Tables inside Scrollable Wrapper */
     .data-table,
     #recentTable,
     #studentsTable,
@@ -8706,51 +8829,73 @@ td.actions-cell > .btn-sm,
     #page-archive .data-table,
     #payrollArchivesTableContainer table {
         table-layout: auto !important;
-        min-width: 720px !important;
+        min-width: 700px !important;
         width: 100% !important;
     }
 
     .data-table th,
     .data-table td {
-        padding: 8px 10px !important;
-        font-size: 0.78rem !important;
+        padding: 8px 8px !important;
+        font-size: 0.76rem !important;
         white-space: nowrap !important;
     }
 
-    /* Modals & Dialogs on Mobile (Zero Overlap & Viewport Fit) */
+    /* 6. Modals & Dialogs (Zero Header/Close-Button Overlap) */
     .modal-overlay {
-        padding: 24px 8px 24px 8px !important;
+        padding: 16px 8px !important;
         align-items: flex-start !important;
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
     }
 
     .modal,
-    .modal-content {
+    .modal-content,
+    .modal-lg,
+    .modal-sm,
+    .modal-overlay > div {
         width: 100% !important;
-        max-width: 96vw !important;
-        margin: 12px auto !important;
-        max-height: 88vh !important;
+        max-width: calc(100vw - 16px) !important;
+        margin: 8px auto !important;
+        max-height: calc(100vh - 32px) !important;
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
         border-radius: 12px !important;
+        box-sizing: border-box !important;
     }
 
     .modal-header {
         position: relative !important;
-        padding: 14px 48px 14px 16px !important; /* ensures title never overlaps close button */
+        padding: 14px 48px 14px 16px !important;
         flex-shrink: 0 !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+    }
+
+    .modal-close {
+        top: 10px !important;
+        right: 10px !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        z-index: 25 !important;
     }
 
     .modal-body {
-        padding: 14px 16px !important;
+        padding: 14px 14px !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
-        max-height: calc(88vh - 120px) !important;
+        max-height: calc(100vh - 140px) !important;
+        box-sizing: border-box !important;
     }
 
     .modal-footer {
         flex-direction: column-reverse !important;
         gap: 8px !important;
-        padding: 12px 16px !important;
+        padding: 12px 14px !important;
         flex-shrink: 0 !important;
     }
 
@@ -8760,38 +8905,62 @@ td.actions-cell > .btn-sm,
         margin: 0 !important;
     }
 
-    /* Student View Profile Modal */
-    #viewModal .view-header {
+    /* Student View Profile Modal Header */
+    #viewModal .modal-header {
         flex-direction: column !important;
         align-items: center !important;
         text-align: center !important;
+        padding: 44px 14px 16px 14px !important;
         gap: 12px !important;
     }
 
-    .view-avatar-wrap {
-        margin: 0 auto !important;
-    }
-
-    .view-header-details {
+    #viewModal .student-profile-header {
+        flex-direction: column !important;
+        align-items: center !important;
         text-align: center !important;
+        gap: 10px !important;
+        width: 100% !important;
     }
 
+    #viewModal .view-header-right-actions {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    /* Detail Rows (Labels & Values) */
+    .detail-row {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        gap: 4px 8px !important;
+        padding: 6px 0 !important;
+    }
+
+    .detail-row span {
+        flex: 1 1 110px !important;
+        min-width: 90px !important;
+        color: var(--text-muted);
+    }
+
+    .detail-row strong {
+        flex: 1 1 150px !important;
+        text-align: right !important;
+        max-width: 100% !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+
+    /* Photo Uploaders */
     .photo-uploader-card,
     .photo-uploader-box {
         flex-direction: column !important;
         align-items: center !important;
         text-align: center !important;
-        gap: 12px !important;
+        gap: 10px !important;
         padding: 12px !important;
-    }
-
-    .photo-preview-wrapper {
-        margin: 0 auto !important;
-    }
-
-    .photo-controls {
-        text-align: center !important;
-        width: 100% !important;
     }
 
     .photo-uploader-actions {
@@ -8804,33 +8973,85 @@ td.actions-cell > .btn-sm,
     .photo-uploader-actions .btn {
         width: 100% !important;
     }
+
+    /* 7. Inputs, Selects & Tap Targets */
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="date"],
+    select,
+    textarea {
+        font-size: 16px !important; /* Prevents auto-zoom on iOS */
+        min-height: 40px !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .btn,
+    button:not(.modal-close):not(.hamburger):not(.toggle-password):not(.theme-switch input) {
+        min-height: 38px !important;
+        touch-action: manipulation;
+    }
+
+    /* Typography & Text Overflow Defense */
+    h1, h2, h3, h4, h5, h6,
+    p, span, div, strong, small, label {
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
 }
 
-/* Small Smart Phones (<= 480px, e.g., 360px - 480px viewports) */
+/* ==========================================================================
+   SMALL MOBILE PHONES (<= 480px down to 375px)
+   ========================================================================== */
 @media (max-width: 480px) {
+    /* Tighten paddings */
     body.view-fit-window .main-content,
     body:has(#page-clearance.active) .main-content,
+    body:has(#page-grade7.active) .main-content,
+    body:has(#page-grade8.active) .main-content,
+    body:has(#page-grade9.active) .main-content,
+    body:has(#page-grade10.active) .main-content,
     body:has(#page-payroll.active) .main-content,
     body:has(#page-teachers.active) .main-content,
     body:has(#page-cash-flow.active) .main-content,
+    body:has(#page-students.active) .main-content,
+    body:has(#page-soa.active) .main-content,
+    body:has(#page-activities.active) .main-content,
+    body:has(#page-alumni.active) .main-content,
+    body:has(#page-archive.active) .main-content,
+    body:has(#page-dashboard.active) .main-content,
+    body:has(.page.active) .main-content,
     .main-content {
         padding-top: 68px !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
         padding-bottom: 24px !important;
     }
 
-    .stats-grid {
+    /* Single Column Stats on small phones */
+    .stats-grid,
+    #page-clearance .stats-grid,
+    #page-grade7 .stats-grid,
+    #page-grade8 .stats-grid,
+    #page-grade9 .stats-grid,
+    #page-grade10 .stats-grid,
+    #page-payroll .stats-grid,
+    #page-teachers .stats-grid,
+    #page-cash-flow .stats-grid {
         grid-template-columns: 1fr !important;
         gap: 10px !important;
     }
 
     .page-title {
-        font-size: 1.2rem !important;
+        font-size: 1.15rem !important;
     }
 
     .page-desc {
-        font-size: 0.76rem !important;
+        font-size: 0.74rem !important;
     }
 
     .header-controls .btn,
@@ -8848,28 +9069,28 @@ td.actions-cell > .btn-sm,
     }
 
     .login-container {
-        padding: 12px !important;
+        padding: 10px !important;
         max-width: 100% !important;
     }
 
     .login-header {
-        padding: 24px 16px 20px !important;
+        padding: 22px 12px 18px !important;
         text-align: center !important;
         align-items: center !important;
         justify-content: center !important;
     }
 
     .login-logo {
-        width: 110px !important;
-        height: 110px !important;
+        width: 100px !important;
+        height: 100px !important;
         margin-bottom: 12px !important;
     }
 
     .login-school-title,
     .login-header h1 {
-        font-size: clamp(0.68rem, 3.2vw, 0.9rem) !important;
+        font-size: clamp(0.66rem, 3.1vw, 0.88rem) !important;
         white-space: nowrap !important;
-        letter-spacing: 0.3px !important;
+        letter-spacing: 0.2px !important;
         text-align: center !important;
         width: 100% !important;
         margin: 0 auto 4px !important;
@@ -8877,7 +9098,7 @@ td.actions-cell > .btn-sm,
     }
 
     .login-body {
-        padding: 20px 16px !important;
+        padding: 18px 12px !important;
     }
 
     .payroll-subtabs .btn-subtab,
@@ -8888,40 +9109,32 @@ td.actions-cell > .btn-sm,
     }
 
     .stat-card {
-        padding: 12px !important;
+        padding: 10px !important;
     }
 
     .stat-icon {
-        width: 40px !important;
-        height: 40px !important;
-        font-size: 1.1rem !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1rem !important;
     }
 
     .stat-number {
-        font-size: 1.4rem !important;
+        font-size: 1.3rem !important;
     }
 
     .modal,
     .modal-content {
-        max-width: 98vw !important;
-        margin: 8px auto !important;
+        max-width: calc(100vw - 12px) !important;
+        margin: 6px auto !important;
     }
 
-    .table-wrapper,
-    #page-cash-flow .table-wrapper,
-    #page-payroll .table-wrapper,
-    #page-activities .table-wrapper,
-    #page-dashboard .table-wrapper,
-    #page-dashboard .recent-card .table-wrapper,
-    #page-clearance .table-wrapper,
-    #page-students .table-wrapper,
-    #page-soa .table-wrapper,
-    #page-teachers .table-wrapper,
-    #teachersTableContainer,
-    #page-alumni .table-wrapper,
-    #page-archive .table-wrapper,
-    #payrollArchivesTableContainer {
-        border-radius: 4px !important;
+    .detail-row span {
+        flex: 1 1 100% !important;
+    }
+
+    .detail-row strong {
+        flex: 1 1 100% !important;
+        text-align: left !important;
     }
 }
 
