@@ -7106,8 +7106,7 @@ body:has(#page-cash-flow.active) .main-content {
 #page-grade8 .data-table thead th,
 #page-grade9 .data-table thead th,
 #page-grade10 .data-table thead th,
-#clearanceTable thead th,
-#promissoryClearanceTable thead th {
+#clearanceTable thead th {
     font-size: 0.85rem !important;
     font-weight: 700 !important;
     padding: 6px 4px !important;
@@ -7121,8 +7120,7 @@ body:has(#page-cash-flow.active) .main-content {
 #page-grade8 .data-table tbody td,
 #page-grade9 .data-table tbody td,
 #page-grade10 .data-table tbody td,
-#clearanceTable tbody td,
-#promissoryClearanceTable tbody td {
+#clearanceTable tbody td {
     font-size: 0.83rem !important;
     line-height: 1.25 !important;
     padding: 5px 4px !important;
@@ -7159,9 +7157,7 @@ body:has(#page-cash-flow.active) .main-content {
 #page-grade9 .data-table .sy-pill,
 #page-grade10 .data-table .sy-pill,
 #clearanceTable .badge,
-#clearanceTable .status-badge,
-#promissoryClearanceTable .badge,
-#promissoryClearanceTable .status-badge {
+#clearanceTable .status-badge {
     font-size: 0.74rem !important;
     padding: 2px 6px !important;
 }
@@ -7170,8 +7166,7 @@ body:has(#page-cash-flow.active) .main-content {
 #page-grade8 .actions-cell .btn-icon,
 #page-grade9 .actions-cell .btn-icon,
 #page-grade10 .actions-cell .btn-icon,
-#clearanceTable .actions-cell .btn-icon,
-#promissoryClearanceTable .actions-cell .btn-icon {
+#clearanceTable .actions-cell .btn-icon {
     width: 25px !important;
     height: 25px !important;
     font-size: 0.74rem !important;
@@ -7226,35 +7221,111 @@ body:has(#page-cash-flow.active) .main-content {
 #clearanceTable th:nth-child(8), #clearanceTable td:nth-child(8) { width: 14.5% !important; text-align: center; }
 #clearanceTable th:nth-child(9), #clearanceTable td:nth-child(9) { width: 14.5% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
 
-/* 6b. Promissory Notes & Granted Overrides (#promissoryClearanceTable: 10 cols - Concise 100% Fit) */
-#promissoryClearanceTable th:nth-child(1), #promissoryClearanceTable td:nth-child(1) { width: 3% !important; text-align: center; }
-#promissoryClearanceTable th:nth-child(2), #promissoryClearanceTable td:nth-child(2) { width: 16% !important; }
-#promissoryClearanceTable th:nth-child(3), #promissoryClearanceTable td:nth-child(3) { width: 9% !important; text-align: center; }
-#promissoryClearanceTable th:nth-child(4), #promissoryClearanceTable td:nth-child(4) { width: 8% !important; text-align: right; }
-#promissoryClearanceTable th:nth-child(5), #promissoryClearanceTable td:nth-child(5) { width: 15% !important; }
-#promissoryClearanceTable th:nth-child(6), #promissoryClearanceTable td:nth-child(6) { width: 13% !important; }
-#promissoryClearanceTable th:nth-child(7), #promissoryClearanceTable td:nth-child(7) { width: 8.5% !important; text-align: center; }
-#promissoryClearanceTable th:nth-child(8), #promissoryClearanceTable td:nth-child(8) { width: 8% !important; text-align: center; }
-#promissoryClearanceTable th:nth-child(9), #promissoryClearanceTable td:nth-child(9) { width: 9.5% !important; }
-#promissoryClearanceTable th:nth-child(10), #promissoryClearanceTable td:nth-child(10) { width: 10% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
+/* 6b. Promissory Notes & Granted Overrides (#promissoryClearanceTable) - Ultra-Efficient Single-Window Fit (Zero Horizontal Scroll) */
+#promissoryClearanceTable {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    box-sizing: border-box !important;
+}
 
-/* 6c. Teacher Role Student Clearance Tables (Net Tuition, Total Paid, SOA Balance Excluded) */
-body.role-teacher #clearanceTable th:nth-child(1), body.role-teacher #clearanceTable td:nth-child(1) { width: 4% !important; text-align: center !important; }
-body.role-teacher #clearanceTable th:nth-child(2), body.role-teacher #clearanceTable td:nth-child(2) { width: 34% !important; text-align: left !important; }
-body.role-teacher #clearanceTable th:nth-child(3), body.role-teacher #clearanceTable td:nth-child(3) { width: 18% !important; text-align: center !important; }
-body.role-teacher #clearanceTable th:nth-child(4), body.role-teacher #clearanceTable td:nth-child(4) { width: 12% !important; text-align: center !important; }
-body.role-teacher #clearanceTable th:nth-child(5), body.role-teacher #clearanceTable td:nth-child(5) { width: 18% !important; text-align: center !important; }
-body.role-teacher #clearanceTable th:nth-child(6), body.role-teacher #clearanceTable td:nth-child(6) { width: 14% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
+#promissoryClearanceTable thead th {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 4px 3px !important;
+    letter-spacing: 0.01em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+    box-sizing: border-box !important;
+    background: #0b2545 !important;
+    color: #ffffff !important;
+}
 
+#promissoryClearanceTable tbody td {
+    font-size: 0.69rem !important;
+    line-height: 1.2 !important;
+    padding: 3px 3px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-sizing: border-box !important;
+    vertical-align: middle !important;
+}
+
+#promissoryClearanceTable tbody td div,
+#promissoryClearanceTable tbody td strong,
+#promissoryClearanceTable tbody td span,
+#promissoryClearanceTable tbody td p,
+#promissoryClearanceTable tbody td b {
+    font-size: 0.69rem !important;
+    line-height: 1.2 !important;
+}
+
+#promissoryClearanceTable tbody td div:nth-child(2) {
+    font-size: 0.63rem !important;
+    line-height: 1.1 !important;
+}
+
+#promissoryClearanceTable .badge,
+#promissoryClearanceTable .status-badge,
+#promissoryClearanceTable .badge-grade {
+    font-size: 0.63rem !important;
+    padding: 1.5px 4.5px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+    border-radius: 3px !important;
+}
+
+#promissoryClearanceTable .actions-cell {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-align: center !important;
+    padding: 2px 2px !important;
+}
+
+#promissoryClearanceTable .actions-cell .btn-icon {
+    width: 21px !important;
+    height: 21px !important;
+    min-width: 21px !important;
+    max-width: 21px !important;
+    font-size: 0.62rem !important;
+    margin: 0 1px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 3px !important;
+}
+
+/* Specific column percentage widths (Strict 100% Fit, Zero Horizontal Scroll) */
+#promissoryClearanceTable th:nth-child(1), #promissoryClearanceTable td:nth-child(1) { width: 3% !important; text-align: center !important; }
+#promissoryClearanceTable th:nth-child(2), #promissoryClearanceTable td:nth-child(2) { width: 17% !important; text-align: left !important; }
+#promissoryClearanceTable th:nth-child(3), #promissoryClearanceTable td:nth-child(3) { width: 9% !important; text-align: center !important; }
+#promissoryClearanceTable th:nth-child(4), #promissoryClearanceTable td:nth-child(4) { width: 7.5% !important; text-align: right !important; }
+#promissoryClearanceTable th:nth-child(5), #promissoryClearanceTable td:nth-child(5) { width: 15% !important; text-align: left !important; }
+#promissoryClearanceTable th:nth-child(6), #promissoryClearanceTable td:nth-child(6) { width: 13% !important; text-align: left !important; }
+#promissoryClearanceTable th:nth-child(7), #promissoryClearanceTable td:nth-child(7) { width: 8.5% !important; text-align: center !important; }
+#promissoryClearanceTable th:nth-child(8), #promissoryClearanceTable td:nth-child(8) { width: 8% !important; text-align: center !important; }
+#promissoryClearanceTable th:nth-child(9), #promissoryClearanceTable td:nth-child(9) { width: 10% !important; text-align: left !important; }
+#promissoryClearanceTable th:nth-child(10), #promissoryClearanceTable td:nth-child(10) { width: 9% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
+
+/* 6c. Teacher Role Promissory Table (9 cols) */
 body.role-teacher #promissoryClearanceTable th:nth-child(1), body.role-teacher #promissoryClearanceTable td:nth-child(1) { width: 3.5% !important; text-align: center !important; }
-body.role-teacher #promissoryClearanceTable th:nth-child(2), body.role-teacher #promissoryClearanceTable td:nth-child(2) { width: 18% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(2), body.role-teacher #promissoryClearanceTable td:nth-child(2) { width: 19% !important; text-align: left !important; }
 body.role-teacher #promissoryClearanceTable th:nth-child(3), body.role-teacher #promissoryClearanceTable td:nth-child(3) { width: 10% !important; text-align: center !important; }
 body.role-teacher #promissoryClearanceTable th:nth-child(4), body.role-teacher #promissoryClearanceTable td:nth-child(4) { width: 17% !important; text-align: left !important; }
-body.role-teacher #promissoryClearanceTable th:nth-child(5), body.role-teacher #promissoryClearanceTable td:nth-child(5) { width: 14% !important; text-align: left !important; }
-body.role-teacher #promissoryClearanceTable th:nth-child(6), body.role-teacher #promissoryClearanceTable td:nth-child(6) { width: 9% !important; text-align: center !important; }
-body.role-teacher #promissoryClearanceTable th:nth-child(7), body.role-teacher #promissoryClearanceTable td:nth-child(7) { width: 8.5% !important; text-align: center !important; }
-body.role-teacher #promissoryClearanceTable th:nth-child(8), body.role-teacher #promissoryClearanceTable td:nth-child(8) { width: 10% !important; text-align: left !important; }
-body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #promissoryClearanceTable td:nth-child(9) { width: 10% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(5), body.role-teacher #promissoryClearanceTable td:nth-child(5) { width: 15% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(6), body.role-teacher #promissoryClearanceTable td:nth-child(6) { width: 9.5% !important; text-align: center !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(7), body.role-teacher #promissoryClearanceTable td:nth-child(7) { width: 9% !important; text-align: center !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(8), body.role-teacher #promissoryClearanceTable td:nth-child(8) { width: 11% !important; text-align: left !important; }
+body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #promissoryClearanceTable td:nth-child(9) { width: 6% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
 
 /* 7. Faculty & Staff Payroll Table */
 /* 7a. Standard / ALL Mode (12 columns) */
@@ -7586,8 +7657,7 @@ body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #
 }
 
 .data-table .badge-grade,
-#clearanceTable .badge-grade,
-#promissoryClearanceTable .badge-grade {
+#clearanceTable .badge-grade {
     font-size: 0.64rem !important;
     padding: 1.5px 4px !important;
 }
@@ -7607,37 +7677,30 @@ body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #
 }
 
 /* Student Clearance Tables Typography (Enlarged and Clear) */
-#clearanceTable tbody td,
-#promissoryClearanceTable tbody td {
+#clearanceTable tbody td {
     font-size: 0.80rem !important;
     line-height: 1.25 !important;
     padding: 6px 4px !important;
 }
 
 #clearanceTable tbody td div,
-#clearanceTable tbody td strong,
-#promissoryClearanceTable tbody td div,
-#promissoryClearanceTable tbody td strong {
+#clearanceTable tbody td strong {
     font-size: 0.80rem !important;
     line-height: 1.25 !important;
 }
 
-#clearanceTable tbody td div:nth-child(2),
-#promissoryClearanceTable tbody td div:nth-child(2) {
+#clearanceTable tbody td div:nth-child(2) {
     font-size: 0.71rem !important;
     line-height: 1.2 !important;
 }
 
 #clearanceTable .status-badge,
-#promissoryClearanceTable .status-badge,
-#clearanceTable .badge-grade,
-#promissoryClearanceTable .badge-grade {
+#clearanceTable .badge-grade {
     font-size: 0.72rem !important;
     padding: 2.5px 6px !important;
 }
 
-#clearanceTable td.actions-cell .btn-icon,
-#promissoryClearanceTable td.actions-cell .btn-icon {
+#clearanceTable td.actions-cell .btn-icon {
     width: 24px !important;
     height: 24px !important;
     min-width: 24px !important;

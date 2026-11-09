@@ -8043,29 +8043,29 @@ function renderPromissoryTableHead() {
         thead.innerHTML = `
             <tr>
                 <th style="width: 3.5%; text-align:center;">#</th>
-                <th style="width: 18%;">Learner Name &amp; LRN</th>
+                <th style="width: 19%;">Learner Name &amp; LRN</th>
                 <th style="width: 10%; text-align:center;">Grade &amp; Section</th>
                 <th style="width: 17%;">Override Basis / Reason</th>
-                <th style="width: 14%;">Authorized By</th>
-                <th style="width: 9%; text-align:center;">Promised Pay Date</th>
-                <th style="width: 8.5%; text-align:center;">Remaining Days</th>
-                <th style="width: 10%;">Remarks &amp; Agreement Terms</th>
-                <th style="width: 10%; text-align:center;">Actions</th>
+                <th style="width: 15%;">Authorized By</th>
+                <th style="width: 9.5%; text-align:center;">Promised Pay Date</th>
+                <th style="width: 9%; text-align:center;">Remaining Days</th>
+                <th style="width: 11%;">Remarks &amp; Agreement Terms</th>
+                <th style="width: 6%; text-align:center;">Actions</th>
             </tr>
         `;
     } else {
         thead.innerHTML = `
             <tr>
                 <th style="width: 3%; text-align:center;">#</th>
-                <th style="width: 16%;">Learner Name &amp; LRN</th>
+                <th style="width: 17%;">Learner Name &amp; LRN</th>
                 <th style="width: 9%; text-align:center;">Grade &amp; Section</th>
-                <th style="width: 8%;" class="text-right">Balance (&#8369;)</th>
+                <th style="width: 7.5%;" class="text-right">Balance (&#8369;)</th>
                 <th style="width: 15%;">Override Basis / Reason</th>
                 <th style="width: 13%;">Authorized By</th>
                 <th style="width: 8.5%; text-align:center;">Promised Pay Date</th>
                 <th style="width: 8%; text-align:center;">Remaining Days</th>
-                <th style="width: 9.5%;">Remarks &amp; Agreement Terms</th>
-                <th style="width: 10%; text-align:center;">Actions</th>
+                <th style="width: 10%;">Remarks &amp; Agreement Terms</th>
+                <th style="width: 9%; text-align:center;">Actions</th>
             </tr>
         `;
     }
@@ -8114,57 +8114,57 @@ function renderPromissoryClearanceTable() {
         const countdownHtml = getCountdownBadge(ov.dueDate);
 
         let actionBtns = isUserTeacher ? `
-            <button type="button" class="btn-icon" onclick="viewStudent('${item.id}')" title="View Learner Profile" style="background:#f1f5f9; color:#0b2545; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+            <button type="button" class="btn-icon" onclick="viewStudent('${item.id}')" title="View Learner Profile" style="background:#f1f5f9; color:#0b2545; width:21px; height:21px; border-radius:3px; font-size:0.62rem; margin:0 1px;">
                 <i class="fas fa-eye"></i>
             </button>
         ` : `
-            <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Statement of Account" style="background:#ecfdf5; color:#15803d; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+            <button type="button" class="btn-icon soa" onclick="openSOAModal('${item.id}')" title="View Statement of Account" style="background:#ecfdf5; color:#15803d; width:21px; height:21px; border-radius:3px; font-size:0.62rem; margin:0 1px;">
                 <i class="fas fa-file-invoice-dollar"></i>
             </button>
-            <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+            <button type="button" class="btn-icon edit" onclick="openClearanceOverrideModal('${item.id}')" title="Edit Override Terms or Promised Date" style="background:#fef3c7; color:#d97706; width:21px; height:21px; border-radius:3px; font-size:0.62rem; margin:0 1px;">
                 <i class="fas fa-user-edit"></i>
             </button>
-            <button type="button" class="btn-icon delete" onclick="revokeClearanceOverrideById('${item.id}')" title="Revoke Clearance Override (Admin Authorization Required)" style="background:#fee2e2; color:#dc2626; width:24px; height:24px; border-radius:4px; font-size:0.70rem; margin:0 2px;">
+            <button type="button" class="btn-icon delete" onclick="revokeClearanceOverrideById('${item.id}')" title="Revoke Clearance Override (Admin Authorization Required)" style="background:#fee2e2; color:#dc2626; width:21px; height:21px; border-radius:3px; font-size:0.62rem; margin:0 1px;">
                 <i class="fas fa-trash-alt"></i>
             </button>
         `;
 
         const balanceCell = isUserTeacher ? '' : `
-            <td class="text-right text-danger" style="font-weight:700; font-size:0.80rem;">
+            <td class="text-right text-danger" style="font-weight:700; font-size:0.69rem;">
                 &#8369;${formatNumber(item.remainingBalance)}
             </td>
         `;
 
         return `
             <tr>
-                <td style="color:#64748b; font-size:0.78rem; font-weight:600; text-align:center;">${idx + 1}</td>
+                <td style="color:#64748b; font-size:0.68rem; font-weight:600; text-align:center;">${idx + 1}</td>
                 <td>
-                    <div style="font-weight:700; color:#0b2545; font-size:0.80rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(item.fullName)}">${escapeHtml(item.fullName)}</div>
-                    <div style="font-size:0.71rem; color:#64748b; font-family:monospace; margin-top:1px;">LRN: ${escapeHtml(item.lrn)}</div>
+                    <div style="font-weight:700; color:#0b2545; font-size:0.71rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(item.fullName)}">${escapeHtml(item.fullName)}</div>
+                    <div style="font-size:0.63rem; color:#64748b; font-family:monospace; margin-top:1px;">LRN: ${escapeHtml(item.lrn)}</div>
                 </td>
                 <td style="text-align:center;">
-                    <span class="badge-grade" style="font-weight:600; font-size:0.72rem; white-space:nowrap; padding:2px 6px;">Grade ${escapeHtml(item.gradeLevel)} - ${escapeHtml(item.section)}</span>
+                    <span class="badge-grade" style="font-weight:600; font-size:0.65rem; white-space:nowrap; padding:1.5px 4px;">Grade ${escapeHtml(item.gradeLevel)} - ${escapeHtml(item.section)}</span>
                 </td>
                 ${balanceCell}
                 <td style="overflow:hidden;">
-                    <span style="display:inline-block; max-width:100%; padding:2.5px 6px; border-radius:4px; background:#fef3c7; color:#92400e; font-weight:700; font-size:0.72rem; border:1px solid #fde68a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-sizing:border-box; vertical-align:middle;" title="${escapeHtml(ov.reason || 'Promissory Note Filed')}">
+                    <span style="display:inline-block; max-width:100%; padding:1.5px 4px; border-radius:3px; background:#fef3c7; color:#92400e; font-weight:700; font-size:0.65rem; border:1px solid #fde68a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-sizing:border-box; vertical-align:middle;" title="${escapeHtml(ov.reason || 'Promissory Note Filed')}">
                         <i class="fas fa-file-signature"></i> ${escapeHtml(ov.reason || 'Promissory Note Filed')}
                     </span>
                 </td>
                 <td style="overflow:hidden;">
-                    <div style="font-weight:600; font-size:0.75rem; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(ov.authorizedBy || 'Administration')}">
-                        <i class="fas fa-user-check" style="color:#0284c7; margin-right:3px; font-size:0.70rem;"></i>${escapeHtml(ov.authorizedBy || 'Administration')}
+                    <div style="font-weight:600; font-size:0.69rem; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(ov.authorizedBy || 'Administration')}">
+                        <i class="fas fa-user-check" style="color:#0284c7; margin-right:2px; font-size:0.62rem;"></i>${escapeHtml(ov.authorizedBy || 'Administration')}
                     </div>
-                    <div style="font-size:0.68rem; color:#64748b; margin-top:1px;">Granted: ${escapeHtml(ov.dateStr || '—')}</div>
+                    <div style="font-size:0.62rem; color:#64748b; margin-top:1px;">Granted: ${escapeHtml(ov.dateStr || '—')}</div>
                 </td>
-                <td style="font-weight:600; font-size:0.75rem; color:#0f172a; white-space:nowrap; text-align:center;">
-                    ${ov.dueDate ? `<i class="fas fa-calendar-day" style="color:#0284c7; margin-right:3px; font-size:0.70rem;"></i>${escapeHtml(ov.dueDate)}` : '<span style="color:#94a3b8; font-style:italic;">Before Exams</span>'}
+                <td style="font-weight:600; font-size:0.69rem; color:#0f172a; white-space:nowrap; text-align:center;">
+                    ${ov.dueDate ? `<i class="fas fa-calendar-day" style="color:#0284c7; margin-right:2px; font-size:0.62rem;"></i>${escapeHtml(ov.dueDate)}` : '<span style="color:#94a3b8; font-style:italic;">Before Exams</span>'}
                 </td>
                 <td style="text-align:center;">
                     ${countdownHtml}
                 </td>
                 <td>
-                    <div style="font-size:0.73rem; color:#334155; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(ov.notes || 'No remarks')}">
+                    <div style="font-size:0.66rem; color:#334155; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(ov.notes || 'No remarks')}">
                         ${escapeHtml(ov.notes || 'No remarks')}
                     </div>
                 </td>
