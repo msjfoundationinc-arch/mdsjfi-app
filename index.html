@@ -97,8 +97,7 @@
                     <div class="login-logo">
                         <img src="school-logo.png" alt="Montessori de San Jose Foundation Inc. Logo">
                     </div>
-                    <h1>Montessori de San Jose</h1>
-                    <h2>Foundation Inc.</h2>
+                    <h1 class="login-school-title">MONTESSORI DE SAN JOSE FOUNDATION INC.</h1>
                     <p class="login-tagline">Database Management System</p>
                     <div class="login-welcome-banner">
                         <div class="login-welcome-title">Welcome back, Personnel!</div>
@@ -260,15 +259,44 @@
         }
     };
     window.handleBirthRegionChange = function(val) {
+        var bReg = document.getElementById('birthRegion');
         var bProv = document.getElementById('birthProvince');
         var bMuni = document.getElementById('birthMunicipality');
         var bBrgy = document.getElementById('birthBarangay');
         if (typeof populateProvinceSelect === 'function') {
             populateProvinceSelect(bProv, val, '', '-- Select Province --');
             populateMunicipalitySelect(bMuni, '', '', '-- Select Province First --');
-            populateBarangaySelect(bBrgy, '', '', '', '-- Select Municipality First --');
+            populateBarangaySelect(bBrgy, '', '', '', '-- Select City/Municipality First --');
             if (typeof updateBirthPlaceHidden === 'function') updateBirthPlaceHidden();
         }
+    };
+    window.handleBirthProvinceChange = function(val) {
+        var bReg = document.getElementById('birthRegion');
+        var bMuni = document.getElementById('birthMunicipality');
+        var bBrgy = document.getElementById('birthBarangay');
+        if (val && typeof PH_GEO_DATA !== 'undefined' && bReg) {
+            var regObj = PH_GEO_DATA.getRegionOfProvince(val);
+            if (regObj && (!bReg.value || bReg.value !== regObj.code)) {
+                bReg.value = regObj.code;
+            }
+        }
+        if (typeof populateMunicipalitySelect === 'function') {
+            populateMunicipalitySelect(bMuni, val, '', val ? '-- Select Municipality / City --' : '-- Select Province First --');
+            populateBarangaySelect(bBrgy, '', val, '', '-- Select City/Municipality First --');
+            if (typeof updateBirthPlaceHidden === 'function') updateBirthPlaceHidden();
+        }
+    };
+    window.handleBirthMunicipalityChange = function(val) {
+        var bProv = document.getElementById('birthProvince');
+        var bBrgy = document.getElementById('birthBarangay');
+        var pVal = bProv ? bProv.value : '';
+        if (typeof populateBarangaySelect === 'function') {
+            populateBarangaySelect(bBrgy, val, pVal, '', val ? '-- Select Barangay --' : '-- Select City/Municipality First --');
+            if (typeof updateBirthPlaceHidden === 'function') updateBirthPlaceHidden();
+        }
+    };
+    window.handleBirthBarangayChange = function(val) {
+        if (typeof updateBirthPlaceHidden === 'function') updateBirthPlaceHidden();
     };
     window.handleAddrRegionChange = function(val) {
         var aProv = document.getElementById('addrProvince');
@@ -277,9 +305,37 @@
         if (typeof populateProvinceSelect === 'function') {
             populateProvinceSelect(aProv, val, '', '-- Select Province --');
             populateMunicipalitySelect(aMuni, '', '', '-- Select Province First --');
-            populateBarangaySelect(aBrgy, '', '', '', '-- Select Municipality First --');
+            populateBarangaySelect(aBrgy, '', '', '', '-- Select City/Municipality First --');
             if (typeof updateAddressHidden === 'function') updateAddressHidden();
         }
+    };
+    window.handleAddrProvinceChange = function(val) {
+        var aReg = document.getElementById('addrRegion');
+        var aMuni = document.getElementById('addrMunicipality');
+        var aBrgy = document.getElementById('addrBarangay');
+        if (val && typeof PH_GEO_DATA !== 'undefined' && aReg) {
+            var regObj = PH_GEO_DATA.getRegionOfProvince(val);
+            if (regObj && (!aReg.value || aReg.value !== regObj.code)) {
+                aReg.value = regObj.code;
+            }
+        }
+        if (typeof populateMunicipalitySelect === 'function') {
+            populateMunicipalitySelect(aMuni, val, '', val ? '-- Select Municipality / City --' : '-- Select Province First --');
+            populateBarangaySelect(aBrgy, '', val, '', '-- Select City/Municipality First --');
+            if (typeof updateAddressHidden === 'function') updateAddressHidden();
+        }
+    };
+    window.handleAddrMunicipalityChange = function(val) {
+        var aProv = document.getElementById('addrProvince');
+        var aBrgy = document.getElementById('addrBarangay');
+        var pVal = aProv ? aProv.value : '';
+        if (typeof populateBarangaySelect === 'function') {
+            populateBarangaySelect(aBrgy, val, pVal, '', val ? '-- Select Barangay --' : '-- Select City/Municipality First --');
+            if (typeof updateAddressHidden === 'function') updateAddressHidden();
+        }
+    };
+    window.handleAddrBarangayChange = function(val) {
+        if (typeof updateAddressHidden === 'function') updateAddressHidden();
     };
     window.handleForgotPassword = function(event) {
         if (event) {
@@ -1949,16 +2005,16 @@
             <div class="table-wrapper">
                 <table class="data-table sortable" id="studentsTable">
                     <colgroup>
-                        <col style="width: 3.5%;">
+                        <col style="width: 5%;">
                         <col style="width: 10%;">
-                        <col style="width: 21%;">
-                        <col style="width: 7.5%;">
+                        <col style="width: 20%;">
+                        <col style="width: 7%;">
                         <col style="width: 6.5%;">
-                        <col style="width: 7.5%;">
+                        <col style="width: 7%;">
                         <col style="width: 6.5%;">
-                        <col style="width: 5.5%;">
-                        <col style="width: 6.5%;">
-                        <col style="width: 12.5%;">
+                        <col style="width: 6%;">
+                        <col style="width: 7%;">
+                        <col style="width: 12%;">
                         <col style="width: 13%;">
                     </colgroup>
                     <thead>
@@ -2203,19 +2259,19 @@
                         </div>
                         <div class="form-group">
                             <label for="birthProvince">Place of Birth: Province <span class="required">*</span></label>
-                            <select id="birthProvince" required>
+                            <select id="birthProvince" required onchange="handleBirthProvinceChange(this.value)">
                                 <option value="">-- Select Region First --</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="birthMunicipality">Place of Birth: Municipality / City <span class="required">*</span></label>
-                            <select id="birthMunicipality" required>
+                            <select id="birthMunicipality" required onchange="handleBirthMunicipalityChange(this.value)">
                                 <option value="">-- Select Province First --</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="birthBarangay">Place of Birth: Barangay <small style="font-weight: normal; color: var(--text-secondary);">(Optional)</small></label>
-                            <select id="birthBarangay">
+                            <select id="birthBarangay" onchange="handleBirthBarangayChange(this.value)">
                                 <option value="">-- Select City/Municipality First --</option>
                             </select>
                             <input type="hidden" id="birthPlace">
@@ -2320,19 +2376,19 @@
                         </div>
                         <div class="form-group">
                             <label for="addrProvince">Province <span class="required">*</span></label>
-                            <select id="addrProvince" required>
+                            <select id="addrProvince" required onchange="handleAddrProvinceChange(this.value)">
                                 <option value="">-- Select Region First --</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="addrMunicipality">Municipality / City <span class="required">*</span></label>
-                            <select id="addrMunicipality" required>
+                            <select id="addrMunicipality" required onchange="handleAddrMunicipalityChange(this.value)">
                                 <option value="">-- Select Province First --</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="addrBarangay">Barangay <span class="required">*</span></label>
-                            <select id="addrBarangay" required>
+                            <select id="addrBarangay" required onchange="handleAddrBarangayChange(this.value)">
                                 <option value="">-- Select City/Municipality First --</option>
                             </select>
                         </div>

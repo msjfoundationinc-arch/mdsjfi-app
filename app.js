@@ -4399,11 +4399,12 @@ function populateProvinceSelect(selectEl, regionVal, selectedVal, placeholder = 
 
 function populateMunicipalitySelect(muniEl, provVal, selectedVal, placeholder = '-- Select Municipality / City --') {
     if (!muniEl || typeof PH_GEO_DATA === 'undefined') return;
-    const munis = provVal ? PH_GEO_DATA.getMunicipalities(provVal) : PH_GEO_DATA.getAllMunicipalities();
+    const munis = provVal ? PH_GEO_DATA.getMunicipalities(provVal) : [];
     muniEl.disabled = false;
     muniEl.innerHTML = `<option value="">${placeholder}</option>` +
         munis.map(m => `<option value="${m}" ${m === selectedVal ? 'selected' : ''}>${m}</option>`).join('');
-    if (selectedVal) muniEl.value = selectedVal;
+    if (selectedVal && munis.includes(selectedVal)) muniEl.value = selectedVal;
+    else if (!selectedVal) muniEl.value = '';
 }
 
 function populateBarangaySelect(brgyEl, muniVal, provVal, selectedVal, placeholder = '-- Select Barangay --') {
@@ -4412,7 +4413,8 @@ function populateBarangaySelect(brgyEl, muniVal, provVal, selectedVal, placehold
     brgyEl.disabled = false;
     brgyEl.innerHTML = `<option value="">${placeholder}</option>` +
         brgys.map(b => `<option value="${b}" ${b === selectedVal ? 'selected' : ''}>${b}</option>`).join('');
-    if (selectedVal) brgyEl.value = selectedVal;
+    if (selectedVal && brgys.includes(selectedVal)) brgyEl.value = selectedVal;
+    else if (!selectedVal) brgyEl.value = '';
 }
 
 function updateBirthPlaceHidden() {
@@ -4451,80 +4453,30 @@ function initGeoDropdowns() {
     const aMuni = document.getElementById('addrMunicipality');
     const aBrgy = document.getElementById('addrBarangay');
 
-    // Initialize with blank '-- Select Region --' prompt without forcing CALABARZON as default
+    // Initialize with blank prompts and clean cascaded state
     populateRegionSelect(bReg, '', '-- Select Region --');
-    populateProvinceSelect(bProv, '', '', '-- Select Region First --');
+    populateProvinceSelect(bProv, '', '', '-- Select Province --');
     populateMunicipalitySelect(bMuni, '', '', '-- Select Province First --');
     populateBarangaySelect(bBrgy, '', '', '', '-- Select City/Municipality First --');
     updateBirthPlaceHidden();
 
     populateRegionSelect(aReg, '', '-- Select Region --');
-    populateProvinceSelect(aProv, '', '', '-- Select Region First --');
+    populateProvinceSelect(aProv, '', '', '-- Select Province --');
     populateMunicipalitySelect(aMuni, '', '', '-- Select Province First --');
     populateBarangaySelect(aBrgy, '', '', '', '-- Select City/Municipality First --');
     updateAddressHidden();
 
     // Cascading Listeners for Place of Birth
-    if (bReg) {
-        bReg.onchange = () => {
-            const regVal = bReg.value;
-            populateProvinceSelect(bProv, regVal, '', '-- Select Province --');
-            populateMunicipalitySelect(bMuni, '', '', '-- Select Province First --');
-            populateBarangaySelect(bBrgy, '', '', '', '-- Select Municipality First --');
-            updateBirthPlaceHidden();
-        };
-    }
-
-    if (bProv) {
-        bProv.onchange = () => {
-            populateMunicipalitySelect(bMuni, bProv.value, '', '-- Select Municipality / City --');
-            populateBarangaySelect(bBrgy, '', bProv.value, '', '-- Select Municipality First --');
-            updateBirthPlaceHidden();
-        };
-    }
-
-    if (bMuni) {
-        bMuni.onchange = () => {
-            const provVal = bProv ? bProv.value : '';
-            populateBarangaySelect(bBrgy, bMuni.value, provVal, '', '-- Select Barangay --');
-            updateBirthPlaceHidden();
-        };
-    }
-
-    if (bBrgy) {
-        bBrgy.onchange = updateBirthPlaceHidden;
-    }
+    if (bReg) bReg.onchange = () => handleBirthRegionChange(bReg.value);
+    if (bProv) bProv.onchange = () => handleBirthProvinceChange(bProv.value);
+    if (bMuni) bMuni.onchange = () => handleBirthMunicipalityChange(bMuni.value);
+    if (bBrgy) bBrgy.onchange = () => handleBirthBarangayChange(bBrgy.value);
 
     // Cascading Listeners for Address
-    if (aReg) {
-        aReg.onchange = () => {
-            const regVal = aReg.value;
-            populateProvinceSelect(aProv, regVal, '', '-- Select Province --');
-            populateMunicipalitySelect(aMuni, '', '', '-- Select Province First --');
-            populateBarangaySelect(aBrgy, '', '', '', '-- Select Municipality First --');
-            updateAddressHidden();
-        };
-    }
-
-    if (aProv) {
-        aProv.onchange = () => {
-            populateMunicipalitySelect(aMuni, aProv.value, '', '-- Select Municipality / City --');
-            populateBarangaySelect(aBrgy, '', aProv.value, '', '-- Select Municipality First --');
-            updateAddressHidden();
-        };
-    }
-
-    if (aMuni) {
-        aMuni.onchange = () => {
-            const provVal = aProv ? aProv.value : '';
-            populateBarangaySelect(aBrgy, aMuni.value, provVal, '', '-- Select Barangay --');
-            updateAddressHidden();
-        };
-    }
-
-    if (aBrgy) {
-        aBrgy.onchange = updateAddressHidden;
-    }
+    if (aReg) aReg.onchange = () => handleAddrRegionChange(aReg.value);
+    if (aProv) aProv.onchange = () => handleAddrProvinceChange(aProv.value);
+    if (aMuni) aMuni.onchange = () => handleAddrMunicipalityChange(aMuni.value);
+    if (aBrgy) aBrgy.onchange = () => handleAddrBarangayChange(aBrgy.value);
 }
 
 function handleBirthRegionChange(val) {
@@ -4534,9 +4486,40 @@ function handleBirthRegionChange(val) {
     if (typeof populateProvinceSelect === 'function') {
         populateProvinceSelect(bProv, val, '', '-- Select Province --');
         populateMunicipalitySelect(bMuni, '', '', '-- Select Province First --');
-        populateBarangaySelect(bBrgy, '', '', '', '-- Select Municipality First --');
-        if (typeof updateBirthPlaceHidden === 'function') updateBirthPlaceHidden();
+        populateBarangaySelect(bBrgy, '', '', '', '-- Select City/Municipality First --');
+        updateBirthPlaceHidden();
     }
+}
+
+function handleBirthProvinceChange(val) {
+    const bReg = document.getElementById('birthRegion');
+    const bMuni = document.getElementById('birthMunicipality');
+    const bBrgy = document.getElementById('birthBarangay');
+    if (val && typeof PH_GEO_DATA !== 'undefined' && bReg) {
+        const regObj = PH_GEO_DATA.getRegionOfProvince(val);
+        if (regObj && (!bReg.value || bReg.value !== regObj.code)) {
+            bReg.value = regObj.code;
+        }
+    }
+    if (typeof populateMunicipalitySelect === 'function') {
+        populateMunicipalitySelect(bMuni, val, '', val ? '-- Select Municipality / City --' : '-- Select Province First --');
+        populateBarangaySelect(bBrgy, '', val, '', '-- Select City/Municipality First --');
+        updateBirthPlaceHidden();
+    }
+}
+
+function handleBirthMunicipalityChange(val) {
+    const bProv = document.getElementById('birthProvince');
+    const bBrgy = document.getElementById('birthBarangay');
+    const pVal = bProv ? bProv.value : '';
+    if (typeof populateBarangaySelect === 'function') {
+        populateBarangaySelect(bBrgy, val, pVal, '', val ? '-- Select Barangay --' : '-- Select City/Municipality First --');
+        updateBirthPlaceHidden();
+    }
+}
+
+function handleBirthBarangayChange(val) {
+    updateBirthPlaceHidden();
 }
 
 function handleAddrRegionChange(val) {
@@ -4546,10 +4529,50 @@ function handleAddrRegionChange(val) {
     if (typeof populateProvinceSelect === 'function') {
         populateProvinceSelect(aProv, val, '', '-- Select Province --');
         populateMunicipalitySelect(aMuni, '', '', '-- Select Province First --');
-        populateBarangaySelect(aBrgy, '', '', '', '-- Select Municipality First --');
-        if (typeof updateAddressHidden === 'function') updateAddressHidden();
+        populateBarangaySelect(aBrgy, '', '', '', '-- Select City/Municipality First --');
+        updateAddressHidden();
     }
 }
+
+function handleAddrProvinceChange(val) {
+    const aReg = document.getElementById('addrRegion');
+    const aMuni = document.getElementById('addrMunicipality');
+    const aBrgy = document.getElementById('addrBarangay');
+    if (val && typeof PH_GEO_DATA !== 'undefined' && aReg) {
+        const regObj = PH_GEO_DATA.getRegionOfProvince(val);
+        if (regObj && (!aReg.value || aReg.value !== regObj.code)) {
+            aReg.value = regObj.code;
+        }
+    }
+    if (typeof populateMunicipalitySelect === 'function') {
+        populateMunicipalitySelect(aMuni, val, '', val ? '-- Select Municipality / City --' : '-- Select Province First --');
+        populateBarangaySelect(aBrgy, '', val, '', '-- Select City/Municipality First --');
+        updateAddressHidden();
+    }
+}
+
+function handleAddrMunicipalityChange(val) {
+    const aProv = document.getElementById('addrProvince');
+    const aBrgy = document.getElementById('addrBarangay');
+    const pVal = aProv ? aProv.value : '';
+    if (typeof populateBarangaySelect === 'function') {
+        populateBarangaySelect(aBrgy, val, pVal, '', val ? '-- Select Barangay --' : '-- Select City/Municipality First --');
+        updateAddressHidden();
+    }
+}
+
+function handleAddrBarangayChange(val) {
+    updateAddressHidden();
+}
+
+window.handleBirthRegionChange = handleBirthRegionChange;
+window.handleBirthProvinceChange = handleBirthProvinceChange;
+window.handleBirthMunicipalityChange = handleBirthMunicipalityChange;
+window.handleBirthBarangayChange = handleBirthBarangayChange;
+window.handleAddrRegionChange = handleAddrRegionChange;
+window.handleAddrProvinceChange = handleAddrProvinceChange;
+window.handleAddrMunicipalityChange = handleAddrMunicipalityChange;
+window.handleAddrBarangayChange = handleAddrBarangayChange;
 
 function handleReligionChange(val) {
     const container = document.getElementById('religionOtherContainer');
