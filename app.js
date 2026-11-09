@@ -26,9 +26,124 @@ const ROWS_PER_PAGE = 15;
 const DEFAULT_BASE_TUITION = 13000;
 
 const USERS = [
-    { id: "admin", username: "admin", password: "admin123", displayName: "NI\u00D1O ALOYSIUS B. COLEGADO", role: "School President", avatar: "president-avatar.jpg" },
-    { id: "registrar", username: "registrar", password: "mdsjfiregistrar", displayName: "CARRELLE B. COLEGADO", role: "Registrar / In-Charge, Accounting", avatar: "registrar-avatar.jpg" },
-    { id: "teacher", username: "teacher", password: "mdsjfiteacher", displayName: "FACULTY TEACHER", role: "Faculty / Class Adviser", avatar: "" }
+    {
+        id: "admin",
+        username: "admin",
+        password: "admin123",
+        displayName: "NI\u00D1O ALOYSIUS B. COLEGADO",
+        role: "School President",
+        department: "Administration",
+        avatar: "president-avatar.jpg"
+    },
+    {
+        id: "registrar",
+        username: "registrar",
+        password: "mdsjfiregistrar",
+        displayName: "CARRELLE B. COLEGADO",
+        role: "Registrar / In-Charge, Accounting",
+        department: "Registrar & Accounting Office",
+        avatar: "registrar-avatar.jpg"
+    },
+    {
+        id: "teacher",
+        username: "teacher",
+        password: "mdsjfiteacher",
+        displayName: "FACULTY TEACHER",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        avatar: ""
+    },
+    {
+        id: "emp-t001",
+        empId: "EMP-T001",
+        employeeNo: "T001",
+        username: "resteban",
+        aliases: ["t001", "emp-t001"],
+        password: "mdsjfi_t001",
+        displayName: "ROSABELYN R. ESTEBAN",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        position: "AP Teacher",
+        avatar: ""
+    },
+    {
+        id: "emp-t002",
+        empId: "EMP-T002",
+        employeeNo: "T002",
+        username: "mbarel",
+        aliases: ["t002", "emp-t002"],
+        password: "mdsjfi_t002",
+        displayName: "MICA MAE B. BAREL",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        position: "Science, MAPEH & ESP Teacher",
+        avatar: ""
+    },
+    {
+        id: "emp-t004",
+        empId: "EMP-T004",
+        employeeNo: "T004",
+        username: "lbartolo",
+        aliases: ["t004", "emp-t004"],
+        password: "mdsjfi_t004",
+        displayName: "LUCKY IRICH M. BARTOLO",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        position: "TLE, ESP & MAPEH Teacher",
+        avatar: ""
+    },
+    {
+        id: "emp-t005",
+        empId: "EMP-T005",
+        employeeNo: "T005",
+        username: "gaguilana",
+        aliases: ["t005", "emp-t005"],
+        password: "mdsjfi_t005",
+        displayName: "GENELYN P. AGUILANA",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        position: "Filipino & ESP Teacher",
+        avatar: ""
+    },
+    {
+        id: "emp-t006",
+        empId: "EMP-T006",
+        employeeNo: "T006",
+        username: "rasong",
+        aliases: ["t006", "emp-t006"],
+        password: "mdsjfi_t006",
+        displayName: "REA MEA M. ASONG",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        position: "English & ESP Teacher",
+        avatar: ""
+    },
+    {
+        id: "emp-t007",
+        empId: "EMP-T007",
+        employeeNo: "T007",
+        username: "mfabrigas",
+        aliases: ["t007", "emp-t007"],
+        password: "mdsjfi_t007",
+        displayName: "MARA LYKKA G. FABRIGAS",
+        role: "Faculty / Class Adviser",
+        department: "Junior High School Faculty",
+        position: "Math & MAPEH Teacher",
+        avatar: ""
+    },
+    {
+        id: "emp-t008",
+        empId: "EMP-T008",
+        employeeNo: "T008",
+        username: "gcansuncad",
+        aliases: ["t008", "emp-t008", "principal"],
+        password: "mdsjfi_t008",
+        displayName: "GANITO P. CANSUNCAD",
+        role: "School Principal / Academic Head",
+        department: "School Administration & Faculty",
+        position: "School Principal",
+        avatar: ""
+    }
 ];
 
 let students = [];
@@ -10794,6 +10909,14 @@ function openTeacherProfileModal(empId) {
         const clean = empId.trim().toLowerCase();
         emp = all.find(e => (e.id && e.id.toLowerCase() === clean) || (e.employeeNo && e.employeeNo.toLowerCase() === clean) || (e.name && e.name.toLowerCase().includes(clean)));
     }
+    if (!emp) {
+        const curU = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+        if (curU && (curU.empId || curU.employeeNo)) {
+            const uEmpId = (curU.empId || ('EMP-' + curU.employeeNo)).toLowerCase();
+            const uEmpNo = (curU.employeeNo || (curU.empId || '').replace(/^EMP-/, '')).toLowerCase();
+            emp = all.find(e => (e.id && e.id.toLowerCase() === uEmpId) || (e.employeeNo && e.employeeNo.toLowerCase() === uEmpNo));
+        }
+    }
     if (!emp && all.length > 0) {
         emp = all[0];
     }
@@ -11064,6 +11187,16 @@ function openEditTeacherDetailsModal(empId) {
         return;
     }
 
+    const curU = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+    if (isUserTeacher && curU && (curU.empId || curU.employeeNo)) {
+        const uEmpId = (curU.empId || ('EMP-' + curU.employeeNo)).toLowerCase();
+        const uEmpNo = (curU.employeeNo || (curU.empId || '').replace(/^EMP-/, '')).toLowerCase();
+        if ((emp.id && emp.id.toLowerCase() !== uEmpId) && (emp.employeeNo && emp.employeeNo.toLowerCase() !== uEmpNo)) {
+            showToast('Access Restricted: You are logged in as ' + (curU.displayName || 'Faculty') + '. You can only edit your own faculty profile.', 'warning');
+            return;
+        }
+    }
+
     document.getElementById('editTeacherEmpId').value = emp.id;
     document.getElementById('editTeacherDetailsTitle').textContent = `Edit Profile: ${emp.name} (${emp.employeeNo})`;
 
@@ -11210,7 +11343,7 @@ function handleSaveTeacherDetails(e) {
 
         try {
             const u = getCurrentUser();
-            if (u && (u.username === 'teacher' || (u.role && u.role.toLowerCase().includes('teacher')))) {
+            if (u && u.username !== 'teacher' && (u.empId || (u.role && u.role.toLowerCase().includes('teacher')))) {
                 u.displayName = name;
                 sessionStorage.setItem('currentUser', JSON.stringify(u));
                 localStorage.setItem('currentUser', JSON.stringify(u));
@@ -11382,6 +11515,15 @@ function openTeacherPhotoModal(empId) {
         if (savedEmpIdByTeacher && savedEmpIdByTeacher !== emp.id) {
             showToast('Access Restricted: You cannot modify pictures of other faculty members.', 'warning');
             return;
+        }
+        const curU = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+        if (curU && (curU.empId || curU.employeeNo)) {
+            const uEmpId = (curU.empId || ('EMP-' + curU.employeeNo)).toLowerCase();
+            const uEmpNo = (curU.employeeNo || (curU.empId || '').replace(/^EMP-/, '')).toLowerCase();
+            if ((emp.id && emp.id.toLowerCase() !== uEmpId) && (emp.employeeNo && emp.employeeNo.toLowerCase() !== uEmpNo)) {
+                showToast('Access Restricted: You are logged in as ' + (curU.displayName || 'Faculty') + '. You can only modify your own profile picture.', 'warning');
+                return;
+            }
         }
     }
 

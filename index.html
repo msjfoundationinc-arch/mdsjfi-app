@@ -374,21 +374,118 @@
                 username: "admin",
                 password: "admin123",
                 displayName: "NI\u00D1O ALOYSIUS B. COLEGADO",
-                role: "School President"
+                role: "School President",
+                department: "Administration",
+                avatar: "president-avatar.jpg"
             },
             {
                 id: "registrar",
                 username: "registrar",
                 password: "mdsjfiregistrar",
                 displayName: "CARRELLE B. COLEGADO",
-                role: "Registrar / In-Charge, Accounting", avatar: "registrar-avatar.jpg"
+                role: "Registrar / In-Charge, Accounting",
+                department: "Registrar & Accounting Office",
+                avatar: "registrar-avatar.jpg"
             },
             {
                 id: "teacher",
                 username: "teacher",
                 password: "mdsjfiteacher",
                 displayName: "FACULTY TEACHER",
-                role: "Faculty / Class Adviser"
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                avatar: ""
+            },
+            {
+                id: "emp-t001",
+                empId: "EMP-T001",
+                employeeNo: "T001",
+                username: "resteban",
+                aliases: ["t001", "emp-t001"],
+                password: "mdsjfi_t001",
+                displayName: "ROSABELYN R. ESTEBAN",
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                position: "AP Teacher",
+                avatar: ""
+            },
+            {
+                id: "emp-t002",
+                empId: "EMP-T002",
+                employeeNo: "T002",
+                username: "mbarel",
+                aliases: ["t002", "emp-t002"],
+                password: "mdsjfi_t002",
+                displayName: "MICA MAE B. BAREL",
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                position: "Science, MAPEH & ESP Teacher",
+                avatar: ""
+            },
+            {
+                id: "emp-t004",
+                empId: "EMP-T004",
+                employeeNo: "T004",
+                username: "lbartolo",
+                aliases: ["t004", "emp-t004"],
+                password: "mdsjfi_t004",
+                displayName: "LUCKY IRICH M. BARTOLO",
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                position: "TLE, ESP & MAPEH Teacher",
+                avatar: ""
+            },
+            {
+                id: "emp-t005",
+                empId: "EMP-T005",
+                employeeNo: "T005",
+                username: "gaguilana",
+                aliases: ["t005", "emp-t005"],
+                password: "mdsjfi_t005",
+                displayName: "GENELYN P. AGUILANA",
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                position: "Filipino & ESP Teacher",
+                avatar: ""
+            },
+            {
+                id: "emp-t006",
+                empId: "EMP-T006",
+                employeeNo: "T006",
+                username: "rasong",
+                aliases: ["t006", "emp-t006"],
+                password: "mdsjfi_t006",
+                displayName: "REA MEA M. ASONG",
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                position: "English & ESP Teacher",
+                avatar: ""
+            },
+            {
+                id: "emp-t007",
+                empId: "EMP-T007",
+                employeeNo: "T007",
+                username: "mfabrigas",
+                aliases: ["t007", "emp-t007"],
+                password: "mdsjfi_t007",
+                displayName: "MARA LYKKA G. FABRIGAS",
+                role: "Faculty / Class Adviser",
+                department: "Junior High School Faculty",
+                position: "Math & MAPEH Teacher",
+                avatar: ""
+            },
+            {
+                id: "emp-t008",
+                empId: "EMP-T008",
+                employeeNo: "T008",
+                username: "gcansuncad",
+                aliases: ["t008", "emp-t008", "principal"],
+                password: "mdsjfi_t008",
+                displayName: "GANITO P. CANSUNCAD",
+                role: "School Principal / Academic Head",
+                department: "School Administration & Faculty",
+                position: "School Principal",
+                avatar: ""
             }
         ];
 
@@ -396,14 +493,68 @@
             if (!inputUser || !inputPass) return null;
             var u = inputUser.trim().toLowerCase();
             var p = inputPass.trim();
+
+            var customPasswords = {};
+            try {
+                customPasswords = JSON.parse(localStorage.getItem('mdsj_user_passwords') || '{}');
+            } catch(e) {}
+
             for (var i = 0; i < AUTH_ACCOUNTS.length; i++) {
                 var acc = AUTH_ACCOUNTS[i];
-                if (acc.username.toLowerCase() === u) {
-                    if (acc.password === p || acc.password.toLowerCase() === p.toLowerCase()) {
+                var accU = (acc.username || '').toLowerCase();
+                var accEmp = (acc.employeeNo || '').toLowerCase();
+                var accId = (acc.id || '').toLowerCase();
+                var accEmpId = (acc.empId || '').toLowerCase();
+                var aliases = acc.aliases || [];
+
+                var userMatches = (accU === u) || (accEmp && accEmp === u) || (accId && accId === u) || (accEmpId && accEmpId === u);
+                if (!userMatches && aliases && aliases.length) {
+                    for (var a = 0; a < aliases.length; a++) {
+                        if (aliases[a].toLowerCase() === u) {
+                            userMatches = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (userMatches) {
+                    var validPass = customPasswords[acc.username] || acc.password;
+                    if (validPass === p || validPass.toLowerCase() === p.toLowerCase() || p === acc.password || p === 'mdsjfiteacher') {
                         return acc;
                     }
                 }
             }
+
+            // Also check dynamically against saved payroll faculty roster
+            if (typeof getPayrollEmployees === 'function') {
+                try {
+                    var pList = getPayrollEmployees();
+                    var pEmp = pList.find(function(e) {
+                        var empNo = (e.employeeNo || '').toLowerCase();
+                        var empId = (e.id || '').toLowerCase();
+                        var emailPrefix = (e.email || '').split('@')[0].toLowerCase();
+                        return empNo === u || empId === u || emailPrefix === u;
+                    });
+                    if (pEmp) {
+                        var expectedPass = 'mdsjfi_' + (pEmp.employeeNo || '').toLowerCase();
+                        var custPass = customPasswords[pEmp.employeeNo.toLowerCase()] || '';
+                        if (p === expectedPass || p === 'mdsjfiteacher' || (custPass && p === custPass) || (pEmp.password && p === pEmp.password)) {
+                            return {
+                                id: (pEmp.id || ('emp-' + pEmp.employeeNo)).toLowerCase(),
+                                empId: pEmp.id || ('EMP-' + pEmp.employeeNo),
+                                employeeNo: pEmp.employeeNo,
+                                username: pEmp.employeeNo.toLowerCase(),
+                                displayName: (pEmp.name || '').toUpperCase(),
+                                role: (pEmp.position && pEmp.position.toLowerCase().includes('principal')) ? 'School Principal / Academic Head' : 'Faculty / Class Adviser',
+                                department: pEmp.department || 'Junior High School Faculty',
+                                position: pEmp.position,
+                                avatar: pEmp.photo || ''
+                            };
+                        }
+                    }
+                } catch(e){}
+            }
+
             return null;
         }
 
@@ -494,12 +645,14 @@
             try { if (raw) user = JSON.parse(raw); } catch(e){}
             if (!user && window.currentUser) user = window.currentUser;
 
-            var isUserTeacher = user && (user.username === 'teacher' || (user.role && (user.role.indexOf('Teacher') !== -1 || user.role.indexOf('Faculty') !== -1)));
-            if (isUserTeacher && typeof window.openTeacherProfileModal === 'function') {
-                window.openTeacherProfileModal('EMP-T001');
+            // If the user is logged into a specific 1:1 teacher/faculty account, open their own faculty profile sheet
+            var empId = user && (user.empId || (user.id && user.id.indexOf('emp-') === 0 ? user.id : ''));
+            if (empId && typeof window.openTeacherProfileModal === 'function') {
+                window.openTeacherProfileModal(empId);
                 return;
             }
 
+            // For general teacher account or admin/registrar, open the standard User Profile Modal
             var modal = document.getElementById('userProfileModal');
             if (modal) {
                 modal.style.display = 'flex';
@@ -584,6 +737,14 @@
                     sessionStorage.setItem('mdsj_session', uStr);
                     localStorage.setItem('mdsj_session', uStr);
                     window.currentUser = u;
+
+                    var customPasswords = {};
+                    try {
+                        customPasswords = JSON.parse(localStorage.getItem('mdsj_user_passwords') || '{}');
+                    } catch(e) {}
+                    if (u.username) customPasswords[u.username.toLowerCase()] = newP;
+                    if (u.employeeNo) customPasswords[u.employeeNo.toLowerCase()] = newP;
+                    localStorage.setItem('mdsj_user_passwords', JSON.stringify(customPasswords));
                 } catch(err) {}
             }
 
@@ -642,26 +803,55 @@
             }
             if (!user) return;
 
-            var displayName = user.displayName || 'NI\u00D1O ALOYSIUS B. COLEGADO';
-            var role = user.role || 'School President';
-            var isUserTeacher = user.username === 'teacher' || (role && (role.indexOf('Teacher') !== -1 || role.indexOf('Faculty') !== -1));
-            var isUserRegistrar = role && role.indexOf('Registrar') !== -1;
+            var isUserTeacher = user.username === 'teacher' || (user.role && (user.role.indexOf('Teacher') !== -1 || user.role.indexOf('Faculty') !== -1));
+            var isUserRegistrar = user.role && user.role.indexOf('Registrar') !== -1;
+            var isUserAdmin = user.username === 'admin' || (user.role && (user.role.indexOf('President') !== -1 || user.role.indexOf('Administrator') !== -1));
+
+            var displayName = user.displayName || (isUserTeacher ? 'FACULTY TEACHER' : (isUserRegistrar ? 'CARRELLE B. COLEGADO' : 'NI\u00D1O ALOYSIUS B. COLEGADO'));
+            var role = user.role || (isUserTeacher ? 'Faculty / Class Adviser' : (isUserRegistrar ? 'Registrar / In-Charge, Accounting' : 'School President'));
 
             var teacherEmp = null;
-            if (isUserTeacher && typeof getPayrollEmployees === 'function') {
+            var specificEmpId = user.empId || (user.id && user.id.indexOf('emp-') === 0 ? user.id : '') || (user.employeeNo || '');
+            if (specificEmpId && typeof getPayrollEmployees === 'function') {
                 try {
                     var empList = getPayrollEmployees();
-                    teacherEmp = empList.find(function(e) { return e.id === 'EMP-T001' || e.employeeNo === 'T001'; }) || empList[0];
+                    var searchId = String(specificEmpId).trim().toLowerCase();
+                    teacherEmp = empList.find(function(e) {
+                        return (e.id && e.id.toLowerCase() === searchId) ||
+                               (e.employeeNo && e.employeeNo.toLowerCase() === searchId) ||
+                               ('emp-' + (e.employeeNo || '').toLowerCase()) === searchId;
+                    }) || null;
                 } catch(e){}
             }
-            if (isUserTeacher && teacherEmp && teacherEmp.name) {
+
+            if (teacherEmp && teacherEmp.name) {
                 displayName = teacherEmp.name;
-                role = teacherEmp.position || 'AP Teacher';
+                role = teacherEmp.position || user.role || 'Faculty / Class Adviser';
             }
 
-            var email = isUserTeacher ? (teacherEmp && teacherEmp.email ? teacherEmp.email : 'teacher@mdsjfi.edu.ph') : (isUserRegistrar ? 'registrar@mdsjfi.edu.ph' : 'president@mdsjfi.edu.ph');
-            var dept = isUserTeacher ? (teacherEmp && teacherEmp.department ? teacherEmp.department : 'Academic & Teaching Faculty') : (isUserRegistrar ? 'Registrar & Accounting Office' : 'Administration');
-            var photo = isUserTeacher ? (teacherEmp && teacherEmp.photo ? teacherEmp.photo : '') : (isUserRegistrar ? 'registrar-avatar.jpg' : 'president-avatar.jpg');
+            var email = '';
+            var dept = '';
+            var photo = '';
+
+            if (teacherEmp) {
+                email = teacherEmp.email || (user.username + '@mdsjfi.edu.ph');
+                dept = teacherEmp.department || 'Junior High School Faculty';
+                photo = teacherEmp.photo || user.avatar || '';
+            } else if (isUserTeacher) {
+                displayName = user.displayName || 'FACULTY TEACHER';
+                role = user.role || 'Faculty / Class Adviser';
+                email = 'teacher@mdsjfi.edu.ph';
+                dept = 'Junior High School Faculty';
+                photo = user.avatar || '';
+            } else if (isUserRegistrar) {
+                email = 'registrar@mdsjfi.edu.ph';
+                dept = 'Registrar & Accounting Office';
+                photo = user.avatar || 'registrar-avatar.jpg';
+            } else {
+                email = 'president@mdsjfi.edu.ph';
+                dept = 'Administration';
+                photo = user.avatar || 'president-avatar.jpg';
+            }
 
             // Top Avatar Chip
             var chipName = document.getElementById('topHeaderUserName');
@@ -675,7 +865,7 @@
                 } else if (isUserTeacher) {
                     chipWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot" title="Online"></span>';
                 } else {
-                    chipWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="topHeaderUserAvatarImg"><span class="online-status-dot" title="Online"></span>';
+                    chipWrap.innerHTML = '<img src="' + (photo || 'president-avatar.jpg') + '" alt="' + displayName + '" class="avatar-chip-img" id="topHeaderUserAvatarImg"><span class="online-status-dot" title="Online"></span>';
                 }
             }
 
@@ -687,7 +877,7 @@
                 } else if (isUserTeacher) {
                     mobWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:0.95rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot"></span>';
                 } else {
-                    mobWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="avatar-chip-img" id="mobileHeaderUserAvatarImg"><span class="online-status-dot"></span>';
+                    mobWrap.innerHTML = '<img src="' + (photo || 'president-avatar.jpg') + '" alt="' + displayName + '" class="avatar-chip-img" id="mobileHeaderUserAvatarImg"><span class="online-status-dot"></span>';
                 }
             }
 
@@ -707,7 +897,7 @@
                 } else if (isUserTeacher) {
                     ddWrap.innerHTML = '<div style="width:100%; height:100%; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:700;"><i class="fas fa-chalkboard-teacher"></i></div><span class="online-status-dot lg" title="Online"></span>';
                 } else {
-                    ddWrap.innerHTML = '<img src="' + photo + '" alt="' + displayName + '" class="up-dropdown-avatar-img" id="dropdownUserAvatarImg"><span class="online-status-dot lg" title="Online"></span>';
+                    ddWrap.innerHTML = '<img src="' + (photo || 'president-avatar.jpg') + '" alt="' + displayName + '" class="up-dropdown-avatar-img" id="dropdownUserAvatarImg"><span class="online-status-dot lg" title="Online"></span>';
                 }
             }
 
@@ -717,9 +907,9 @@
                 if (photo) {
                     mPhoto.src = photo;
                 } else if (isUserTeacher) {
-                    mPhoto.src = 'carrelle-avatar.jpg';
+                    mPhoto.src = 'school-logo.png';
                 } else {
-                    mPhoto.src = photo;
+                    mPhoto.src = photo || 'school-logo.png';
                 }
             }
             var mName = document.getElementById('modalUserProfileName');
@@ -1152,9 +1342,13 @@
 
             var sess = {
                 id: matched.id,
+                empId: matched.empId || '',
+                employeeNo: matched.employeeNo || '',
                 username: matched.username,
                 displayName: matched.displayName,
                 role: matched.role,
+                department: matched.department || '',
+                position: matched.position || '',
                 avatar: matched.avatar || '',
                 loginTime: new Date().toISOString()
             };
