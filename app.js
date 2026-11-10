@@ -226,6 +226,15 @@ const DASHBOARD_QUICK_ACTIONS = [
         action: () => navigateTo('teachers')
     },
     {
+        id: 'face-recognition',
+        name: 'Facial Attendance Terminal',
+        category: 'Attendance & Biometrics',
+        keywords: 'face webcam facial recognition attendance biometric log in out camera terminal check in student teacher faculty',
+        icon: 'fas fa-camera',
+        color: '#0284c7',
+        action: () => navigateTo('face-recognition')
+    },
+    {
         id: 'grade7',
         name: 'Grade 7 Students Roster',
         category: 'Learner Cohorts',
@@ -435,7 +444,7 @@ function getCurrentUser() {
         return currentUser;
     }
     try {
-        const raw = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user') || localStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_user');
+        const raw = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
         if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.username) {
@@ -444,8 +453,10 @@ function getCurrentUser() {
                 try {
                     sessionStorage.setItem('mdsj_session', raw);
                     sessionStorage.setItem('mdsj_user', raw);
-                    localStorage.setItem('mdsj_session', raw);
-                    localStorage.setItem('mdsj_user', raw);
+                    localStorage.removeItem('mdsj_session');
+                    localStorage.removeItem('mdsj_user');
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('mdsj_currentUser');
                 } catch(e) {}
                 return parsed;
             }
@@ -692,10 +703,11 @@ function showApp(user) {
         sessionStorage.setItem('mdsj_session', userJson);
         sessionStorage.setItem('mdsj_user', userJson);
         sessionStorage.setItem('currentUser', userJson);
-        localStorage.setItem('mdsj_session', userJson);
-        localStorage.setItem('mdsj_user', userJson);
-        localStorage.setItem('mdsj_currentUser', userJson);
-        localStorage.setItem('currentUser', userJson);
+        // Purge persistent localStorage session so closing window requires login on reopen
+        localStorage.removeItem('mdsj_session');
+        localStorage.removeItem('mdsj_user');
+        localStorage.removeItem('mdsj_currentUser');
+        localStorage.removeItem('currentUser');
     } catch(e) {}
 
     const overlay = document.getElementById('loginOverlay');
@@ -760,11 +772,11 @@ function showApp(user) {
     try { refreshAll(); } catch (e) {}
     try { updatePayrollArchivesBadge(); } catch (e) {}
 
-    // Restore current active page on refresh / F5 or reopening closed window
+    // Restore current active page on refresh / F5 within active session
     let savedPage = 'dashboard';
     try {
         const hash = (window.location.hash || '').replace('#', '').trim();
-        savedPage = hash || sessionStorage.getItem('mdsj_active_page') || localStorage.getItem('mdsj_active_page') || 'dashboard';
+        savedPage = hash || sessionStorage.getItem('mdsj_active_page') || 'dashboard';
         if (isTeacher()) {
             const allowedPages = ['dashboard', 'students', 'clearance', 'teachers'];
             if (!allowedPages.includes(savedPage) && !savedPage.startsWith('grade')) {
@@ -836,10 +848,10 @@ function navigateTo(pageId) {
     const targetPage = document.getElementById('page-' + pageId);
     if (targetPage) targetPage.classList.add('active');
 
-    // Persist current active tab for browser refresh (F5)
+    // Persist current active tab for browser refresh (F5) within active session
     try {
         sessionStorage.setItem('mdsj_active_page', pageId);
-        localStorage.setItem('mdsj_active_page', pageId);
+        localStorage.removeItem('mdsj_active_page');
         if (window.location.hash !== '#' + pageId) {
             history.replaceState(null, null, '#' + pageId);
         }
@@ -859,6 +871,7 @@ function navigateTo(pageId) {
             'clearance': 'Student Clearance (Examination)',
             'payroll': 'Faculty & Staff Payroll',
             'teachers': 'Teachers & Faculty Directory',
+            'face-recognition': 'Facial Recognition & Attendance',
             'activities': 'Current Activities Log',
             'promote': 'Advance / Promote S.Y.',
             'alumni': 'JHS Finisher / Alumni Directory',
@@ -888,6 +901,7 @@ function navigateTo(pageId) {
     else if (pageId === 'clearance') refreshClearancePage();
     else if (pageId === 'payroll') refreshPayrollPage();
     else if (pageId === 'teachers') refreshTeachersPage();
+    else if (pageId === 'face-recognition') refreshFaceRecognitionPage();
     else if (pageId === 'archive') refreshArchiveTable();
     else if (pageId === 'activities') refreshActivitiesPage();
     else if (pageId === 'promote') initPromotePage();
@@ -8348,8 +8362,8 @@ function openClearanceOverrideModal(studentId) {
     // Pre-select current logged-in role
     let defaultAuth = 'CARRELLE B. COLEGADO (Registrar/Accounting)';
     try {
-        const user = JSON.parse(localStorage.getItem('mdsj_current_user') || '{}');
-        if (user && user.role === 'admin') {
+        const user = getCurrentUser();
+        if (user && (user.username === 'admin' || (user.role && user.role.toLowerCase().includes('president')))) {
             defaultAuth = 'NIÑO ALOYSIUS B. COLEGADO (School President)';
         }
     } catch(e) {}
@@ -12918,6 +12932,958 @@ window.deleteAllPayrollArchives = deleteAllPayrollArchives;
 window.performDeleteAllPayrollArchives = performDeleteAllPayrollArchives;
 window.deleteActiveArchiveSnapshot = deleteActiveArchiveSnapshot;
 
+// ======================== WEBCAM FACIAL RECOGNITION & ATTENDANCE TERMINAL CONTROLLER ========================
+
+let faceScannerInterval = null;
+let currentScannerMode = 'AUTO'; // 'AUTO', 'LOG_IN', 'LOG_OUT'
+let currentScannerTarget = 'ATTENDANCE'; // 'ATTENDANCE' or 'LOGIN'
+let isScannerCoolingDown = false;
+let pendingEnrollmentEmbedding = null;
+let pendingEnrollmentPerson = null;
+
+function refreshFaceRecognitionPage() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    // 1. KPI Counts
+    const enrollments = Engine.getEnrollments();
+    const studentsEnrolled = enrollments.filter(e => e.role === 'Student').length;
+    const teachersEnrolled = enrollments.filter(e => e.role === 'Teacher').length;
+    const facultyEnrolled = enrollments.filter(e => e.role === 'Faculty').length;
+
+    const logs = Engine.getAttendanceLogs();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLogs = logs.filter(l => l.dateStr === todayStr);
+
+    // Count currently logged in (active on campus)
+    const personStatusMap = {};
+    todayLogs.slice().reverse().forEach(log => {
+        personStatusMap[log.personId] = log.action;
+    });
+    const activeInCount = Object.values(personStatusMap).filter(act => act === 'LOG_IN').length;
+
+    const elStu = document.getElementById('statEnrolledStudents');
+    const elTea = document.getElementById('statEnrolledTeachers');
+    const elFac = document.getElementById('statEnrolledFaculty');
+    const elAct = document.getElementById('statActiveOnCampus');
+
+    if (elStu) elStu.textContent = studentsEnrolled;
+    if (elTea) elTea.textContent = teachersEnrolled;
+    if (elFac) elFac.textContent = facultyEnrolled;
+    if (elAct) elAct.textContent = activeInCount;
+
+    // 2. Confidence Threshold Setting UI
+    const thresh = Engine.getConfidenceThreshold();
+    const threshPct = Math.round(thresh * 100);
+    const slider = document.getElementById('faceConfidenceSlider');
+    const label = document.getElementById('faceConfidenceThresholdVal');
+    if (slider) slider.value = threshPct;
+    if (label) label.textContent = `${threshPct}%`;
+
+    // 3. Render Logs Table & Profiles Table
+    filterFaceLogsTable();
+    filterFaceProfilesTable();
+}
+
+function onConfidenceThresholdSliderChange(val) {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+    const num = parseInt(val) / 100;
+    Engine.setConfidenceThreshold(num);
+    const label = document.getElementById('faceConfidenceThresholdVal');
+    if (label) label.textContent = `${val}%`;
+}
+
+function switchFaceSubTab(tab) {
+    const btnLogs = document.getElementById('btnFaceSubTabLogs');
+    const btnProf = document.getElementById('btnFaceSubTabProfiles');
+    const viewLogs = document.getElementById('faceLogsView');
+    const viewProf = document.getElementById('faceProfilesView');
+
+    if (tab === 'logs') {
+        if (btnLogs) { btnLogs.className = 'btn-sm btn-primary'; }
+        if (btnProf) { btnProf.className = 'btn-sm btn-secondary'; }
+        if (viewLogs) viewLogs.style.display = 'block';
+        if (viewProf) viewProf.style.display = 'none';
+        filterFaceLogsTable();
+    } else {
+        if (btnLogs) { btnLogs.className = 'btn-sm btn-secondary'; }
+        if (btnProf) { btnProf.className = 'btn-sm btn-primary'; }
+        if (viewLogs) viewLogs.style.display = 'none';
+        if (viewProf) viewProf.style.display = 'block';
+        filterFaceProfilesTable();
+    }
+}
+
+function filterFaceLogsTable() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    const tbody = document.getElementById('faceLogsTableBody');
+    const emptyState = document.getElementById('faceLogsEmptyState');
+    if (!tbody) return;
+
+    const query = (document.getElementById('faceLogSearchInput')?.value || '').toLowerCase().trim();
+    const roleFilter = document.getElementById('faceLogFilterRole')?.value || 'ALL';
+    const actionFilter = document.getElementById('faceLogFilterAction')?.value || 'ALL';
+    const dateFilter = document.getElementById('faceLogFilterDate')?.value || 'today';
+
+    let list = Engine.getAttendanceLogs();
+    const now = Date.now();
+    const oneDay = 86400000;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Filter by date
+    if (dateFilter === 'today') {
+        list = list.filter(l => l.dateStr === todayStr);
+    } else if (dateFilter === 'week') {
+        list = list.filter(l => (now - new Date(l.timestamp).getTime()) <= (7 * oneDay));
+    } else if (dateFilter === 'month') {
+        list = list.filter(l => (now - new Date(l.timestamp).getTime()) <= (30 * oneDay));
+    }
+
+    // Filter by role
+    if (roleFilter !== 'ALL') {
+        list = list.filter(l => l.role === roleFilter);
+    }
+
+    // Filter by action
+    if (actionFilter !== 'ALL') {
+        list = list.filter(l => l.action === actionFilter);
+    }
+
+    // Filter by search query
+    if (query) {
+        list = list.filter(l =>
+            (l.name && l.name.toLowerCase().includes(query)) ||
+            (l.identifier && l.identifier.toLowerCase().includes(query)) ||
+            (l.details && l.details.toLowerCase().includes(query))
+        );
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+    }
+    if (emptyState) emptyState.style.display = 'none';
+
+    tbody.innerHTML = list.map(l => {
+        const roleClass = (l.role || 'Student').toLowerCase();
+        const actionClass = (l.action === 'LOG_IN') ? 'login' : 'logout';
+        const actionIcon = (l.action === 'LOG_IN') ? '<i class="fas fa-sign-in-alt"></i>' : '<i class="fas fa-sign-out-alt"></i>';
+        const actionLabel = (l.action === 'LOG_IN') ? 'LOG IN' : 'LOG OUT';
+
+        return `
+            <tr>
+                <td>
+                    <strong style="font-size:0.84rem; color:#0f172a;">${escHtml(l.timeStr)}</strong><br>
+                    <small style="color:#64748b; font-size:0.73rem;">${escHtml(l.dateStr)}</small>
+                </td>
+                <td>
+                    <strong style="font-size:0.88rem; color:#0b2545;">${escHtml(l.name)}</strong><br>
+                    <small style="color:#64748b; font-family:monospace; font-weight:600; font-size:0.75rem;">ID / LRN: ${escHtml(l.identifier)}</small>
+                </td>
+                <td style="text-align:center;">
+                    <span class="role-badge ${roleClass}">${escHtml(l.role)}</span>
+                </td>
+                <td style="text-align:center;">
+                    <span class="action-badge ${actionClass}">${actionIcon} ${actionLabel}</span>
+                </td>
+                <td style="text-align:center;">
+                    <span style="font-weight:700; color:#0284c7; font-size:0.85rem;"><i class="fas fa-check-circle" style="color:#16a34a; margin-right:4px;"></i>${l.confidence}%</span>
+                </td>
+                <td>
+                    <span style="font-size:0.82rem; color:#334155;">${escHtml(l.details || '—')}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterFaceProfilesTable() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    const tbody = document.getElementById('faceProfilesTableBody');
+    const emptyState = document.getElementById('faceProfilesEmptyState');
+    if (!tbody) return;
+
+    const query = (document.getElementById('faceProfileSearchInput')?.value || '').toLowerCase().trim();
+    let list = Engine.getEnrollments();
+
+    if (query) {
+        list = list.filter(e =>
+            (e.name && e.name.toLowerCase().includes(query)) ||
+            (e.identifier && e.identifier.toLowerCase().includes(query)) ||
+            (e.details && e.details.toLowerCase().includes(query)) ||
+            (e.role && e.role.toLowerCase().includes(query))
+        );
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+    }
+    if (emptyState) emptyState.style.display = 'none';
+
+    tbody.innerHTML = list.map(e => {
+        const roleClass = (e.role || 'Student').toLowerCase();
+        const dateFormatted = e.enrolledAt ? new Date(e.enrolledAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+        return `
+            <tr>
+                <td>
+                    <strong style="font-size:0.88rem; color:#0b2545;">${escHtml(e.name)}</strong>
+                </td>
+                <td>
+                    <code style="font-weight:700; color:#0f172a; font-size:0.82rem;">${escHtml(e.identifier)}</code>
+                </td>
+                <td style="text-align:center;">
+                    <span class="role-badge ${roleClass}">${escHtml(e.role)}</span>
+                </td>
+                <td>
+                    <span style="font-size:0.82rem; color:#334155;">${escHtml(e.details || '—')}</span>
+                </td>
+                <td>
+                    <small style="color:#64748b; font-weight:600;">${dateFormatted}</small>
+                </td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <button type="button" class="btn-sm btn-secondary" onclick="openFaceEnrollmentModal('${e.personId}')" title="Re-enroll Face Biometrics" style="padding:4px 8px; font-size:0.75rem; margin-right:4px;">
+                        <i class="fas fa-sync-alt"></i> Re-enroll
+                    </button>
+                    <button type="button" class="btn-sm btn-danger" onclick="deleteEnrolledFaceProfile('${e.personId}')" title="Remove Face Data" style="padding:4px 8px; font-size:0.75rem; background:#fee2e2; color:#b91c1c; border-color:#fecaca;">
+                        <i class="fas fa-trash-alt"></i> Remove
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function deleteEnrolledFaceProfile(personId) {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+    const enrolled = Engine.findEnrollmentByPersonId(personId);
+    if (!enrolled) return;
+
+    if (!confirm(`Are you sure you want to remove the enrolled facial biometrics for ${enrolled.name} (${enrolled.role})?\n\nThis will permanently delete their biometric descriptor vector from the system.`)) {
+        return;
+    }
+
+    Engine.removeEnrollment(personId);
+    refreshFaceRecognitionPage();
+    showToast(`Biometric face data for ${enrolled.name} removed successfully.`, 'info');
+}
+
+function openFaceScannerModal(mode = 'AUTO', target = 'ATTENDANCE') {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    currentScannerMode = mode;
+    currentScannerTarget = target;
+    setFaceScannerMode(mode);
+
+    const modal = document.getElementById('faceScannerModal');
+    const titleEl = document.getElementById('faceScannerModalTitle');
+    const subEl = document.getElementById('faceScannerModalSub');
+    const errBox = document.getElementById('faceScannerErrorBox');
+    const resCard = document.getElementById('faceScannerResultCard');
+    const statusPill = document.getElementById('faceScannerStatusBadge');
+    const guideOval = document.getElementById('faceScannerGuideOval');
+
+    if (errBox) errBox.style.display = 'none';
+    if (resCard) resCard.style.display = 'none';
+    if (guideOval) guideOval.className = 'face-guide-oval';
+
+    if (target === 'LOGIN') {
+        if (titleEl) titleEl.textContent = 'Biometric Sign-In Terminal';
+        if (subEl) subEl.textContent = 'Scan your face to authenticate and open your personnel dashboard';
+        const modeSel = document.getElementById('faceScannerModeSelector');
+        if (modeSel) modeSel.style.display = 'none';
+    } else {
+        if (titleEl) titleEl.textContent = 'Facial Attendance Terminal';
+        if (subEl) subEl.textContent = 'Webcam Biometric Log In / Log Out & Attendance Tracking';
+        const modeSel = document.getElementById('faceScannerModeSelector');
+        if (modeSel) modeSel.style.display = 'inline-flex';
+    }
+
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active', 'show');
+    }
+
+    const video = document.getElementById('faceScannerVideo');
+    if (statusPill) statusPill.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initializing camera...';
+
+    Engine.startWebcam(video)
+        .then(() => {
+            if (statusPill) {
+                statusPill.className = 'face-scanner-status-pill';
+                statusPill.innerHTML = '<i class="fas fa-crosshairs"></i> Align face inside the guide frame';
+            }
+            startScannerTerminalLoop();
+        })
+        .catch(err => {
+            showScannerError(err.message || 'Camera access error occurred.');
+            if (statusPill) {
+                statusPill.className = 'face-scanner-status-pill error';
+                statusPill.innerHTML = '<i class="fas fa-times-circle"></i> Camera unavailable';
+            }
+        });
+}
+
+function openLoginFaceScannerModal() {
+    openFaceScannerModal('LOG_IN', 'LOGIN');
+}
+
+function closeFaceScannerModal() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (faceScannerInterval) {
+        clearInterval(faceScannerInterval);
+        faceScannerInterval = null;
+    }
+    const video = document.getElementById('faceScannerVideo');
+    if (Engine) Engine.stopWebcam(video);
+
+    const modal = document.getElementById('faceScannerModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active', 'show');
+    }
+    isScannerCoolingDown = false;
+    refreshFaceRecognitionPage();
+}
+
+function setFaceScannerMode(mode) {
+    currentScannerMode = mode;
+    ['Auto', 'Login', 'Logout'].forEach(m => {
+        const btn = document.getElementById('btnMode' + m);
+        const target = (m === 'Auto') ? 'AUTO' : ((m === 'Login') ? 'LOG_IN' : 'LOG_OUT');
+        if (btn) btn.classList.toggle('active', currentScannerMode === target);
+    });
+}
+
+let _scannerFacing = 'user';
+function switchScannerCamera() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+    const video = document.getElementById('faceScannerVideo');
+    _scannerFacing = (_scannerFacing === 'environment') ? 'user' : 'environment';
+    Engine.startWebcam(video, _scannerFacing)
+        .catch(err => showScannerError(err.message));
+}
+
+function showScannerError(msg) {
+    const errBox = document.getElementById('faceScannerErrorBox');
+    const errText = document.getElementById('faceScannerErrorText');
+    if (errBox && errText) {
+        errText.textContent = msg;
+        errBox.style.display = 'block';
+    }
+}
+
+function hideScannerError() {
+    const errBox = document.getElementById('faceScannerErrorBox');
+    if (errBox) errBox.style.display = 'none';
+}
+
+function startScannerTerminalLoop() {
+    if (faceScannerInterval) clearInterval(faceScannerInterval);
+
+    const Engine = window.MDSJ_FaceEngine;
+    const video = document.getElementById('faceScannerVideo');
+    const canvas = document.getElementById('faceScannerCanvas');
+    const statusPill = document.getElementById('faceScannerStatusBadge');
+    const guideOval = document.getElementById('faceScannerGuideOval');
+
+    faceScannerInterval = setInterval(() => {
+        if (!video || video.readyState < 2 || isScannerCoolingDown) return;
+
+        Engine.captureVideoFrameToCanvas(video, canvas);
+
+        try {
+            const extraction = Engine.extractEmbeddingFromCanvas(canvas);
+            const match = Engine.matchFace(extraction.embedding);
+
+            if (match.matched) {
+                hideScannerError();
+                if (guideOval) guideOval.className = 'face-guide-oval detected';
+                handleScannerMatchSuccess(match.person, match.confidence);
+            } else {
+                if (guideOval) guideOval.className = 'face-guide-oval warning';
+                if (statusPill) {
+                    statusPill.className = 'face-scanner-status-pill warning';
+                    statusPill.innerHTML = `<i class="fas fa-question-circle"></i> Unrecognized face (${match.confidence}% &lt; ${match.threshold}%)`;
+                }
+            }
+        } catch (err) {
+            if (err.code === 'NO_FACE') {
+                if (guideOval) guideOval.className = 'face-guide-oval';
+                if (statusPill) {
+                    statusPill.className = 'face-scanner-status-pill';
+                    statusPill.innerHTML = '<i class="fas fa-crosshairs"></i> Center face inside the guide frame';
+                }
+            } else if (err.code === 'MULTIPLE_FACES') {
+                if (guideOval) guideOval.className = 'face-guide-oval error';
+                if (statusPill) {
+                    statusPill.className = 'face-scanner-status-pill error';
+                    statusPill.innerHTML = `<i class="fas fa-users"></i> Multiple faces in frame (${err.count} faces). Please scan individually.`;
+                }
+            } else {
+                showScannerError(err.message);
+            }
+        }
+    }, 400);
+}
+
+function handleScannerMatchSuccess(enrolledPerson, confidence) {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    isScannerCoolingDown = true;
+    const statusPill = document.getElementById('faceScannerStatusBadge');
+    const resCard = document.getElementById('faceScannerResultCard');
+
+    const action = (currentScannerMode === 'AUTO') ? Engine.determineNextAction(enrolledPerson.personId) : currentScannerMode;
+
+    try {
+        const log = Engine.recordFacialAttendance(
+            {
+                id: enrolledPerson.personId,
+                role: enrolledPerson.role,
+                name: enrolledPerson.name,
+                identifier: enrolledPerson.identifier,
+                details: enrolledPerson.details
+            },
+            action,
+            confidence / 100
+        );
+
+        if (typeof playScanBeep === 'function') playScanBeep();
+
+        if (statusPill) {
+            statusPill.className = 'face-scanner-status-pill success';
+            statusPill.innerHTML = `<i class="fas fa-check-circle"></i> Success: ${enrolledPerson.name} (${action === 'LOG_IN' ? 'LOGGED IN' : 'LOGGED OUT'})`;
+        }
+
+        const nameEl = document.getElementById('faceScanResultName');
+        const roleEl = document.getElementById('faceScanResultRole');
+        const detEl = document.getElementById('faceScanResultDetails');
+        const actEl = document.getElementById('faceScanResultAction');
+        const confEl = document.getElementById('faceScanResultConfidence');
+
+        if (nameEl) nameEl.textContent = enrolledPerson.name;
+        if (roleEl) {
+            roleEl.textContent = enrolledPerson.role;
+            roleEl.className = 'role-badge ' + (enrolledPerson.role || 'Student').toLowerCase();
+        }
+        if (detEl) detEl.textContent = `${enrolledPerson.details} • ID: ${enrolledPerson.identifier}`;
+        if (actEl) {
+            actEl.textContent = (action === 'LOG_IN') ? 'LOG IN' : 'LOG OUT';
+            actEl.className = 'action-badge ' + (action === 'LOG_IN' ? 'login' : 'logout');
+        }
+        if (confEl) confEl.textContent = `${confidence}% Match`;
+        if (resCard) resCard.style.display = 'block';
+
+        showToast(`Facial recognition verified! Recorded ${action === 'LOG_IN' ? 'LOG IN' : 'LOG OUT'} for ${enrolledPerson.name}`, 'success');
+
+        // If target was sign-in from login screen
+        if (currentScannerTarget === 'LOGIN') {
+            setTimeout(() => {
+                const allAuths = (window.USERS || []).concat(typeof getPayrollEmployees === 'function' ? getPayrollEmployees().map(p => ({
+                    id: p.id,
+                    employeeNo: p.employeeNo,
+                    username: (p.employeeNo || '').toLowerCase(),
+                    displayName: p.name,
+                    role: p.position && p.position.toLowerCase().includes('principal') ? 'School Principal / Academic Head' : 'Faculty / Class Adviser',
+                    department: p.department || 'Junior High School Faculty',
+                    position: p.position,
+                    avatar: p.photo || ''
+                })) : []);
+
+                const searchNorm = String(enrolledPerson.personId).toLowerCase();
+                const searchIden = String(enrolledPerson.identifier).toLowerCase();
+
+                const matchedAuth = allAuths.find(u =>
+                    (u.id && String(u.id).toLowerCase() === searchNorm) ||
+                    (u.employeeNo && String(u.employeeNo).toLowerCase() === searchNorm) ||
+                    (u.employeeNo && String(u.employeeNo).toLowerCase() === searchIden) ||
+                    (u.username && String(u.username).toLowerCase() === searchIden) ||
+                    (u.username && String(u.username).toLowerCase() === searchNorm)
+                );
+
+                if (matchedAuth) {
+                    closeFaceScannerModal();
+                    if (typeof unlockDashboardUI === 'function') unlockDashboardUI(matchedAuth);
+                    if (typeof showApp === 'function') showApp(matchedAuth);
+                    showToast(`Welcome back, ${matchedAuth.displayName}! Successfully authenticated via Facial Recognition.`, 'success');
+                } else {
+                    showToast(`Attendance recorded! (Note: Learner accounts are for attendance only; administrative login requires staff credentials).`, 'info');
+                    closeFaceScannerModal();
+                }
+            }, 1200);
+            return;
+        }
+
+    } catch (err) {
+        if (statusPill) {
+            statusPill.className = 'face-scanner-status-pill warning';
+            statusPill.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${err.message}`;
+        }
+        showToast(err.message, 'warning');
+    }
+
+    setTimeout(() => {
+        isScannerCoolingDown = false;
+        if (resCard) resCard.style.display = 'none';
+        const guideOval = document.getElementById('faceScannerGuideOval');
+        if (guideOval) guideOval.className = 'face-guide-oval';
+        if (statusPill) {
+            statusPill.className = 'face-scanner-status-pill';
+            statusPill.innerHTML = '<i class="fas fa-crosshairs"></i> Align face inside the guide frame';
+        }
+    }, 3200);
+}
+
+function openFaceEnrollmentModal(preselectedPersonId = null) {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    const modal = document.getElementById('faceEnrollModal');
+    const select = document.getElementById('faceEnrollPersonSelect');
+    const errBox = document.getElementById('faceEnrollErrorBox');
+    const succBox = document.getElementById('faceEnrollSuccessBox');
+    const saveBtn = document.getElementById('btnSaveFaceEnrollment');
+
+    if (errBox) errBox.style.display = 'none';
+    if (succBox) succBox.style.display = 'none';
+    if (saveBtn) saveBtn.disabled = true;
+    pendingEnrollmentEmbedding = null;
+    pendingEnrollmentPerson = null;
+
+    if (select) {
+        const persons = Engine.getAllDatabasePersons();
+        let html = '<option value="">-- Choose Student, Teacher, or Faculty --</option>';
+        
+        const students = persons.filter(p => p.role === 'Student');
+        const teachers = persons.filter(p => p.role === 'Teacher');
+        const faculty = persons.filter(p => p.role === 'Faculty');
+
+        if (faculty.length) {
+            html += '<optgroup label="★ School Administration & Faculty">';
+            faculty.forEach(f => {
+                const enrolled = Engine.findEnrollmentByPersonId(f.id) ? ' [Enrolled ✓]' : '';
+                html += `<option value="${f.id}" data-role="Faculty">${escHtml(f.name)} (${f.identifier}) - ${escHtml(f.details)}${enrolled}</option>`;
+            });
+            html += '</optgroup>';
+        }
+
+        if (teachers.length) {
+            html += '<optgroup label="★ Teaching Faculty / Advisers">';
+            teachers.forEach(t => {
+                const enrolled = Engine.findEnrollmentByPersonId(t.id) ? ' [Enrolled ✓]' : '';
+                html += `<option value="${t.id}" data-role="Teacher">${escHtml(t.name)} (${t.identifier}) - ${escHtml(t.details)}${enrolled}</option>`;
+            });
+            html += '</optgroup>';
+        }
+
+        if (students.length) {
+            html += '<optgroup label="★ Enrolled Students (Grade 7 - 10)">';
+            students.forEach(s => {
+                const enrolled = Engine.findEnrollmentByPersonId(s.id) ? ' [Enrolled ✓]' : '';
+                html += `<option value="${s.id}" data-role="Student">${escHtml(s.name)} (LRN: ${s.identifier}) - ${escHtml(s.details)}${enrolled}</option>`;
+            });
+            html += '</optgroup>';
+        }
+
+        select.innerHTML = html;
+        if (preselectedPersonId) {
+            select.value = preselectedPersonId;
+            onFaceEnrollPersonChange(preselectedPersonId);
+        }
+    }
+
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active', 'show');
+    }
+
+    const video = document.getElementById('faceEnrollVideo');
+    Engine.startWebcam(video)
+        .catch(err => {
+            showEnrollError(err.message || 'Camera access error.');
+        });
+}
+
+function onFaceEnrollPersonChange(personId) {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    const preview = document.getElementById('faceEnrollPersonPreview');
+    const nameEl = document.getElementById('faceEnrollPreviewName');
+    const detEl = document.getElementById('faceEnrollPreviewDetails');
+    const roleEl = document.getElementById('faceEnrollPreviewRole');
+
+    if (!personId) {
+        if (preview) preview.style.display = 'none';
+        pendingEnrollmentPerson = null;
+        return;
+    }
+
+    const person = Engine.resolvePersonFromDatabase(personId);
+    if (person) {
+        pendingEnrollmentPerson = person;
+        if (nameEl) nameEl.textContent = person.name;
+        if (detEl) detEl.textContent = `${person.details} • ID: ${person.identifier}`;
+        if (roleEl) {
+            roleEl.textContent = person.role;
+            roleEl.className = 'role-badge ' + person.role.toLowerCase();
+        }
+        if (preview) preview.style.display = 'block';
+    }
+}
+
+function captureAndAnalyzeEnrollmentFace() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+
+    const video = document.getElementById('faceEnrollVideo');
+    const canvas = document.getElementById('faceEnrollCanvas');
+    const errBox = document.getElementById('faceEnrollErrorBox');
+    const succBox = document.getElementById('faceEnrollSuccessBox');
+    const saveBtn = document.getElementById('btnSaveFaceEnrollment');
+
+    if (errBox) errBox.style.display = 'none';
+    if (succBox) succBox.style.display = 'none';
+
+    if (!pendingEnrollmentPerson) {
+        showEnrollError('Please select a student, teacher, or faculty person from the dropdown first.');
+        return;
+    }
+
+    if (!video || video.readyState < 2) {
+        showEnrollError('Camera is not ready. Please wait for the video feed to load.');
+        return;
+    }
+
+    Engine.captureVideoFrameToCanvas(video, canvas);
+
+    try {
+        const extraction = Engine.extractEmbeddingFromCanvas(canvas);
+
+        // Check for collision against other already enrolled persons
+        const enrollments = Engine.getEnrollments();
+        const threshold = Engine.getConfidenceThreshold();
+        const normId = String(pendingEnrollmentPerson.id).toLowerCase();
+
+        for (let i = 0; i < enrollments.length; i++) {
+            const existing = enrollments[i];
+            if (String(existing.personId).toLowerCase() !== normId) {
+                const sim = Engine.computeCosineSimilarity(extraction.embedding, existing.embedding);
+                if (sim >= threshold) {
+                    showEnrollError(`Biometric collision: This face strongly matches existing record "${existing.name}" (${existing.role}) at ${Math.round(sim * 100)}% confidence. A face cannot be enrolled under multiple records.`);
+                    if (saveBtn) saveBtn.disabled = true;
+                    return;
+                }
+            }
+        }
+
+        pendingEnrollmentEmbedding = extraction.embedding;
+        if (succBox) {
+            succBox.innerHTML = `<i class="fas fa-check-circle" style="margin-right:6px;"></i> Face detected and 128-d biometric descriptor verified for <strong>${escHtml(pendingEnrollmentPerson.name)}</strong>! Click "Save Biometrics" to finalize.`;
+            succBox.style.display = 'block';
+        }
+        if (saveBtn) saveBtn.disabled = false;
+
+    } catch (err) {
+        pendingEnrollmentEmbedding = null;
+        if (saveBtn) saveBtn.disabled = true;
+        showEnrollError(err.message);
+    }
+}
+
+function showEnrollError(msg) {
+    const errBox = document.getElementById('faceEnrollErrorBox');
+    const errText = document.getElementById('faceEnrollErrorText');
+    if (errBox && errText) {
+        errText.textContent = msg;
+        errBox.style.display = 'block';
+    }
+}
+
+function saveFaceEnrollmentSubmit() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine || !pendingEnrollmentPerson || !pendingEnrollmentEmbedding) {
+        showToast('Please capture and analyze a valid face before saving.', 'warning');
+        return;
+    }
+
+    try {
+        const enrolled = Engine.enrollPerson(pendingEnrollmentPerson, pendingEnrollmentEmbedding);
+        closeFaceEnrollmentModal();
+        refreshFaceRecognitionPage();
+        showToast(`Facial biometrics enrolled successfully for ${enrolled.name} (${enrolled.role})!`, 'success');
+    } catch(err) {
+        showEnrollError(err.message);
+    }
+}
+
+function closeFaceEnrollmentModal() {
+    const Engine = window.MDSJ_FaceEngine;
+    const video = document.getElementById('faceEnrollVideo');
+    if (Engine) Engine.stopWebcam(video);
+
+    const modal = document.getElementById('faceEnrollModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active', 'show');
+    }
+    pendingEnrollmentEmbedding = null;
+    pendingEnrollmentPerson = null;
+}
+
+function openFaceTestModal() {
+    const modal = document.getElementById('faceTestModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active', 'show');
+    }
+    runInAppTests();
+}
+
+function closeFaceTestModal() {
+    const modal = document.getElementById('faceTestModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active', 'show');
+    }
+}
+
+function runInAppTests() {
+    const TestModule = window.MDSJ_FaceTests;
+    if (!TestModule) {
+        showToast('Test module not loaded.', 'error');
+        return;
+    }
+
+    const container = document.getElementById('testSuitesContainer');
+    if (container) container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Executing automated biometric test suites...</div>';
+
+    setTimeout(() => {
+        const results = TestModule.runAllTests();
+
+        const totEl = document.getElementById('testSummaryTotal');
+        const passEl = document.getElementById('testSummaryPassed');
+        const failEl = document.getElementById('testSummaryFailed');
+
+        if (totEl) totEl.textContent = results.total;
+        if (passEl) passEl.textContent = results.passed;
+        if (failEl) failEl.textContent = results.failed;
+
+        if (container) {
+            container.innerHTML = results.suites.map(s => {
+                const suitePassed = s.tests.every(t => t.passed);
+                const icon = suitePassed ? '<i class="fas fa-check-circle" style="color:#16a34a;"></i>' : '<i class="fas fa-times-circle" style="color:#dc2626;"></i>';
+
+                const items = s.tests.map(t => `
+                    <div class="test-item-row ${t.passed ? 'pass' : 'fail'}">
+                        <div>
+                            <strong>${escHtml(t.name)}</strong>
+                            ${t.error ? `<div style="color:#dc2626; font-size:0.75rem; margin-top:2px;">${escHtml(t.error)}</div>` : ''}
+                        </div>
+                        <span style="font-weight:700; font-size:0.75rem; color:${t.passed ? '#16a34a' : '#dc2626'};">
+                            ${t.passed ? '✓ PASSED' : '✗ FAILED'}
+                        </span>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="test-suite-box">
+                        <div class="test-suite-title">${icon} ${escHtml(s.name)}</div>
+                        ${items}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        refreshFaceRecognitionPage();
+    }, 150);
+}
+
+function exportFaceLogsCSV() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+    const logs = Engine.getAttendanceLogs();
+    if (!logs || logs.length === 0) {
+        showToast('No attendance logs to export.', 'info');
+        return;
+    }
+
+    const headers = ['#', 'Timestamp', 'Date', 'Time', 'Person Name', 'ID / LRN / Emp No', 'Role', 'Action', 'Confidence (%)', 'Details'];
+    const rows = logs.map((l, idx) => [
+        idx + 1,
+        `"${l.timestamp || ''}"`,
+        `"${l.dateStr || ''}"`,
+        `"${l.timeStr || ''}"`,
+        `"${(l.name || '').replace(/"/g, '""')}"`,
+        `"${(l.identifier || '').replace(/"/g, '""')}"`,
+        `"${l.role || ''}"`,
+        `"${l.action || ''}"`,
+        `${l.confidence || 0}`,
+        `"${(l.details || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `MDSJFI_Facial_Attendance_Logs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast('Facial attendance logs exported as CSV.', 'success');
+}
+
+function printFaceLogs() {
+    const Engine = window.MDSJ_FaceEngine;
+    if (!Engine) return;
+    const logs = Engine.getAttendanceLogs();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLogs = logs.filter(l => l.dateStr === todayStr);
+
+    const printWin = window.open('', '_blank', 'width=900,height=750');
+    if (!printWin) {
+        window.print();
+        return;
+    }
+
+    const nowStr = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const rows = (todayLogs.length > 0 ? todayLogs : logs).map((l, idx) => `
+        <tr>
+            <td style="padding:7px; border:1px solid #cbd5e1; text-align:center;">${idx + 1}</td>
+            <td style="padding:7px; border:1px solid #cbd5e1;">${l.dateStr} at ${l.timeStr}</td>
+            <td style="padding:7px; border:1px solid #cbd5e1;"><strong>${escHtml(l.name)}</strong></td>
+            <td style="padding:7px; border:1px solid #cbd5e1; font-family:monospace;">${escHtml(l.identifier)}</td>
+            <td style="padding:7px; border:1px solid #cbd5e1; text-align:center;">${escHtml(l.role)}</td>
+            <td style="padding:7px; border:1px solid #cbd5e1; text-align:center; font-weight:bold; color:${l.action === 'LOG_IN' ? '#15803d' : '#b91c1c'};">${l.action === 'LOG_IN' ? 'LOG IN' : 'LOG OUT'}</td>
+            <td style="padding:7px; border:1px solid #cbd5e1; text-align:center;">${l.confidence}%</td>
+        </tr>
+    `).join('');
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>MDSJFI - Official Facial Biometric Attendance Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 25px; color: #1e293b; font-size: 12px; }
+                .header { display: flex; align-items: center; justify-content: center; gap: 14px; border-bottom: 2px solid #0b2545; padding-bottom: 12px; margin-bottom: 18px; }
+                .header h2 { margin: 0; color: #0b2545; font-size: 19px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th { background: #0b2545; color: #fff; padding: 7px 8px; text-align: left; }
+                .signatures { margin-top: 40px; display: flex; justify-content: space-between; }
+                .sig-box { text-align: center; width: 44%; }
+                .sig-line { border-top: 1.5px solid #000; margin-top: 40px; margin-bottom: 4px; }
+                @media print {
+                    @page { size: portrait; margin: 12mm; }
+                    body { margin: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="school-logo.png" alt="MDSJFI Logo" style="height:65px; width:65px; object-fit:contain;" onerror="this.style.display='none'">
+                <div style="text-align:center;">
+                    <h2>MONTESSORI DE SAN JOSE FOUNDATION INC.</h2>
+                    <p style="margin:2px 0 0 0; font-size:11px; color:#64748b;">0696 P. Burgos St., Brgy. Pag-asa, San Jose, Occidental Mindoro &bull; DepEd Recognized</p>
+                    <h3 style="margin:6px 0 0 0; font-size:13px; color:#0b2545;">OFFICIAL FACIAL ATTENDANCE DAILY TIME RECORD</h3>
+                    <p style="margin:2px 0 0 0; font-size:10.5px; color:#64748b;">Generated on: ${nowStr}</p>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px; text-align:center;">#</th>
+                        <th>Timestamp</th>
+                        <th>Personnel / Learner Name</th>
+                        <th>ID / LRN</th>
+                        <th style="text-align:center;">Role</th>
+                        <th style="text-align:center;">Action</th>
+                        <th style="text-align:center;">Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows || '<tr><td colspan="7" style="text-align:center; padding:15px;">No attendance entries recorded.</td></tr>'}
+                </tbody>
+            </table>
+            <div class="signatures">
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div style="font-weight:bold;">CARRELLE B. COLEGADO</div>
+                    <div style="font-size:10.5px; color:#475569;">Registrar / In-Charge, Accounting</div>
+                </div>
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div style="font-weight:bold;">NIÑO ALOYSIUS B. COLEGADO</div>
+                    <div style="font-size:10.5px; color:#475569;">School President</div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+        printWin.print();
+    }, 350);
+}
+
+// Window exports for Facial Recognition Controller
+window.refreshFaceRecognitionPage = refreshFaceRecognitionPage;
+window.onConfidenceThresholdSliderChange = onConfidenceThresholdSliderChange;
+window.switchFaceSubTab = switchFaceSubTab;
+window.filterFaceLogsTable = filterFaceLogsTable;
+window.filterFaceProfilesTable = filterFaceProfilesTable;
+window.deleteEnrolledFaceProfile = deleteEnrolledFaceProfile;
+window.openFaceScannerModal = openFaceScannerModal;
+window.openLoginFaceScannerModal = openLoginFaceScannerModal;
+window.closeFaceScannerModal = closeFaceScannerModal;
+window.setFaceScannerMode = setFaceScannerMode;
+window.switchScannerCamera = switchScannerCamera;
+window.openFaceEnrollmentModal = openFaceEnrollmentModal;
+window.onFaceEnrollPersonChange = onFaceEnrollPersonChange;
+window.captureAndAnalyzeEnrollmentFace = captureAndAnalyzeEnrollmentFace;
+window.saveFaceEnrollmentSubmit = saveFaceEnrollmentSubmit;
+window.closeFaceEnrollmentModal = closeFaceEnrollmentModal;
+window.openFaceTestModal = openFaceTestModal;
+window.closeFaceTestModal = closeFaceTestModal;
+window.runInAppTests = runInAppTests;
+window.exportFaceLogsCSV = exportFaceLogsCSV;
+window.printFaceLogs = printFaceLogs;
+
+function openFaceEnrollmentForCurrentStudent() {
+    if (window.currentViewId) {
+        closeModal('viewModal');
+        openFaceEnrollmentModal(window.currentViewId);
+    }
+}
+window.openFaceEnrollmentForCurrentStudent = openFaceEnrollmentForCurrentStudent;
+
+function openFaceEnrollmentForCurrentTeacher(empId) {
+    if (!empId && typeof activeTeacherProfileEmp !== 'undefined' && activeTeacherProfileEmp) {
+        empId = activeTeacherProfileEmp.id || activeTeacherProfileEmp.employeeNo;
+    }
+    if (typeof closeTeacherProfileModal === 'function') closeTeacherProfileModal();
+    openFaceEnrollmentModal(empId);
+}
+window.openFaceEnrollmentForCurrentTeacher = openFaceEnrollmentForCurrentTeacher;
+
+
 // Safe Table Action Click Delegation (Only targets rows without explicit inline onclick)
 document.addEventListener('click', function(e) {
     const btn = e.target.closest('.actions-cell button, tr button.btn-icon');
@@ -12954,7 +13920,7 @@ document.addEventListener('click', function(e) {
 });
 
 // ======================== SESSION PERSISTENCE ========================
-// Session is preserved across browser refresh (F5). Explicit logout is handled via handleLogout.
+// Session is stored in sessionStorage (preserved across browser refresh F5, but purposely closing the window clears the session so reopening starts at the login screen). Explicit logout is handled via handleLogout.
 
 // ======================== BOOT ========================
 if (document.readyState === 'loading') {

@@ -10070,6 +10070,373 @@ html.dark-theme textarea {
     color: #f1f5f9 !important;
 }
 
+/* ============================================================
+   WEBCAM FACIAL RECOGNITION & BIOMETRIC ATTENDANCE STYLES
+   ============================================================ */
+
+.face-terminal-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.face-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.face-kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.face-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.face-kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.face-kpi-icon.students { background: #e0f2fe; color: #0284c7; }
+.face-kpi-icon.teachers { background: #ede9fe; color: #7c3aed; }
+.face-kpi-icon.faculty { background: #fef3c7; color: #d97706; }
+.face-kpi-icon.active-in { background: #dcfce7; color: #16a34a; }
+.face-kpi-icon.logs-today { background: #f1f5f9; color: #0b2545; }
+
+.face-kpi-val {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0b2545;
+    line-height: 1.1;
+}
+
+.face-kpi-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* Face Scanner Camera Viewfinder */
+.face-scanner-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto;
+    aspect-ratio: 4 / 3;
+    background: #091220;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    border: 2px solid #1e3a5f;
+}
+
+.face-scanner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror camera for natural interaction */
+}
+
+.face-scanner-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.face-guide-oval {
+    width: 240px;
+    height: 310px;
+    border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
+    border: 3px dashed rgba(56, 189, 248, 0.7);
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    position: relative;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.face-guide-oval.detected {
+    border: 3.5px solid #22c55e;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 25px rgba(34, 197, 94, 0.5);
+}
+
+.face-guide-oval.warning {
+    border: 3.5px solid #f59e0b;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 25px rgba(245, 158, 11, 0.5);
+}
+
+.face-guide-oval.error {
+    border: 3.5px solid #ef4444;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 25px rgba(239, 68, 68, 0.5);
+}
+
+.face-scan-laser {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #38bdf8, #22c55e, #38bdf8, transparent);
+    box-shadow: 0 0 8px #38bdf8;
+    animation: scanLaserMove 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes scanLaserMove {
+    0% { top: 15%; opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { top: 85%; opacity: 0.3; }
+}
+
+.face-scanner-status-pill {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.face-scanner-status-pill.success {
+    background: rgba(22, 101, 52, 0.92);
+    border-color: #4ade80;
+    color: #f0fdf4;
+}
+
+.face-scanner-status-pill.warning {
+    background: rgba(146, 64, 14, 0.92);
+    border-color: #fbbf24;
+    color: #fffbeb;
+}
+
+.face-scanner-status-pill.error {
+    background: rgba(153, 27, 27, 0.92);
+    border-color: #f87171;
+    color: #fef2f2;
+}
+
+/* Badges for roles and attendance actions */
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.role-badge.student {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.role-badge.teacher {
+    background: #ede9fe;
+    color: #6d28d9;
+    border: 1px solid #ddd6fe;
+}
+
+.role-badge.faculty {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.action-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    border-radius: 14px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-badge.login {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.action-badge.logout {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+/* Mode Switcher Buttons */
+.face-mode-selector {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    gap: 4px;
+}
+
+.face-mode-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 7px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.face-mode-btn.active {
+    background: #0b2545;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(11, 37, 69, 0.25);
+}
+
+/* Confidence Threshold Slider Control */
+.confidence-control-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.confidence-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 160px;
+    height: 6px;
+    border-radius: 4px;
+    background: #cbd5e1;
+    outline: none;
+}
+
+.confidence-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #0284c7;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    border: 2px solid #ffffff;
+}
+
+/* Test Suite Checklist Styles */
+.test-suite-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.test-suite-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0b2545;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.test-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+}
+
+.test-item-row.pass {
+    border-left: 3px solid #16a34a;
+}
+
+.test-item-row.fail {
+    border-left: 3px solid #dc2626;
+    background: #fef2f2;
+}
+
+html.dark-theme .face-terminal-card,
+html.dark-theme .face-kpi-card,
+html.dark-theme .confidence-control-card,
+html.dark-theme .test-suite-box,
+html.dark-theme .test-item-row {
+    background: #131f37 !important;
+    border-color: #1e293b !important;
+    color: #f1f5f9 !important;
+}
+
+html.dark-theme .face-kpi-val {
+    color: #f1f5f9 !important;
+}
+
+html.dark-theme .face-mode-selector {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+html.dark-theme .face-mode-btn {
+    color: #94a3b8 !important;
+}
+
+html.dark-theme .face-mode-btn.active {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+}
+
+
 
 
 

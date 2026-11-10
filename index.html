@@ -23,7 +23,8 @@
     <script>
     (function() {
         try {
-            var s = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user') || localStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_user');
+            // Only check sessionStorage: session lasts for active window/tab and survives F5 refresh, but starts at login when window is closed and reopened
+            var s = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
             var parsed = null;
             try { if (s) parsed = JSON.parse(s); } catch(e){}
             if (parsed && parsed.username) {
@@ -39,14 +40,20 @@
                 try {
                     sessionStorage.setItem('mdsj_session', s);
                     sessionStorage.setItem('mdsj_user', s);
-                    localStorage.setItem('mdsj_session', s);
-                    localStorage.setItem('mdsj_user', s);
                 } catch(e) {}
             } else {
                 document.documentElement.classList.remove('user-logged-in');
                 document.documentElement.classList.remove('role-teacher');
                 window.activePrecheckSession = null;
             }
+            // Purge any persistent session in localStorage so reopening closed window always presents login screen
+            try {
+                localStorage.removeItem('mdsj_session');
+                localStorage.removeItem('mdsj_user');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('mdsj_currentUser');
+                localStorage.removeItem('mdsj_current_user');
+            } catch(e) {}
         } catch (e) {
             document.documentElement.classList.remove('user-logged-in');
             document.documentElement.classList.remove('role-teacher');
@@ -667,7 +674,7 @@
 
         window.openUserProfileModal = function() {
             var raw = null;
-            try { raw = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session'); } catch(e){}
+            try { raw = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user'); } catch(e){}
             var user = null;
             try { if (raw) user = JSON.parse(raw); } catch(e){}
             if (!user && window.currentUser) user = window.currentUser;
@@ -745,7 +752,7 @@
             var u = window.currentUser || null;
             if (!u) {
                 try {
-                    var raw = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session');
+                    var raw = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
                     if (raw) u = JSON.parse(raw);
                 } catch(err) {}
             }
@@ -762,7 +769,8 @@
                 try {
                     var uStr = JSON.stringify(u);
                     sessionStorage.setItem('mdsj_session', uStr);
-                    localStorage.setItem('mdsj_session', uStr);
+                    sessionStorage.setItem('mdsj_user', uStr);
+                    localStorage.removeItem('mdsj_session');
                     window.currentUser = u;
 
                     var customPasswords = {};
@@ -824,7 +832,7 @@
             if (!user) user = window.currentUser || null;
             if (!user) {
                 try {
-                    var raw = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session');
+                    var raw = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
                     if (raw) user = JSON.parse(raw);
                 } catch(err) {}
             }
@@ -984,7 +992,7 @@
             var sess = window.currentUser || window.activePrecheckSession;
             if (!sess) {
                 try {
-                    var s = sessionStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_session');
+                    var s = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
                     if (s) sess = JSON.parse(s);
                 } catch(err) {}
             }
@@ -1083,7 +1091,7 @@
             if (!pageId) return;
 
             // Restrict Teacher from navigating to Statement of Account or Cash In & Out Flow
-            var currentUserStr = sessionStorage.getItem('currentUser') || localStorage.getItem('mdsj_currentUser') || sessionStorage.getItem('mdsj_session');
+            var currentUserStr = sessionStorage.getItem('currentUser') || sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
             var curUser = null;
             try { curUser = JSON.parse(currentUserStr); } catch(e){}
             if ((pageId === 'soa' || pageId === 'cash-flow') && curUser && (curUser.role === 'Faculty / Class Adviser' || curUser.username === 'teacher')) {
@@ -1142,6 +1150,7 @@
                 'clearance': 'Student Clearance (Examination)',
                 'payroll': 'Faculty & Staff Payroll',
                 'teachers': 'Teachers & Faculty Directory',
+                'face-recognition': 'Facial Recognition & Attendance',
                 'activities': 'Current Activities Log',
                 'promote': 'Advance / Promote S.Y.',
                 'alumni': 'JHS Finisher / Alumni Directory',
@@ -1160,10 +1169,10 @@
                 document.body.classList.remove('view-fit-window');
             }
 
-            // Persist active page to stay on the same tab on refresh or reopening window
+            // Persist active page to stay on the same tab on refresh (within active session)
             try {
                 sessionStorage.setItem('mdsj_active_page', pageId);
-                localStorage.setItem('mdsj_active_page', pageId);
+                localStorage.removeItem('mdsj_active_page');
                 if (window.location.hash !== '#' + pageId) {
                     history.replaceState(null, null, '#' + pageId);
                 }
@@ -1255,11 +1264,11 @@
             }
         };
 
-        // Session Restoration: Restore active session and persist across refresh (F5)
+        // Session Restoration: Only restore session if still present in sessionStorage (preserves across F5 refresh, but starts at login screen when window is closed and reopened)
         var activeSession = window.activePrecheckSession || null;
         try {
             if (!activeSession) {
-                var saved = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user') || localStorage.getItem('mdsj_session') || localStorage.getItem('mdsj_user');
+                var saved = sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
                 if (saved) activeSession = JSON.parse(saved);
             }
         } catch(e) {}
@@ -1267,7 +1276,7 @@
         if (activeSession && activeSession.username) {
             document.documentElement.classList.add("user-logged-in");
             unlockDashboardUI(activeSession);
-            var initialPage = sessionStorage.getItem('mdsj_active_page') || localStorage.getItem('mdsj_active_page') || (window.location.hash ? window.location.hash.substring(1) : '') || 'dashboard';
+            var initialPage = sessionStorage.getItem('mdsj_active_page') || (window.location.hash ? window.location.hash.substring(1) : '') || 'dashboard';
             if (activeSession.role === 'Faculty / Class Adviser' || activeSession.username === 'teacher') {
                 if (initialPage === 'soa' || initialPage === 'cash-flow') initialPage = 'dashboard';
             }
@@ -1386,11 +1395,16 @@
             try { sessionStorage.setItem("mdsj_session", JSON.stringify(sess)); } catch (e) {}
             try { sessionStorage.setItem("mdsj_user", JSON.stringify(sess)); } catch (e) {}
             try { sessionStorage.setItem("currentUser", JSON.stringify(sess)); } catch (e) {}
-            try { localStorage.setItem("mdsj_session", JSON.stringify(sess)); } catch (e) {}
-            try { localStorage.setItem("mdsj_user", JSON.stringify(sess)); } catch (e) {}
-            try { localStorage.setItem("currentUser", JSON.stringify(sess)); } catch (e) {}
-            try { localStorage.setItem("mdsj_currentUser", JSON.stringify(sess)); } catch (e) {}
-            try { localStorage.setItem("mdsj_active_page", "dashboard"); } catch (e) {}
+            try { sessionStorage.setItem("mdsj_active_page", "dashboard"); } catch (e) {}
+            // Clean up any lingering session keys in localStorage
+            try {
+                localStorage.removeItem("mdsj_session");
+                localStorage.removeItem("mdsj_user");
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("mdsj_currentUser");
+                localStorage.removeItem("mdsj_current_user");
+                localStorage.removeItem("mdsj_active_page");
+            } catch (e) {}
 
             var remMe = document.getElementById("rememberMe");
             try {
@@ -1645,6 +1659,11 @@
             <a href="javascript:void(0)" class="nav-item" data-page="teachers" onclick="navigateTo('teachers')" title="Teachers &amp; Faculty">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Teachers &amp; Faculty</span>
+            </a>
+            <!-- Webcam Facial Recognition & Attendance (Students, Teachers, Faculty) -->
+            <a href="javascript:void(0)" class="nav-item" data-page="face-recognition" onclick="navigateTo('face-recognition')" title="Facial Recognition &amp; Attendance">
+                <i class="fas fa-camera"></i>
+                <span>Facial Attendance</span>
             </a>
             <!-- Current Activities Logs (placed before Archived) -->
             <a href="javascript:void(0)" class="nav-item" data-page="activities" onclick="navigateTo('activities')" title="Current Activities">
@@ -6211,6 +6230,192 @@
                 </div>
             </div>
         </section>
+
+        <!-- ==================== WEBCAM FACIAL RECOGNITION & ATTENDANCE TERMINAL ==================== -->
+        <section class="page" id="page-face-recognition">
+            <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+                <div>
+                    <h2 class="page-title"><i class="fas fa-camera" style="color:#0284c7; margin-right:8px;"></i> Facial Recognition &amp; Attendance</h2>
+                    <p class="page-desc">Automated biometric log-in &amp; log-out terminal and official attendance tracking for students, teachers, and faculty members.</p>
+                </div>
+                <div class="page-actions" style="display:flex; flex-wrap:wrap; gap:10px;">
+                    <button type="button" class="btn btn-primary" onclick="openFaceScannerModal('AUTO', 'ATTENDANCE')" style="background: linear-gradient(135deg, #0b2545 0%, #0284c7 100%); border:none; font-weight:700; box-shadow: 0 4px 14px rgba(2,132,199,0.35);">
+                        <i class="fas fa-camera"></i> Launch Face Scanner Terminal
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="openFaceEnrollmentModal()" style="font-weight:600; border-color:#cbd5e1; background:#ffffff;">
+                        <i class="fas fa-user-plus"></i> Enroll Face Biometrics
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="openFaceTestModal()" title="Run Automated Verification Tests" style="font-weight:600; border-color:#cbd5e1; color:#0b2545; background:#ffffff;">
+                        <i class="fas fa-vial"></i> Run Verification Tests
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary KPI Statistics Grid -->
+            <div class="face-kpi-grid">
+                <div class="face-kpi-card">
+                    <div class="face-kpi-icon students"><i class="fas fa-user-graduate"></i></div>
+                    <div>
+                        <div class="face-kpi-val" id="statEnrolledStudents">0</div>
+                        <div class="face-kpi-label">Enrolled Students</div>
+                    </div>
+                </div>
+                <div class="face-kpi-card">
+                    <div class="face-kpi-icon teachers"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <div>
+                        <div class="face-kpi-val" id="statEnrolledTeachers">0</div>
+                        <div class="face-kpi-label">Enrolled Teachers</div>
+                    </div>
+                </div>
+                <div class="face-kpi-card">
+                    <div class="face-kpi-icon faculty"><i class="fas fa-user-tie"></i></div>
+                    <div>
+                        <div class="face-kpi-val" id="statEnrolledFaculty">0</div>
+                        <div class="face-kpi-label">Enrolled Faculty</div>
+                    </div>
+                </div>
+                <div class="face-kpi-card">
+                    <div class="face-kpi-icon active-in"><i class="fas fa-sign-in-alt"></i></div>
+                    <div>
+                        <div class="face-kpi-val" id="statActiveOnCampus">0</div>
+                        <div class="face-kpi-label">Currently Logged In</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recognition Confidence Threshold Setting & Sub-Tab Navigation -->
+            <div class="face-terminal-card" style="padding:16px 20px; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                    <!-- Sub-tabs -->
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-sm btn-primary" id="btnFaceSubTabLogs" onclick="switchFaceSubTab('logs')" style="padding:7px 14px; font-weight:700;">
+                            <i class="fas fa-clipboard-list"></i> Attendance Audit Logs
+                        </button>
+                        <button type="button" class="btn-sm btn-secondary" id="btnFaceSubTabProfiles" onclick="switchFaceSubTab('profiles')" style="padding:7px 14px; font-weight:600;">
+                            <i class="fas fa-id-card"></i> Enrolled Face Profiles
+                        </button>
+                    </div>
+
+                    <!-- Confidence Threshold Slider -->
+                    <div class="confidence-control-card" style="padding:8px 14px; margin:0;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <i class="fas fa-sliders-h" style="color:#0284c7;"></i>
+                            <span style="font-size:0.82rem; font-weight:700; color:#0f172a;">Confidence Threshold:</span>
+                            <span id="faceConfidenceThresholdVal" style="font-size:0.92rem; font-weight:800; color:#0284c7; min-width:38px;">75%</span>
+                        </div>
+                        <input type="range" id="faceConfidenceSlider" class="confidence-slider" min="50" max="95" step="1" value="75" oninput="onConfidenceThresholdSliderChange(this.value)">
+                        <small style="font-size:0.72rem; color:#64748b;">(Higher = stricter biometric matching)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 1: Attendance Audit Logs View -->
+            <div id="faceLogsView">
+                <!-- Filters Bar -->
+                <div class="table-controls" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#fff; padding:12px 16px; border-radius:10px; margin-bottom:14px; border:1px solid #e2e8f0;">
+                    <div class="search-box" style="flex:1; min-width:240px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="faceLogSearchInput" placeholder="Search by name, LRN, or Employee #..." oninput="filterFaceLogsTable()">
+                    </div>
+                    <div class="filter-group" style="display:flex; align-items:center; gap:6px;">
+                        <label for="faceLogFilterRole" style="font-weight:600; font-size:0.82rem;"><i class="fas fa-users-cog"></i> Role:</label>
+                        <select id="faceLogFilterRole" onchange="filterFaceLogsTable()" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.85rem; font-weight:600;">
+                            <option value="ALL">All Roles (Students, Teachers, Faculty)</option>
+                            <option value="Student">Students Only</option>
+                            <option value="Teacher">Teachers Only</option>
+                            <option value="Faculty">Faculty &amp; Admin</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="display:flex; align-items:center; gap:6px;">
+                        <label for="faceLogFilterAction" style="font-weight:600; font-size:0.82rem;"><i class="fas fa-exchange-alt"></i> Action:</label>
+                        <select id="faceLogFilterAction" onchange="filterFaceLogsTable()" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.85rem; font-weight:600;">
+                            <option value="ALL">All Actions (Log In &amp; Log Out)</option>
+                            <option value="LOG_IN">Log In Only</option>
+                            <option value="LOG_OUT">Log Out Only</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="display:flex; align-items:center; gap:6px;">
+                        <label for="faceLogFilterDate" style="font-weight:600; font-size:0.82rem;"><i class="fas fa-calendar-alt"></i> Date:</label>
+                        <select id="faceLogFilterDate" onchange="filterFaceLogsTable()" style="padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; font-size:0.85rem; font-weight:600;">
+                            <option value="today" selected>Today Only</option>
+                            <option value="week">Past 7 Days</option>
+                            <option value="month">Past 30 Days</option>
+                            <option value="ALL">All Recorded Dates</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
+                        <button type="button" class="btn-sm btn-secondary" onclick="exportFaceLogsCSV()" title="Export CSV" style="padding:6px 12px; font-size:0.82rem;">
+                            <i class="fas fa-file-csv"></i> Export CSV
+                        </button>
+                        <button type="button" class="btn-sm btn-secondary" onclick="printFaceLogs()" title="Print Official Daily Time Record Sheet" style="padding:6px 12px; font-size:0.82rem;">
+                            <i class="fas fa-print"></i> Print DTR
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Wrapper -->
+                <div class="table-wrapper" style="overflow-x:auto; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+                    <table class="data-table" id="faceLogsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 17%;">Timestamp</th>
+                                <th style="width: 25%;">Person Name &amp; Identification</th>
+                                <th style="width: 12%; text-align:center;">Role</th>
+                                <th style="width: 14%; text-align:center;">Action Recorded</th>
+                                <th style="width: 14%; text-align:center;">Match Confidence</th>
+                                <th style="width: 18%;">Academic / Position Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faceLogsTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="faceLogsEmptyState" style="display:none; text-align:center; padding:45px 20px; color:#64748b;">
+                        <i class="fas fa-clipboard-check" style="font-size:2.5rem; color:#cbd5e1; margin-bottom:12px;"></i>
+                        <h4 style="margin:0; font-size:1rem; font-weight:700; color:#334155;">No Facial Attendance Logs Found</h4>
+                        <p style="margin:4px 0 0; font-size:0.82rem;">Use the Face Scanner Terminal to record student, teacher, or faculty log-in/log-out events.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 2: Enrolled Biometric Face Profiles Management -->
+            <div id="faceProfilesView" style="display:none;">
+                <div class="table-controls" style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px 16px; border-radius:10px; margin-bottom:14px; border:1px solid #e2e8f0;">
+                    <div class="search-box" style="flex:1; max-width:340px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="faceProfileSearchInput" placeholder="Filter enrolled personnel or students..." oninput="filterFaceProfilesTable()">
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" class="btn btn-primary" onclick="openFaceEnrollmentModal()" style="font-size:0.84rem; padding:8px 16px;">
+                            <i class="fas fa-user-plus"></i> Enroll New Face
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="overflow-x:auto; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+                    <table class="data-table" id="faceProfilesTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Enrolled Person Name</th>
+                                <th style="width: 14%;">ID / LRN / Emp #</th>
+                                <th style="width: 12%; text-align:center;">Role</th>
+                                <th style="width: 20%;">Section / Position</th>
+                                <th style="width: 15%;">Enrolled Date</th>
+                                <th style="width: 14%; text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faceProfilesTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="faceProfilesEmptyState" style="display:none; text-align:center; padding:45px 20px; color:#64748b;">
+                        <i class="fas fa-user-slash" style="font-size:2.5rem; color:#cbd5e1; margin-bottom:12px;"></i>
+                        <h4 style="margin:0; font-size:1rem; font-weight:700; color:#334155;">No Biometric Profiles Enrolled Yet</h4>
+                        <p style="margin:4px 0 0; font-size:0.82rem;">Click "Enroll New Face" above to register student, teacher, or faculty face biometrics.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- ==================== USER PROFILE DETAILS MODAL (MY PROFILE) ==================== -->
@@ -6258,6 +6463,241 @@
             </div>
         </div>
     </div>
+
+    <!-- ==================== WEBCAM FACIAL ATTENDANCE & LOGIN SCANNER MODAL ==================== -->
+    <div class="modal-overlay" id="faceScannerModal" style="display:none; z-index:9998; align-items:center; justify-content:center; overflow-y:auto; padding:16px 10px;" onclick="if(event.target===this) closeFaceScannerModal()">
+        <div class="modal-content" style="max-width: 620px; width: 100%; border-radius: 16px; overflow: hidden; padding: 0; box-shadow: 0 25px 60px rgba(0,0,0,0.45); border: 1px solid #1e3a5f; margin: auto; background: #0f172a; color: #fff;" onclick="event.stopPropagation()">
+            <!-- Terminal Header -->
+            <div style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); padding: 18px 22px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:40px; height:40px; border-radius:10px; background:rgba(56, 189, 248, 0.2); display:flex; align-items:center; justify-content:center; font-size:1.25rem; color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.4);">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#ffffff;" id="faceScannerModalTitle">Facial Attendance Terminal</h3>
+                        <p style="margin:2px 0 0; font-size:0.75rem; color:#94a3b8;" id="faceScannerModalSub">Live Webcam Biometric Scanner &bull; Montessori de San Jose</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" onclick="closeFaceScannerModal()" style="color:#cbd5e1; font-size:1.6rem; background:none; border:none; cursor:pointer;" aria-label="Close">&times;</button>
+            </div>
+
+            <!-- Terminal Body -->
+            <div style="padding: 20px 22px; background: #0f172a;">
+                <!-- Mode Selector & Controls Bar -->
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                    <div class="face-mode-selector" id="faceScannerModeSelector">
+                        <button type="button" class="face-mode-btn active" id="btnModeAuto" onclick="setFaceScannerMode('AUTO')" title="System automatically determines Log In or Log Out based on current status">
+                            <i class="fas fa-magic"></i> Auto Mode
+                        </button>
+                        <button type="button" class="face-mode-btn" id="btnModeLogin" onclick="setFaceScannerMode('LOG_IN')" title="Explicitly record Log In">
+                            <i class="fas fa-sign-in-alt"></i> Log In
+                        </button>
+                        <button type="button" class="face-mode-btn" id="btnModeLogout" onclick="setFaceScannerMode('LOG_OUT')" title="Explicitly record Log Out">
+                            <i class="fas fa-sign-out-alt"></i> Log Out
+                        </button>
+                    </div>
+
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-sm btn-secondary" onclick="switchScannerCamera()" title="Switch Front/Rear Camera" style="background:#1e293b; color:#cbd5e1; border-color:#334155; font-size:0.8rem;">
+                            <i class="fas fa-sync-alt"></i> Flip Camera
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Video Viewfinder -->
+                <div class="face-scanner-viewport">
+                    <video id="faceScannerVideo" class="face-scanner-video" autoplay playsinline muted></video>
+                    <canvas id="faceScannerCanvas" style="display:none;"></canvas>
+                    <div class="face-scanner-overlay">
+                        <div class="face-guide-oval" id="faceScannerGuideOval">
+                            <div class="face-scan-laser"></div>
+                        </div>
+                        <div class="face-scanner-status-pill" id="faceScannerStatusBadge">
+                            <i class="fas fa-spinner fa-spin"></i> Initializing camera...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Result Alert Banner -->
+                <div id="faceScannerResultCard" style="display:none; margin-top:14px; background:#1e293b; border:1px solid #334155; border-radius:12px; padding:14px 16px; animation:loginSlideUp 0.3s ease;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div id="faceScanResultAvatar" style="width:44px; height:44px; border-radius:50%; background:#0b2545; color:#38bdf8; display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700; border:2px solid #38bdf8; flex-shrink:0;">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                            <div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <strong id="faceScanResultName" style="font-size:1rem; color:#ffffff;">—</strong>
+                                    <span id="faceScanResultRole" class="role-badge student">Student</span>
+                                </div>
+                                <div style="font-size:0.78rem; color:#94a3b8; margin-top:2px;" id="faceScanResultDetails">—</div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div id="faceScanResultAction" class="action-badge login">LOG IN</div>
+                            <div style="font-size:0.72rem; color:#38bdf8; font-weight:700; margin-top:4px;" id="faceScanResultConfidence">96% Match</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error / Warning Banner -->
+                <div id="faceScannerErrorBox" style="display:none; margin-top:14px; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; border-radius:10px; padding:12px 14px; color:#fca5a5; font-size:0.84rem;">
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <i class="fas fa-exclamation-triangle" style="color:#ef4444; font-size:1.1rem; margin-top:2px;"></i>
+                        <span id="faceScannerErrorText">Camera error occurred.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Footer -->
+            <div style="padding: 12px 22px; background: #0b1322; border-top: 1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:0.75rem; color:#64748b;">
+                    <i class="fas fa-shield-alt" style="color:#38bdf8;"></i> Mathematical Embeddings &bull; Zero Raw Image Storage
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="closeFaceScannerModal()" style="padding: 6px 16px; font-size: 0.82rem; background:#1e293b; color:#cbd5e1; border-color:#334155;">
+                    Close Terminal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FACIAL BIOMETRIC ENROLLMENT MODAL ==================== -->
+    <div class="modal-overlay" id="faceEnrollModal" style="display:none; z-index:9998; align-items:center; justify-content:center; overflow-y:auto; padding:16px 10px;" onclick="if(event.target===this) closeFaceEnrollmentModal()">
+        <div class="modal-content" style="max-width: 600px; width: 100%; border-radius: 16px; overflow: hidden; padding: 0; box-shadow: 0 25px 60px rgba(0,0,0,0.35); border: 1px solid #cbd5e1; margin: auto; background: #ffffff;" onclick="event.stopPropagation()">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%); padding: 18px 24px; color: #fff; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:1.15rem; color:#93c5fd;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#fff;">Register Facial Biometrics</h3>
+                        <p style="margin:2px 0 0; font-size:0.76rem; color:#cbd5e1;">Link student, teacher, or faculty face to database record</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" onclick="closeFaceEnrollmentModal()" style="color:#cbd5e1; font-size:1.6rem; background:none; border:none; cursor:pointer;" aria-label="Close">&times;</button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding: 20px 24px;">
+                <!-- Step 1: Select Person -->
+                <div style="margin-bottom: 16px;">
+                    <label for="faceEnrollPersonSelect" style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:6px;">
+                        Select Person from Database <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="faceEnrollPersonSelect" onchange="onFaceEnrollPersonChange(this.value)" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; font-size:0.88rem; font-weight:600; outline:none;">
+                        <option value="">-- Choose Student, Teacher, or Faculty --</option>
+                    </select>
+                </div>
+
+                <!-- Person Profile Card Preview -->
+                <div id="faceEnrollPersonPreview" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong id="faceEnrollPreviewName" style="font-size:0.95rem; color:#0b2545;">—</strong>
+                            <div style="font-size:0.78rem; color:#64748b; margin-top:2px;" id="faceEnrollPreviewDetails">—</div>
+                        </div>
+                        <span id="faceEnrollPreviewRole" class="role-badge student">Student</span>
+                    </div>
+                </div>
+
+                <!-- Step 2: Camera Capture Box -->
+                <div style="margin-bottom: 16px;">
+                    <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:6px;">
+                        Webcam Biometric Capture
+                    </label>
+                    <div class="face-scanner-viewport" style="max-width:100%; aspect-ratio:4/3; height:260px;">
+                        <video id="faceEnrollVideo" class="face-scanner-video" autoplay playsinline muted></video>
+                        <canvas id="faceEnrollCanvas" style="display:none;"></canvas>
+                        <div class="face-scanner-overlay">
+                            <div class="face-guide-oval" id="faceEnrollGuideOval" style="width:160px; height:200px;"></div>
+                            <div class="face-scanner-status-pill" id="faceEnrollStatusBadge">
+                                Center face inside frame
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error / Diagnostic Feedback -->
+                <div id="faceEnrollErrorBox" style="display:none; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; margin-bottom:16px; color:#dc2626; font-size:0.82rem; font-weight:600;">
+                    <i class="fas fa-exclamation-circle" style="margin-right:6px;"></i>
+                    <span id="faceEnrollErrorText">Error message</span>
+                </div>
+
+                <!-- Success Verification Box -->
+                <div id="faceEnrollSuccessBox" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-bottom:16px; color:#15803d; font-size:0.82rem; font-weight:600;">
+                    <i class="fas fa-check-circle" style="margin-right:6px;"></i>
+                    <span id="faceEnrollSuccessText">Face captured and 128-d descriptor verified! Ready to save.</span>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="captureAndAnalyzeEnrollmentFace()" id="btnCaptureEnrollFace" style="padding:9px 18px; font-weight:600;">
+                        <i class="fas fa-camera"></i> Capture &amp; Analyze Face
+                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeFaceEnrollmentModal()" style="padding:9px 16px;">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="btnSaveFaceEnrollment" onclick="saveFaceEnrollmentSubmit()" disabled style="padding:9px 20px; font-weight:700; background:#16a34a; border-color:#15803d;">
+                            <i class="fas fa-save"></i> Save Biometrics
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== AUTOMATED VERIFICATION TEST RUNNER MODAL ==================== -->
+    <div class="modal-overlay" id="faceTestModal" style="display:none; z-index:9998; align-items:center; justify-content:center; overflow-y:auto; padding:16px 10px;" onclick="if(event.target===this) closeFaceTestModal()">
+        <div class="modal-content" style="max-width: 660px; width: 100%; border-radius: 16px; overflow: hidden; padding: 0; box-shadow: 0 25px 60px rgba(0,0,0,0.35); border: 1px solid #cbd5e1; margin: auto; background: #ffffff;" onclick="event.stopPropagation()">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); padding: 18px 24px; color: #fff; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:38px; height:38px; border-radius:10px; background:rgba(56, 189, 248, 0.2); display:flex; align-items:center; justify-content:center; font-size:1.15rem; color:#38bdf8;">
+                        <i class="fas fa-vial"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#fff;">Biometric Verification Test Suite</h3>
+                        <p style="margin:2px 0 0; font-size:0.76rem; color:#cbd5e1;">Automated tests for enrollment, recognition, state logic &amp; errors</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" onclick="closeFaceTestModal()" style="color:#cbd5e1; font-size:1.6rem; background:none; border:none; cursor:pointer;" aria-label="Close">&times;</button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding: 20px 24px; max-height: calc(80vh - 120px); overflow-y:auto;">
+                <!-- Test Summary KPI Header -->
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:16px;">
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; text-align:center;">
+                        <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Total Tests</div>
+                        <div id="testSummaryTotal" style="font-size:1.4rem; font-weight:800; color:#0b2545; margin-top:2px;">—</div>
+                    </div>
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; text-align:center;">
+                        <div style="font-size:0.72rem; color:#15803d; font-weight:700; text-transform:uppercase;">Passed</div>
+                        <div id="testSummaryPassed" style="font-size:1.4rem; font-weight:800; color:#16a34a; margin-top:2px;">—</div>
+                    </div>
+                    <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:10px 14px; text-align:center;">
+                        <div style="font-size:0.72rem; color:#b91c1c; font-weight:700; text-transform:uppercase;">Failed</div>
+                        <div id="testSummaryFailed" style="font-size:1.4rem; font-weight:800; color:#dc2626; margin-top:2px;">—</div>
+                    </div>
+                </div>
+
+                <!-- Test Suites Accordion / Output List -->
+                <div id="testSuitesContainer">
+                    <!-- Dynamically populated by runInAppTests -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                <button type="button" class="btn btn-secondary" onclick="runInAppTests()" style="padding:7px 16px; font-weight:600;">
+                    <i class="fas fa-redo"></i> Re-Run All Tests
+                </button>
+                <button type="button" class="btn btn-primary" onclick="closeFaceTestModal()" style="padding:7px 18px; font-weight:600;">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- ==================== CHANGE PASSWORD MODAL ==================== -->
     <div class="modal-overlay" id="changePasswordModal" style="display:none; z-index:9996; align-items:center; justify-content:center; overflow-y:auto; padding:20px 10px;" onclick="if(event.target===this) closeChangePasswordModal()">
@@ -6546,6 +6986,9 @@
                 <button type="button" class="btn btn-secondary" onclick="closeTeacherProfileModal()">Close</button>
                 <button type="button" class="btn btn-secondary" id="btnUploadPhotoFromProfile" onclick="triggerPhotoUploadFromProfile()">
                     <i class="fas fa-camera"></i> Change Photo
+                </button>
+                <button type="button" class="btn btn-secondary" id="btnFaceBiometricsFromProfile" onclick="openFaceEnrollmentForCurrentTeacher()" style="background:#e0f2fe; border-color:#bae6fd; color:#0369a1; font-weight:600;" title="Register or Update Webcam Facial Biometrics">
+                    <i class="fas fa-camera"></i> Face Biometrics
                 </button>
                 <button type="button" class="btn btn-secondary" id="btnEditDetailsFromProfile" onclick="openEditTeacherDetailsModalFromProfile()" style="background:#fef3c7; border-color:#fde68a; color:#92400e; font-weight:600;">
                     <i class="fas fa-user-edit"></i> Edit Teacher Details
@@ -7022,6 +7465,9 @@
                     </div>
                 </div>
                 <div class="view-header-right-actions" style="display: flex; align-items: center; gap: 14px;">
+                    <button type="button" class="btn-sm btn-primary" onclick="openFaceEnrollmentForCurrentStudent()" title="Register or Update Webcam Face Biometrics" style="display:inline-flex; align-items:center; gap:6px; background:#0284c7; border:none; padding:6px 12px; font-weight:600; border-radius:8px; color:#fff;">
+                        <i class="fas fa-camera"></i> Face Biometrics
+                    </button>
                     <!-- Learner Mobile View QR Code Widget -->
                     <div class="view-learner-qr-box" id="viewLearnerQrBox" onclick="openLearnerMobilePass()" title="Click to enlarge Mobile QR Pass / Scan on Smartphone" style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 5px 12px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
                         <div id="viewQrMini" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px; overflow: hidden; flex-shrink: 0;"></div>
@@ -8093,6 +8539,9 @@
     <!-- Local Chart.js & SheetJS for 100% Offline Capability -->
     <script src="chart.umd.min.js"></script>
     <script src="xlsx.full.min.js"></script>
+    <!-- Webcam Facial Recognition & Biometric Attendance Engine -->
+    <script src="face-recognition.js"></script>
+    <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
     <script src="app.js"></script>
 </body>
