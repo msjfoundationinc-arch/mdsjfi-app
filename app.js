@@ -1884,7 +1884,7 @@ function refreshStudentsTable() {
                     </td>
                     <td>${escBadge}</td>
                     <td><span class="status-badge ${(s.enrollmentStatus || 'Active').toLowerCase()}">${escHtml(s.enrollmentStatus || 'Active')}</span></td>
-                    <td>${docBadge}</td>
+                    <td style="text-align:center; white-space:nowrap; overflow:visible;">${docBadge}</td>
                     <td class="actions-cell">
                         <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
                         <button type="button" class="btn-icon soa" title="Statement of Account" data-action="soa" data-id="${s.id}" onclick="openSOAModal('${s.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
@@ -5286,6 +5286,70 @@ function initSignaturePad() {
     }
 }
 
+// ======================== AUTOMATIC EMAIL ALERTS (NODEMAILER / GMAIL SMTP) ========================
+
+async function sendNewDataEmailAlert(payload) {
+    if (!payload) return;
+    try {
+        const currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+        let submittedBy = 'Authorized User';
+        if (currentUser) {
+            const roleName = currentUser.name || currentUser.username || 'Staff';
+            const roleTitle = currentUser.role || 'System Encoder';
+            submittedBy = `${roleName} (${roleTitle})`;
+        }
+
+        const now = new Date();
+        const submittedAt = now.toLocaleString('en-PH', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+
+        const alertData = {
+            category: payload.category || 'School Registry',
+            action: payload.action || 'New Data Encoded',
+            title: payload.title || 'Record Entry',
+            submittedAt: submittedAt,
+            submittedBy: submittedBy,
+            details: payload.details || {}
+        };
+
+        // Determine API URL based on protocol (Vercel / standard HTTP or local file)
+        let apiUrl = '/api/send-alert';
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+            apiUrl = 'http://localhost:3000/api/send-alert';
+        }
+
+        console.log(`[Email Alert] Sending instant email notification to ADMIN_EMAIL for: ${alertData.title}`);
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(alertData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('[Email Alert] Email successfully dispatched via Gmail SMTP:', result);
+        } else {
+            const errRes = await response.json().catch(() => ({}));
+            console.warn('[Email Alert] Alert service responded with status', response.status, errRes);
+        }
+    } catch (err) {
+        // Log cleanly to console; never disrupt or crash the app's core saving workflow
+        console.warn('[Email Alert] Could not reach email alert service:', err.message);
+    }
+}
+window.sendNewDataEmailAlert = sendNewDataEmailAlert;
+
 // ======================== FORM SUBMISSION ========================
 
 function initForm() {
@@ -5366,12 +5430,78 @@ function initForm() {
                 students[index] = updated;
                 saveStudents();
                 showToast('Student record updated successfully!', 'success');
+
+                // Instant email notification to ADMIN_EMAIL via nodemailer
+                sendNewDataEmailAlert({
+                    category: 'Student Information System',
+                    action: 'Student Record Updated',
+                    title: `${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`,
+                    details: {
+                        'Student LRN': updated.lrn,
+                        'Full Name': `${updated.lastName}, ${updated.firstName} ${updated.middleName || ''} ${updated.extension || ''}`.trim(),
+                        'Grade Level': `Grade ${updated.gradeLevel}`,
+                        'Section': updated.section || 'N/A',
+                        'School Year': updated.schoolYear || currentSchoolYear || '2026-2027',
+                        'Enrollment Status': updated.enrollmentStatus || 'Active',
+                        'Gender': updated.gender || 'N/A',
+                        'Date of Birth': updated.dateOfBirth || 'N/A',
+                        'Age': updated.age || 'N/A',
+                        'Permanent Address': updated.address || 'N/A',
+                        'Contact Number': updated.contactNumber || 'N/A',
+                        'Email Address': updated.email || 'N/A',
+                        'Mother Name': updated.motherName || 'N/A',
+                        'Father Name': updated.fatherName || 'N/A',
+                        'Guardian Name': updated.guardianName || 'N/A',
+                        'Guardian Contact': updated.guardianContact || 'N/A',
+                        'Assessed Base Tuition': updated.tuitionFee,
+                        'Discount Status': updated.isDiscounted === 'YES' ? `Yes (₱${updated.discountAmount})` : 'None',
+                        'Net Assessed Tuition': updated.netTuition,
+                        'ESC Grantee': updated.escGrantee || 'NO',
+                        'ESC Number': updated.escNumber || 'N/A'
+                    }
+                });
             }
         } else {
             const newStudent = { ...collectFormData(), id: generateId(), dateCreated: new Date().toISOString(), dateModified: new Date().toISOString() };
             students.unshift(newStudent);
             saveStudents();
             showToast(`Student ${newStudent.firstName} ${newStudent.lastName} enrolled successfully! Generated dedicated Mobile QR Pass.`, 'success');
+
+            // Instant email notification to ADMIN_EMAIL via nodemailer
+            sendNewDataEmailAlert({
+                category: 'Student Information System',
+                action: 'New Student Enrolled',
+                title: `${newStudent.lastName}, ${newStudent.firstName} (LRN: ${newStudent.lrn})`,
+                details: {
+                    'Student LRN': newStudent.lrn,
+                    'Full Name': `${newStudent.lastName}, ${newStudent.firstName} ${newStudent.middleName || ''} ${newStudent.extension || ''}`.trim(),
+                    'Grade Level': `Grade ${newStudent.gradeLevel}`,
+                    'Section': newStudent.section || 'N/A',
+                    'School Year': newStudent.schoolYear || currentSchoolYear || '2026-2027',
+                    'Enrollment Status': newStudent.enrollmentStatus || 'Active',
+                    'Gender': newStudent.gender || 'N/A',
+                    'Date of Birth': newStudent.dateOfBirth || 'N/A',
+                    'Age': newStudent.age || 'N/A',
+                    'Place of Birth': newStudent.placeOfBirth || 'N/A',
+                    'Religion': newStudent.religion || 'N/A',
+                    'Permanent Address': newStudent.address || 'N/A',
+                    'Contact Number': newStudent.contactNumber || 'N/A',
+                    'Email Address': newStudent.email || 'N/A',
+                    'Mother Name': newStudent.motherName || 'N/A',
+                    'Mother Contact': newStudent.motherContact || 'N/A',
+                    'Father Name': newStudent.fatherName || 'N/A',
+                    'Father Contact': newStudent.fatherContact || 'N/A',
+                    'Guardian Name': newStudent.guardianName || 'N/A',
+                    'Guardian Contact': newStudent.guardianContact || 'N/A',
+                    'Base Tuition Fee': newStudent.tuitionFee,
+                    'Discount Applied': newStudent.isDiscounted === 'YES' ? `₱${newStudent.discountAmount}` : 'None',
+                    'Net Tuition Payable': newStudent.netTuition,
+                    'ESC Grantee': newStudent.escGrantee || 'NO',
+                    'ESC Number': newStudent.escNumber || 'N/A',
+                    'Enrolled Date': newStudent.dateCreated
+                }
+            });
+
             resetForm();
             refreshAll();
             navigateTo('students');
@@ -5760,6 +5890,24 @@ function submitInstallmentPayment() {
     updateSOALiveTotals(s);
     saveStudents();
     logActivity('Statement of Account', `Recorded payment installment: ${termVal} (\u20B1${amtVal.toLocaleString('en-PH', { minimumFractionDigits: 2 })})`, s);
+
+    // Instant email notification to ADMIN_EMAIL via nodemailer
+    sendNewDataEmailAlert({
+        category: 'Statement of Account (SOA)',
+        action: 'Payment Installment Encoded',
+        title: `₱${amtVal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} - ${s.lastName}, ${s.firstName} (${termVal})`,
+        details: {
+            'Student Name': `${s.lastName}, ${s.firstName}`,
+            'Student LRN': s.lrn,
+            'Grade & Section': `Grade ${s.gradeLevel} - ${s.section}`,
+            'Payment Term / Category': termVal,
+            'Official Receipt (OR) No.': newPayment.orNumber,
+            'Payment Date': dateVal,
+            'Amount Paid': amtVal,
+            'School Year': s.schoolYear || currentSchoolYear || '2026-2027',
+            'Payment Notes': newPayment.notes
+        }
+    });
 
     closeModal('addPaymentModal');
     if (currentSOAMode === 'edit') {
@@ -6861,12 +7009,14 @@ function renderCashFlowTable(list) {
         const formattedAmount = `${sign}&#8369;${formatNumber(item.amount)}`;
 
         // Official Receiver & Encoder formatting
-        const rawRec = item.receivedBy || (item.encoder && item.encoder.includes('Niño') ? '1. School President' : '2. Registrar/Accounting');
+        let recBadge = '<span style="color:#94a3b8; font-size:0.75rem;">—</span>';
+        if (isIn) {
+            const rawRec = item.receivedBy || (item.encoder && item.encoder.includes('Niño') ? '1. School President' : '2. Registrar/Accounting');
+            recBadge = rawRec.includes('President')
+                ? '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="1. School President"><i class="fas fa-user-tie"></i> Pres.</span>'
+                : '<span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="2. Registrar / Accounting"><i class="fas fa-cash-register"></i> Reg.</span>';
+        }
         const rawEnc = item.encodedBy || (item.encoder && item.encoder.includes('Niño') ? '1. School President' : '2. Registrar/Accounting');
-
-        const recBadge = rawRec.includes('President')
-            ? '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="1. School President"><i class="fas fa-user-tie"></i> Pres.</span>'
-            : '<span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="2. Registrar / Accounting"><i class="fas fa-cash-register"></i> Reg.</span>';
 
         const encBadge = rawEnc.includes('President')
             ? '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="1. School President"><i class="fas fa-user-shield"></i> Pres.</span>'
@@ -6894,7 +7044,7 @@ function renderCashFlowTable(list) {
                     <div style="font-weight: 600; font-size: 0.81rem; color: #1e293b; line-height: 1.25;">${item.date}</div>
                     <div style="font-size: 0.71rem; color: #64748b; line-height: 1.15;">${item.time || ''}</div>
                 </td>
-                <td style="text-align:center;">
+                <td style="text-align:center; white-space:nowrap; overflow:visible;">
                     <span class="${badgeClass}">${badgeIcon} ${badgeText}</span>
                 </td>
                 <td>
@@ -7124,10 +7274,22 @@ function onCashFlowTypeSelectChange(type) {
     const catSelect = document.getElementById('cfCategory');
     const entityLabel = document.getElementById('cfEntityLabel');
     const entityInput = document.getElementById('cfEntity');
+    const receivedByGroup = document.getElementById('cfReceivedByGroup');
+    const receivedBySelect = document.getElementById('cfReceivedBy');
+    const encodedByGroup = document.getElementById('cfEncodedByGroup');
 
     if (type === 'IN') {
         if (entityLabel) entityLabel.innerHTML = 'Received From (Payer / Student Name) <span class="required" style="color:#ef4444;">*</span>';
         if (entityInput) entityInput.placeholder = 'e.g. Juan Dela Cruz / Maria Santos';
+
+        // Show "Received By" selection for Cash In
+        if (receivedByGroup) receivedByGroup.style.display = '';
+        if (receivedBySelect) {
+            receivedBySelect.required = true;
+            if (!receivedBySelect.value) receivedBySelect.value = '2. Registrar/Accounting';
+        }
+        if (encodedByGroup) encodedByGroup.style.gridColumn = '';
+
         if (catSelect) {
             catSelect.innerHTML = `
                 <option value="Tuition Fee Collection" selected>Tuition Fee Collection</option>
@@ -7142,6 +7304,15 @@ function onCashFlowTypeSelectChange(type) {
     } else {
         if (entityLabel) entityLabel.innerHTML = 'Paid To (Payee / Vendor / Supplier) <span class="required" style="color:#ef4444;">*</span>';
         if (entityInput) entityInput.placeholder = 'e.g. Pandayan Bookshop / PLDT Enterprise';
+
+        // Remove / hide "Received By" selection for Cash Out (disbursements/expenses)
+        if (receivedByGroup) receivedByGroup.style.display = 'none';
+        if (receivedBySelect) {
+            receivedBySelect.required = false;
+            receivedBySelect.value = '';
+        }
+        if (encodedByGroup) encodedByGroup.style.gridColumn = '1 / -1';
+
         if (catSelect) {
             catSelect.innerHTML = `
                 <option value="Office & Instructional Supplies" selected>Office &amp; Instructional Supplies</option>
@@ -7174,7 +7345,7 @@ function handleSaveCashFlow(e) {
     const method = document.getElementById('cfMethod')?.value || 'Cash';
     const remarks = (document.getElementById('cfRemarks')?.value || '').trim();
     const schoolYear = document.getElementById('cfSchoolYear')?.value || currentSchoolYear || '2026-2027';
-    const receivedBy = document.getElementById('cfReceivedBy')?.value || '2. Registrar/Accounting';
+    const receivedBy = (type === 'OUT') ? '—' : (document.getElementById('cfReceivedBy')?.value || '2. Registrar/Accounting');
     const encodedBy = document.getElementById('cfEncodedBy')?.value || '2. Registrar/Accounting';
     const payerType = document.getElementById('cfPayerType')?.value || 'enrolled';
     const selectedStudentId = document.getElementById('cfStudentSelect')?.value || '';
@@ -7233,6 +7404,27 @@ function handleSaveCashFlow(e) {
             entries[existingIdx].remarks = remarks;
             entries[existingIdx].studentId = matchedStudent ? matchedStudent.id : '';
             saveCashFlowEntries(entries);
+
+            // Instant email notification to ADMIN_EMAIL via nodemailer
+            sendNewDataEmailAlert({
+                category: 'Daily Cash Flow Ledger',
+                action: 'Cash Flow Transaction Updated',
+                title: `₱${amountVal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} - ${entity} (${refNo})`,
+                details: {
+                    'Transaction Type': type === 'IN' ? 'Cash In (Collection / Payment Received)' : 'Cash Out (Expense / Disbursement)',
+                    'Reference / OR No.': refNo,
+                    'Payer / Payee': entity,
+                    'Amount': amountVal,
+                    'Category': category,
+                    'Payment Method': method,
+                    'Transaction Date': date,
+                    'School Year': schoolYear,
+                    'Received By': receivedBy,
+                    'Encoded By': encodedBy,
+                    'Remarks / Description': remarks || 'N/A'
+                }
+            });
+
             if (typeof logActivity === 'function') {
                 logActivity('Cash Flow Updated', `Updated transaction ${refNo} (${type === 'IN' ? 'Inflow' : 'Outflow'} of ₱${formatNumber(amountVal)})`, matchedStudent || { lastName: entity, firstName: '', lrn: refNo });
             }
@@ -7266,6 +7458,26 @@ function handleSaveCashFlow(e) {
 
     entries.unshift(newEntry);
     saveCashFlowEntries(entries);
+
+    // Instant email notification to ADMIN_EMAIL via nodemailer
+    sendNewDataEmailAlert({
+        category: 'Daily Cash Flow Ledger',
+        action: `New Cash ${type === 'IN' ? 'Inflow (Collection)' : 'Outflow (Disbursement)'} Encoded`,
+        title: `₱${amountVal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} - ${entity} (${refNo})`,
+        details: {
+            'Transaction Type': type === 'IN' ? 'Cash In (Collection / Payment Received)' : 'Cash Out (Expense / Disbursement)',
+            'Reference / OR No.': refNo,
+            'Payer / Payee': entity,
+            'Amount': amountVal,
+            'Category': category,
+            'Payment Method': method,
+            'Transaction Date': `${date} ${timeStr}`,
+            'School Year': schoolYear,
+            'Received By': receivedBy,
+            'Encoded By': encodedBy,
+            'Remarks / Description': remarks || 'N/A'
+        }
+    });
 
     // AUTOMATIC SOA SYNC: If payment is for an enrolled student, insert into student's SOA payments!
     let soaSyncNotice = '';
@@ -8438,6 +8650,23 @@ function handleSaveClearanceOverride(e) {
     // Also attach to student object
     s.examOverride = overrideObj;
     if (typeof saveStudents === 'function') saveStudents();
+
+    // Instant email notification to ADMIN_EMAIL via nodemailer
+    sendNewDataEmailAlert({
+        category: 'Exam Clearance & Permits',
+        action: 'Exam Clearance Override Granted',
+        title: `${s.lastName}, ${s.firstName} (Grade ${s.gradeLevel} - ${s.section})`,
+        details: {
+            'Student LRN': s.lrn,
+            'Student Name': `${s.lastName}, ${s.firstName}`,
+            'Grade & Section': `Grade ${s.gradeLevel} - ${s.section}`,
+            'Override Reason': reason,
+            'Authorized By': authorizedBy,
+            'Promissory Due Date': dueDate || 'N/A',
+            'Notes / Terms': notes || 'N/A',
+            'Granted On': overrideObj.dateStr
+        }
+    });
 
     // Audit Log
     if (typeof logActivity === 'function') {
@@ -9876,6 +10105,25 @@ function handleSaveEmployee(e) {
                 employmentStatus: status
             };
             savePayrollEmployees(allEmployees);
+
+            // Instant email notification to ADMIN_EMAIL via nodemailer
+            sendNewDataEmailAlert({
+                category: 'Faculty & Employee Payroll Registry',
+                action: 'Employee Record Updated',
+                title: `${name} (${empNo} - ${position})`,
+                details: {
+                    'Employee No': empNo,
+                    'Full Name': name,
+                    'Position': position,
+                    'Department': department,
+                    'Employment Status': status,
+                    'Daily Rate': dailyRate,
+                    'Estimated Monthly Salary': salary,
+                    'School Year': schoolYear,
+                    'Date Hired': dateHired
+                }
+            });
+
             if (typeof logActivity === 'function') {
                 logActivity('Employee Updated', `Updated employee record for ${name} (${empNo} - ${position})`);
             }
@@ -9903,6 +10151,30 @@ function handleSaveEmployee(e) {
         };
         allEmployees.push(newEmp);
         savePayrollEmployees(allEmployees);
+
+        // Instant email notification to ADMIN_EMAIL via nodemailer
+        sendNewDataEmailAlert({
+            category: 'Faculty & Employee Payroll Registry',
+            action: 'New Employee / Faculty Encoded',
+            title: `${name} (${empNo} - ${position})`,
+            details: {
+                'Employee No': empNo,
+                'Full Name': name,
+                'Position': position,
+                'Department': department,
+                'Employment Status': status,
+                'Daily Rate': dailyRate,
+                'Estimated Monthly Salary': salary,
+                '15th Cutoff Base': c15,
+                '30th Cutoff Base': c30,
+                'Incentive': incentive,
+                'Bonus': bonus,
+                'Payout Schedule': 'Semi-Monthly (15th & 30th)',
+                'School Year': schoolYear,
+                'Date Hired': dateHired
+            }
+        });
+
         if (typeof logActivity === 'function') {
             logActivity('New Employee Hired', `Encoded new employee ${name} (${empNo} - ${position}) at ₱${formatNumber(dailyRate)}/day`);
         }
@@ -13625,6 +13897,20 @@ function saveFaceEnrollmentSubmit() {
         closeFaceEnrollmentModal();
         refreshFaceRecognitionPage();
         showToast(`Facial biometrics enrolled successfully for ${enrolled.name} (${enrolled.role})!`, 'success');
+
+        // Instant email notification to ADMIN_EMAIL via nodemailer
+        sendNewDataEmailAlert({
+            category: 'Biometric Face Recognition',
+            action: 'Facial Biometrics Enrolled',
+            title: `${enrolled.name} (${enrolled.role} - ${enrolled.identifier})`,
+            details: {
+                'Person Name': enrolled.name,
+                'ID / LRN / Employee No': enrolled.identifier,
+                'Role': enrolled.role,
+                'Biometric Descriptor': '128-dimensional Normalized Face Vector (Securely Enrolled)',
+                'Enrolled At': new Date().toISOString()
+            }
+        });
     } catch(err) {
         showEnrollError(err.message);
     }

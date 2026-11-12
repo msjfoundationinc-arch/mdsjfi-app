@@ -3,3 +3,6 @@
 scratch/
 .DS_Store
 Thumbs.db
+.env.local
+.env
+node_modules/

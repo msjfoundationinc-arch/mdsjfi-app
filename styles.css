@@ -5593,17 +5593,17 @@ html, body {
 }
 
 /* Colgroup column widths for 100% strict adherence */
-#page-students #studentsTable col:nth-child(1) { width: 3.5%; }
-#page-students #studentsTable col:nth-child(2) { width: 10%; }
-#page-students #studentsTable col:nth-child(3) { width: 21%; }
-#page-students #studentsTable col:nth-child(4) { width: 7.5%; }
-#page-students #studentsTable col:nth-child(5) { width: 6.5%; }
-#page-students #studentsTable col:nth-child(6) { width: 7.5%; }
-#page-students #studentsTable col:nth-child(7) { width: 6.5%; }
+#page-students #studentsTable col:nth-child(1) { width: 4.5%; }
+#page-students #studentsTable col:nth-child(2) { width: 9.5%; }
+#page-students #studentsTable col:nth-child(3) { width: 18.5%; }
+#page-students #studentsTable col:nth-child(4) { width: 6.5%; }
+#page-students #studentsTable col:nth-child(5) { width: 6%; }
+#page-students #studentsTable col:nth-child(6) { width: 6.5%; }
+#page-students #studentsTable col:nth-child(7) { width: 6%; }
 #page-students #studentsTable col:nth-child(8) { width: 5.5%; }
 #page-students #studentsTable col:nth-child(9) { width: 6.5%; }
-#page-students #studentsTable col:nth-child(10) { width: 12.5%; }
-#page-students #studentsTable col:nth-child(11) { width: 13%; }
+#page-students #studentsTable col:nth-child(10) { width: 15%; }
+#page-students #studentsTable col:nth-child(11) { width: 15.5%; }
 
 /* Table Headers */
 #page-students #studentsTable thead th {
@@ -5777,31 +5777,38 @@ html, body {
 /* Col 10: Docs (12.5%) - Centered, interactive document badges (PSA, TOR, CARD) */
 #page-students #studentsTable th:nth-child(10),
 #page-students #studentsTable td:nth-child(10) {
-    width: 12.5%;
-    text-align: center;
-    padding: 5px 3px;
+    width: 15% !important;
+    min-width: 135px !important;
+    text-align: center !important;
+    padding: 4px 2px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
 }
 #page-students .doc-badge-group {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3.5px;
-    vertical-align: middle;
-    white-space: nowrap;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
 }
 #page-students .doc-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2.5px;
-    padding: 2.5px 5.5px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.25px;
-    line-height: 1.1;
-    border-radius: 4px;
-    user-select: none;
-    transition: all 0.15s ease;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    padding: 2px 5px !important;
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.2px !important;
+    line-height: 1.15 !important;
+    border-radius: 3px !important;
+    user-select: none !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    transition: all 0.15s ease !important;
 }
 #page-students .doc-badge.ready,
 #page-students .doc-badge.uploaded {
@@ -6648,13 +6655,16 @@ body.role-teacher .teacher-hidden {
 .cf-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-size: 0.76rem;
+    justify-content: center;
+    gap: 4px;
+    font-size: 0.70rem;
     font-weight: 700;
-    padding: 3px 9px;
-    border-radius: 12px;
+    padding: 2.5px 6.5px;
+    border-radius: 4px;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+    box-sizing: border-box;
 }
 .cf-badge.in {
     background: #dcfce7;
@@ -7039,18 +7049,18 @@ body:has(#page-cash-flow.active) .main-content {
 /* Specific Proportional Column Widths for All Tables (Each Sums to Exactly 100%) */
 
 /* 1. Main Students Table (#studentsTable: 11 cols - Concise 100% Fit) */
-#page-students #studentsTable th:nth-child(1), #page-students #studentsTable td:nth-child(1) { width: 5% !important; min-width: 48px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(1), #page-students #studentsTable td:nth-child(1) { width: 4.5% !important; min-width: 44px !important; text-align: center; }
 #page-students #studentsTable th:nth-child(1) { overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important; }
-#page-students #studentsTable th:nth-child(2), #page-students #studentsTable td:nth-child(2) { width: 10% !important; text-align: center; font-family: monospace; }
-#page-students #studentsTable th:nth-child(3), #page-students #studentsTable td:nth-child(3) { width: 20% !important; }
-#page-students #studentsTable th:nth-child(4), #page-students #studentsTable td:nth-child(4) { width: 7% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(5), #page-students #studentsTable td:nth-child(5) { width: 6.5% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(6), #page-students #studentsTable td:nth-child(6) { width: 7% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(7), #page-students #studentsTable td:nth-child(7) { width: 6.5% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(8), #page-students #studentsTable td:nth-child(8) { width: 6% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(9), #page-students #studentsTable td:nth-child(9) { width: 7% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(10), #page-students #studentsTable td:nth-child(10) { width: 12% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(11), #page-students #studentsTable td:nth-child(11) { width: 13% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
+#page-students #studentsTable th:nth-child(2), #page-students #studentsTable td:nth-child(2) { width: 9.5% !important; text-align: center; font-family: monospace; }
+#page-students #studentsTable th:nth-child(3), #page-students #studentsTable td:nth-child(3) { width: 18.5% !important; }
+#page-students #studentsTable th:nth-child(4), #page-students #studentsTable td:nth-child(4) { width: 6.5% !important; text-align: center; }
+#page-students #studentsTable th:nth-child(5), #page-students #studentsTable td:nth-child(5) { width: 6% !important; text-align: center; }
+#page-students #studentsTable th:nth-child(6), #page-students #studentsTable td:nth-child(6) { width: 6.5% !important; text-align: center; }
+#page-students #studentsTable th:nth-child(7), #page-students #studentsTable td:nth-child(7) { width: 6% !important; text-align: center; }
+#page-students #studentsTable th:nth-child(8), #page-students #studentsTable td:nth-child(8) { width: 5.5% !important; text-align: center; }
+#page-students #studentsTable th:nth-child(9), #page-students #studentsTable td:nth-child(9) { width: 6.5% !important; text-align: center; }
+#page-students #studentsTable th:nth-child(10), #page-students #studentsTable td:nth-child(10) { width: 15% !important; min-width: 135px !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
+#page-students #studentsTable th:nth-child(11), #page-students #studentsTable td:nth-child(11) { width: 15.5% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
 
 /* 2. Dashboard Recent Students (#recentTable: 9 cols - Concise 100% Fit) */
 #recentTable th:nth-child(1), #recentTable td:nth-child(1) { width: 4% !important; text-align: center; }
@@ -7199,15 +7209,15 @@ body:has(#page-cash-flow.active) .main-content {
 
 /* 5. Daily Cash In & Out Flow Table (#cashFlowTable: 10 cols - Concise 100% Fit) */
 #cashFlowTable th:nth-child(1), #cashFlowTable td:nth-child(1) { width: 9% !important; }
-#cashFlowTable th:nth-child(2), #cashFlowTable td:nth-child(2) { width: 7% !important; text-align: center; }
+#cashFlowTable th:nth-child(2), #cashFlowTable td:nth-child(2) { width: 10.5% !important; min-width: 90px !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
 #cashFlowTable th:nth-child(3), #cashFlowTable td:nth-child(3) { width: 9% !important; font-family: monospace; }
-#cashFlowTable th:nth-child(4), #cashFlowTable td:nth-child(4) { width: 18% !important; }
-#cashFlowTable th:nth-child(5), #cashFlowTable td:nth-child(5) { width: 14% !important; }
-#cashFlowTable th:nth-child(6), #cashFlowTable td:nth-child(6) { width: 6.5% !important; text-align: center; }
-#cashFlowTable th:nth-child(7), #cashFlowTable td:nth-child(7) { width: 10% !important; text-align: right; }
-#cashFlowTable th:nth-child(8), #cashFlowTable td:nth-child(8) { width: 8% !important; text-align: center; }
-#cashFlowTable th:nth-child(9), #cashFlowTable td:nth-child(9) { width: 8% !important; text-align: center; }
-#cashFlowTable th:nth-child(10), #cashFlowTable td:nth-child(10) { width: 10.5% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
+#cashFlowTable th:nth-child(4), #cashFlowTable td:nth-child(4) { width: 16% !important; }
+#cashFlowTable th:nth-child(5), #cashFlowTable td:nth-child(5) { width: 13.5% !important; }
+#cashFlowTable th:nth-child(6), #cashFlowTable td:nth-child(6) { width: 6% !important; text-align: center !important; }
+#cashFlowTable th:nth-child(7), #cashFlowTable td:nth-child(7) { width: 9.5% !important; text-align: right !important; }
+#cashFlowTable th:nth-child(8), #cashFlowTable td:nth-child(8) { width: 7.5% !important; text-align: center !important; }
+#cashFlowTable th:nth-child(9), #cashFlowTable td:nth-child(9) { width: 7.5% !important; text-align: center !important; }
+#cashFlowTable th:nth-child(10), #cashFlowTable td:nth-child(10) { width: 10.5% !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
 
 /* 6. Student Clearance Tables */
 /* 6a. Learners Clearance Roster (#clearanceTable: 9 cols - Concise 100% Fit) */
@@ -7880,9 +7890,16 @@ body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #
     border-radius: 10px !important;
 }
 #page-students #studentsTable tbody td .doc-badge {
-    font-size: 0.68rem !important;
-    padding: 1px 4px !important;
+    font-size: 0.65rem !important;
+    padding: 2px 5.5px !important;
     border-radius: 3px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2.5px !important;
+    box-sizing: border-box !important;
 }
 #page-students #studentsTable tbody td.actions-cell {
     text-align: center !important;
@@ -7946,10 +7963,21 @@ body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #
     color: #64748b !important;
 }
 #cashFlowTable .cf-badge {
-    font-size: 0.72rem !important;
+    font-size: 0.69rem !important;
     font-weight: 700 !important;
-    padding: 2.5px 7px !important;
+    padding: 2.5px 6px !important;
     border-radius: 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    white-space: nowrap !important;
+    letter-spacing: 0.2px !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+}
+#cashFlowTable .cf-badge i {
+    font-size: 0.65rem !important;
 }
 #cashFlowTable .status-badge {
     font-size: 0.71rem !important;

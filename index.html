@@ -1880,38 +1880,6 @@
                 </div>
             </div>
 
-            <!-- Quick Access & Actions Global Search & Launcher -->
-            <div class="dashboard-quick-search-section" id="dashboardQuickActionsSection" style="background: linear-gradient(135deg, #0b2545 0%, #17375e 100%); border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; color: #fff; box-shadow: 0 4px 15px rgba(11,37,69,0.15); transition: all 0.3s ease;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:#60a5fa;">
-                            <i class="fas fa-compass"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin:0; font-size:1.05rem; font-weight:700; color:#fff;">Quick Access &amp; Actions Navigator</h3>
-                            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#cbd5e1;">Instant search and one-click navigation across all school database modules</p>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span class="badge" style="background:rgba(255,255,255,0.15); color:#93c5fd; font-size:0.75rem; padding:4px 10px; border-radius:20px; font-weight:600;">
-                            <i class="fas fa-bolt" style="color:#facc15;"></i> Fast Action Hub
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Search Input -->
-                <div style="position:relative; width:100%;">
-                    <i class="fas fa-search" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.95rem;"></i>
-                    <input type="text" id="dashboardQuickSearchInput" placeholder="Search modules, actions &amp; tabs (e.g. Statement of Account, Cash Flow, Clearance, Exam, Teachers, Payroll, Grade 7, Enroll)..." 
-                        oninput="filterDashboardQuickLinks(this.value)" 
-                        style="width:100%; height:44px; padding:8px 40px 8px 42px; border-radius:8px; border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.95); font-size:0.92rem; font-weight:600; color:#0f172a; outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-                    <button type="button" onclick="clearDashboardQuickSearch()" id="btnClearDashboardQuickSearch" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; font-size:1.1rem; cursor:pointer; display:none;">&times;</button>
-                </div>
-
-                <!-- Quick Access Links Search Results (Hidden by default; displays matching modules when searching) -->
-                <div id="dashboardQuickLinksGrid" style="display:none; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
-            </div>
-
             <!-- Stats Cards -->
             <div class="stats-grid">
                 <div class="stat-card clickable total" onclick="navigateTo('students')" title="Click to view all student records">
@@ -2249,17 +2217,17 @@
             <div class="table-wrapper">
                 <table class="data-table sortable" id="studentsTable">
                     <colgroup>
-                        <col style="width: 5%;">
-                        <col style="width: 10%;">
-                        <col style="width: 20%;">
-                        <col style="width: 7%;">
-                        <col style="width: 6.5%;">
-                        <col style="width: 7%;">
+                        <col style="width: 4.5%;">
+                        <col style="width: 9.5%;">
+                        <col style="width: 18.5%;">
                         <col style="width: 6.5%;">
                         <col style="width: 6%;">
-                        <col style="width: 7%;">
-                        <col style="width: 12%;">
-                        <col style="width: 13%;">
+                        <col style="width: 6.5%;">
+                        <col style="width: 6%;">
+                        <col style="width: 5.5%;">
+                        <col style="width: 6.5%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15.5%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -5370,27 +5338,27 @@
                 <table class="data-table" id="cashFlowTable">
                     <colgroup>
                         <col style="width: 9%;">
-                        <col style="width: 7%;">
+                        <col style="width: 10.5%;">
                         <col style="width: 9%;">
-                        <col style="width: 18%;">
-                        <col style="width: 14%;">
-                        <col style="width: 6.5%;">
-                        <col style="width: 10%;">
-                        <col style="width: 8%;">
-                        <col style="width: 8%;">
+                        <col style="width: 16%;">
+                        <col style="width: 13.5%;">
+                        <col style="width: 6%;">
+                        <col style="width: 9.5%;">
+                        <col style="width: 7.5%;">
+                        <col style="width: 7.5%;">
                         <col style="width: 10.5%;">
                     </colgroup>
                     <thead>
                         <tr>
                             <th style="width: 9%;">Date &amp; Time</th>
-                            <th style="width: 7%;" class="text-center">Type</th>
+                            <th style="width: 10.5%;" class="text-center">Type</th>
                             <th style="width: 9%;">Ref / OR #</th>
-                            <th style="width: 18%;">Category / Particulars</th>
-                            <th style="width: 14%;">Payer / Payee</th>
-                            <th style="width: 6.5%;" class="text-center">Method</th>
-                            <th style="width: 10%;" class="text-right">Amount (&#8369;)</th>
-                            <th style="width: 8%;" class="text-center">Received By</th>
-                            <th style="width: 8%;" class="text-center">Encoded By</th>
+                            <th style="width: 16%;">Category / Particulars</th>
+                            <th style="width: 13.5%;">Payer / Payee</th>
+                            <th style="width: 6%;" class="text-center">Method</th>
+                            <th style="width: 9.5%;" class="text-right">Amount (&#8369;)</th>
+                            <th style="width: 7.5%;" class="text-center">Received By</th>
+                            <th style="width: 7.5%;" class="text-center">Encoded By</th>
                             <th style="width: 10.5%;" class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -8478,7 +8446,7 @@
                                 <option value="Cheque">Cheque</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="cfReceivedByGroup">
                             <label for="cfReceivedBy" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">
                                 Received By <span class="required" style="color:#ef4444;">*</span>
                             </label>
@@ -8487,7 +8455,7 @@
                                 <option value="2. Registrar/Accounting" selected>2. Registrar/Accounting (Carrelle B. Colegado)</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="cfEncodedByGroup">
                             <label for="cfEncodedBy" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">
                                 Encoded By <span class="required" style="color:#ef4444;">*</span>
                             </label>
