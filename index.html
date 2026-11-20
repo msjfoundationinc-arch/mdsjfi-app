@@ -23,7 +23,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_02">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261121_03">
+    <link rel="stylesheet" href="styles.css?v=20261121_04">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -98,14 +98,31 @@
     } catch(err) { console.error("Cash flow early sync error:", err); }
 
     try {
-        // STUDENTS: always refresh if official matrix has data
+        // STUDENTS: always refresh if official matrix has data, while carefully preserving uploaded photos & docs
         var matrix = window.OFFICIAL_IMPORTED_STUDENTS || window.IMPORTED_STUDENTS_MATRIX;
         if (matrix && Array.isArray(matrix) && matrix.length > 0) {
             var existingStus = null;
             try { existingStus = JSON.parse(localStorage.getItem('mdsj_students') || 'null'); } catch(e){}
-            // Re-seed if missing, corrupt, or stored count doesn't match expected
-            if (!existingStus || !Array.isArray(existingStus) || existingStus.length < matrix.length) {
+            if (!existingStus || !Array.isArray(existingStus)) {
                 localStorage.setItem('mdsj_students', JSON.stringify(matrix));
+            } else if (existingStus.length < matrix.length) {
+                var existMap = {};
+                existingStus.forEach(function(es){
+                    if (es && es.id) existMap[es.id] = es;
+                    if (es && es.lrn) existMap[String(es.lrn).trim()] = es;
+                });
+                var merged = JSON.parse(JSON.stringify(matrix));
+                merged.forEach(function(m){
+                    var ex = existMap[m.id] || (m.lrn ? existMap[String(m.lrn).trim()] : null);
+                    if (ex) {
+                        if (ex.photo) m.photo = ex.photo;
+                        if (ex.signature) m.signature = ex.signature;
+                        if (ex.birthCertDoc) m.birthCertDoc = ex.birthCertDoc;
+                        if (ex.torDoc) m.torDoc = ex.torDoc;
+                        if (ex.studentCardDoc) m.studentCardDoc = ex.studentCardDoc;
+                    }
+                });
+                localStorage.setItem('mdsj_students', JSON.stringify(merged));
             }
         }
     } catch(err) { console.error("Students early sync error:", err); }
@@ -7604,7 +7621,7 @@
                     <i class="fas fa-sign-in-alt"></i> Personnel Sign In
                 </button>
             </div>
-            <button class="modal-close" id="closeViewModal" onclick="closeModal('viewModal')">&times;</button>
+            <button class="modal-close" id="closeViewModal" onclick="if (document.documentElement.classList.contains('direct-profile-view') || document.documentElement.classList.contains('guest-qr-view')) { if (typeof handleQrProfileClose === 'function') { handleQrProfileClose(); } else { try{window.close();}catch(e){} } } else { closeModal('viewModal'); }">&times;</button>
             <div class="modal-header">
                 <div class="modal-brand-badge print-only">
                     <img src="school-logo.png" alt="Logo" class="print-school-logo">
@@ -7871,7 +7888,7 @@
     <div class="modal-overlay" id="learnerMobileModal" style="z-index: 9999;">
         <div class="modal-content" style="max-width: 440px; border-radius: 18px; overflow: hidden; padding: 0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); border: 1px solid #cbd5e1;">
             <div style="background: linear-gradient(135deg, #0b2545 0%, #134074 100%); color: #fff; padding: 20px 24px 16px; position: relative; text-align: center;">
-                <button type="button" class="modal-close" onclick="closeModal('learnerMobileModal')" style="color:#fff; top:12px; right:16px; font-size:1.6rem; opacity:0.85;">&times;</button>
+                <button type="button" class="modal-close" onclick="if (document.documentElement.classList.contains('direct-profile-view') || document.documentElement.classList.contains('guest-qr-view')) { if (typeof handleQrProfileClose === 'function') { handleQrProfileClose(); } else { try{window.close();}catch(e){} } } else { closeModal('learnerMobileModal'); }" style="color:#fff; top:12px; right:16px; font-size:1.6rem; opacity:0.85;">&times;</button>
                 <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:8px;">
                     <img src="school-logo.png" alt="Logo" style="width:34px; height:34px; border-radius:50%; background:#fff; padding:2px;">
                     <span style="font-weight:700; font-size:0.90rem; letter-spacing:0.5px; text-transform:uppercase;">Montessori De San Jose</span>
@@ -8679,6 +8696,17 @@
                             </select>
                             <input type="text" id="cfReceivedByText" placeholder="Enter recipient / Received by name" style="display:none; width:100%; height:38px; padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.88rem;">
                         </div>
+                        <div class="form-group" id="cfApprovedByGroup" style="display:none;">
+                            <label for="cfApprovedBy" id="cfApprovedByLabel" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">
+                                Approved By <span class="required" style="color:#ef4444;">*</span>
+                            </label>
+                            <select id="cfApprovedBy" onchange="if(typeof onApprovedByChange==='function') onApprovedByChange(this.value)" style="width:100%; height:38px; padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.88rem; font-weight:600;">
+                                <option value="1. School President" selected>1. School President (Niño Aloysius B. Colegado)</option>
+                                <option value="2. Registrar/Accounting">2. Registrar/Accounting (Carrelle B. Colegado)</option>
+                                <option value="custom">Custom Authorized Approver...</option>
+                            </select>
+                            <input type="text" id="cfApprovedByText" placeholder="Enter Approver Name &amp; Designation" style="display:none; width:100%; height:38px; padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.88rem; margin-top:5px;">
+                        </div>
                         <div class="form-group" id="cfEncodedByGroup">
                             <label for="cfEncodedBy" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">
                                 Encoded By <span class="required" style="color:#ef4444;">*</span>
@@ -8762,6 +8790,10 @@
                     <div>
                         <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Encoded By</span>
                         <strong id="vcfEncodedBy" style="color:#0f172a;">—</strong>
+                    </div>
+                    <div id="vcfApprovedByRow" style="display:none; grid-column: span 2;">
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Approved By</span>
+                        <strong id="vcfApprovedBy" style="color:#0f172a;">—</strong>
                     </div>
                     <div style="grid-column: span 2;">
                         <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Remarks / Description</span>
@@ -8849,7 +8881,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_03"></script>
+    <script src="app.js?v=20261121_04"></script>
 </body>
 </html>
 

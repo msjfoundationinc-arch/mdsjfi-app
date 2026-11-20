@@ -527,6 +527,53 @@ function findStudent(id) {
 
 // ======================== DATA LAYER & COHORT SEEDING ========================
 
+function getStudentPhoto(s) {
+    if (!s) return '';
+    if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) return s.photo.trim();
+    try {
+        const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
+        const photo = (s.id && storedPhotos[s.id]) || 
+                      (s.lrn && storedPhotos[String(s.lrn).trim()]) || 
+                      (s.studentNumber && storedPhotos[String(s.studentNumber).trim()]);
+        if (photo && typeof photo === 'string' && photo.trim().length > 10) {
+            s.photo = photo.trim();
+            return photo.trim();
+        }
+    } catch(e) {}
+    try {
+        if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
+            const enroll = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id) ||
+                           (s.studentNumber && window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.studentNumber)) ||
+                           (s.lrn && window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.lrn));
+            const facePhoto = (enroll && (enroll.facePhoto || enroll.sampleImage));
+            if (facePhoto && typeof facePhoto === 'string' && facePhoto.length > 10) {
+                s.photo = facePhoto.trim();
+                return facePhoto.trim();
+            }
+        }
+    } catch(e) {}
+    return '';
+}
+window.getStudentPhoto = getStudentPhoto;
+
+function persistStudentPhoto(student, dataUrl) {
+    if (!student) return;
+    try {
+        const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
+        if (dataUrl) {
+            if (student.id) storedPhotos[student.id] = dataUrl;
+            if (student.lrn) storedPhotos[String(student.lrn).trim()] = dataUrl;
+            if (student.studentNumber) storedPhotos[String(student.studentNumber).trim()] = dataUrl;
+        } else {
+            if (student.id) delete storedPhotos[student.id];
+            if (student.lrn) delete storedPhotos[String(student.lrn).trim()];
+            if (student.studentNumber) delete storedPhotos[String(student.studentNumber).trim()];
+        }
+        localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
+    } catch(e) {}
+}
+window.persistStudentPhoto = persistStudentPhoto;
+
 function loadStudents() {
     const matrixData = (typeof OFFICIAL_IMPORTED_STUDENTS !== 'undefined' && Array.isArray(OFFICIAL_IMPORTED_STUDENTS) && OFFICIAL_IMPORTED_STUDENTS.length > 0)
         ? OFFICIAL_IMPORTED_STUDENTS
@@ -560,15 +607,34 @@ function loadStudents() {
                 !matrixIds.has(s.id) && 
                 !matrixLrns.has(String(s.lrn).trim())
             );
+            const existingMap = {};
+            students.forEach(s => {
+                if (s.id) existingMap[s.id] = s;
+                if (s.lrn) existingMap[String(s.lrn).trim()] = s;
+                if (s.studentNumber) existingMap[String(s.studentNumber).trim()] = s;
+            });
             const officialCopy = JSON.parse(JSON.stringify(matrixData));
             officialCopy.forEach(s => {
                 if (!s.id) s.id = s.studentNumber ? ('STU-' + s.studentNumber) : ('STU-' + s.lrn);
                 s.schoolYear = s.schoolYear || '2026-2027';
+                const ex = existingMap[s.id] || (s.lrn && existingMap[String(s.lrn).trim()]) || (s.studentNumber && existingMap[String(s.studentNumber).trim()]);
+                if (ex) {
+                    if (ex.photo) s.photo = ex.photo;
+                    if (ex.signature) s.signature = ex.signature;
+                    if (ex.birthCertDoc) s.birthCertDoc = ex.birthCertDoc;
+                    if (ex.torDoc) s.torDoc = ex.torDoc;
+                    if (ex.studentCardDoc) s.studentCardDoc = ex.studentCardDoc;
+                    if (ex.payments && (!s.payments || s.payments.length === 0)) s.payments = ex.payments;
+                }
+                const photoFromStore = getStudentPhoto(s);
+                if (photoFromStore && !s.photo) s.photo = photoFromStore;
+                if (s.photo) persistStudentPhoto(s, s.photo);
+
                 if (s.studentNumber === '2026-07001' || s.lrn === '110253190313') {
-                    s.signature = SAMPLE_SIG_DATA;
-                    s.birthCertDoc = { name: 'PSA_BirthCertificate.pdf', type: 'application/pdf', size: '156 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
-                    s.torDoc = { name: 'Form_137_TOR.pdf', type: 'application/pdf', size: '142 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
-                    s.studentCardDoc = { name: 'Form_138_ReportCard.pdf', type: 'application/pdf', size: '118 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
+                    if (!s.signature) s.signature = SAMPLE_SIG_DATA;
+                    if (!s.birthCertDoc) s.birthCertDoc = { name: 'PSA_BirthCertificate.pdf', type: 'application/pdf', size: '156 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
+                    if (!s.torDoc) s.torDoc = { name: 'Form_137_TOR.pdf', type: 'application/pdf', size: '142 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
+                    if (!s.studentCardDoc) s.studentCardDoc = { name: 'Form_138_ReportCard.pdf', type: 'application/pdf', size: '118 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
                 }
             });
             students = [...officialCopy, ...retainedCustomStudents];
@@ -577,7 +643,11 @@ function loadStudents() {
     }
 
     students.forEach(s => {
-        if (!s.photo) s.photo = '';
+        if (!s.photo || s.photo.length < 10) {
+            const p = getStudentPhoto(s);
+            if (p) s.photo = p;
+        }
+        if (s.photo) persistStudentPhoto(s, s.photo);
         if (!s.schoolYear || s.schoolYear === '2025-2026') {
             s.schoolYear = '2026-2027';
         }
@@ -2781,16 +2851,8 @@ function viewStudent(id) {
                                (typeof getCurrentUser === 'function' && !getCurrentUser());
 
     if (avatar) {
-        let photoSrc = (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) ? s.photo.trim() : '';
-        // If profile photo is missing, fall back to Face Biometrics enrollment photo
-        if (!photoSrc && window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
-            try {
-                const faceRec = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id);
-                if (faceRec && faceRec.facePhoto) {
-                    photoSrc = faceRec.facePhoto;
-                }
-            } catch(e) {}
-        }
+        let photoSrc = getStudentPhoto(s);
+        if (photoSrc && !s.photo) s.photo = photoSrc;
 
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
@@ -2963,13 +3025,8 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
 
     const avatarEl = document.getElementById('mobilePassAvatar');
     if (avatarEl) {
-        let photoSrc = (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) ? s.photo.trim() : '';
-        if (!photoSrc && window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
-            try {
-                const faceRec = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id);
-                if (faceRec && faceRec.facePhoto) photoSrc = faceRec.facePhoto;
-            } catch(e) {}
-        }
+        let photoSrc = getStudentPhoto(s);
+        if (photoSrc && !s.photo) s.photo = photoSrc;
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
         const displayPhoto = photoSrc || defaultAvatar;
@@ -3532,6 +3589,7 @@ window.handleDirectPhotoUpload = function(event) {
 
     optimizeImage(file, 400, 400, 0.85, function(dataUrl) {
         s.photo = dataUrl;
+        persistStudentPhoto(s, dataUrl);
         saveStudents();
         if (loader) loader.style.display = 'none';
 
@@ -3634,6 +3692,7 @@ window.captureProfileDirectPhoto = function() {
 
     compressAndResizeImage(video, 500, 500, 0.80, function(dataUrl) {
         s.photo = dataUrl;
+        persistStudentPhoto(s, dataUrl);
         saveStudents();
         closeProfilePhotoCamera();
 
@@ -3661,6 +3720,7 @@ window.deletePhotoFromProfile = function() {
         if (!confirm('Are you sure you want to delete this Student Profile Picture?')) return;
 
         s.photo = '';
+        persistStudentPhoto(s, '');
         saveStudents();
 
         const avatar = document.getElementById('viewAvatar');
@@ -5062,6 +5122,37 @@ function openModal(id) {
     document.body.style.overflow = 'hidden';
 }
 
+function handleQrProfileClose() {
+    try {
+        window.close();
+    } catch(e) {}
+    setTimeout(() => {
+        // If the browser blocks window.close() when tab was not opened by window.open
+        const closeOverlay = document.getElementById('qrProfileClosedBanner');
+        if (!closeOverlay) {
+            const div = document.createElement('div');
+            div.id = 'qrProfileClosedBanner';
+            div.style.cssText = 'position:fixed; inset:0; z-index:999999; display:flex; align-items:center; justify-content:center; background:#0f172a; color:#f8fafc; font-family:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif; padding:20px; text-align:center;';
+            div.innerHTML = `
+                <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:36px 28px; max-width:420px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.5); backdrop-filter:blur(12px);">
+                    <div style="width:64px; height:64px; border-radius:50%; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:32px; margin:0 auto 16px;">
+                        ✓
+                    </div>
+                    <h2 style="font-size:20px; font-weight:700; margin-bottom:8px; color:#ffffff;">Verification Session Closed</h2>
+                    <p style="font-size:14px; color:#94a3b8; line-height:1.5; margin-bottom:24px;">
+                        You have exited the Learner Profile view. You may now safely close this browser window or tab.
+                    </p>
+                    <button onclick="window.close()" style="background:#059669; color:#fff; border:none; padding:10px 26px; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer;">
+                        Close Tab
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(div);
+        }
+    }, 150);
+}
+window.handleQrProfileClose = handleQrProfileClose;
+
 function closeModal(id) {
     const m = document.getElementById(id);
     if (!m) return;
@@ -5072,14 +5163,8 @@ function closeModal(id) {
     if ((id === 'viewModal' || id === 'learnerMobileModal') && (document.documentElement.classList.contains('direct-profile-view') || document.documentElement.classList.contains('guest-qr-view'))) {
         const u = getCurrentUser();
         if (!u || !u.username) {
-            const overlay = document.getElementById('loginOverlay');
-            if (overlay) {
-                overlay.classList.remove('hidden');
-                overlay.style.removeProperty('display');
-                overlay.style.display = 'flex';
-            }
-            document.documentElement.classList.remove('direct-profile-view', 'guest-qr-view');
-            document.body.classList.add('app-hidden');
+            handleQrProfileClose();
+            return;
         }
     }
 }
@@ -7948,8 +8033,28 @@ function openNewCashFlowModal(editId = null) {
         if (cfMethod) cfMethod.value = target.method || 'Cash';
         const cfReceivedBy = document.getElementById('cfReceivedBy');
         const cfReceivedByText = document.getElementById('cfReceivedByText');
+        const cfApprovedBy = document.getElementById('cfApprovedBy');
+        const cfApprovedByCustom = document.getElementById('cfApprovedByCustom');
         if (target.type === 'OUT') {
             if (cfReceivedByText) cfReceivedByText.value = (target.receivedBy && target.receivedBy !== '—') ? target.receivedBy : '';
+            if (target.approvedBy) {
+                if (target.approvedBy.includes('President')) {
+                    if (cfApprovedBy) cfApprovedBy.value = '1. School President';
+                    if (cfApprovedByCustom) cfApprovedByCustom.style.display = 'none';
+                } else if (target.approvedBy.includes('Registrar') || target.approvedBy.includes('Accounting')) {
+                    if (cfApprovedBy) cfApprovedBy.value = '2. Registrar/Accounting';
+                    if (cfApprovedByCustom) cfApprovedByCustom.style.display = 'none';
+                } else {
+                    if (cfApprovedBy) cfApprovedBy.value = 'custom';
+                    if (cfApprovedByCustom) {
+                        cfApprovedByCustom.style.display = 'block';
+                        cfApprovedByCustom.value = target.approvedBy;
+                    }
+                }
+            } else {
+                if (cfApprovedBy) cfApprovedBy.value = '1. School President';
+                if (cfApprovedByCustom) cfApprovedByCustom.style.display = 'none';
+            }
         } else {
             if (cfReceivedBy) cfReceivedBy.value = target.receivedBy || '2. Registrar/Accounting';
         }
@@ -7984,6 +8089,14 @@ function openNewCashFlowModal(editId = null) {
 
         const cfReceivedByText = document.getElementById('cfReceivedByText');
         if (cfReceivedByText) cfReceivedByText.value = '';
+
+        const cfApprovedBy = document.getElementById('cfApprovedBy');
+        if (cfApprovedBy) cfApprovedBy.value = '1. School President';
+        const cfApprovedByCustom = document.getElementById('cfApprovedByCustom');
+        if (cfApprovedByCustom) {
+            cfApprovedByCustom.value = '';
+            cfApprovedByCustom.style.display = 'none';
+        }
 
         const curU = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
         const isPres = curU && (curU.username === 'admin' || (curU.role && curU.role.includes('President')));
@@ -8084,6 +8197,21 @@ function closeCashFlowModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function onApprovedByChange(val) {
+    const customInp = document.getElementById('cfApprovedByCustom');
+    if (customInp) {
+        if (val === 'custom') {
+            customInp.style.display = 'block';
+            customInp.required = true;
+            customInp.focus();
+        } else {
+            customInp.style.display = 'none';
+            customInp.required = false;
+        }
+    }
+}
+window.onApprovedByChange = onApprovedByChange;
+
 function onCashFlowTypeSelectChange(type) {
     const catSelect = document.getElementById('cfCategory');
     const entityLabel = document.getElementById('cfEntityLabel');
@@ -8092,6 +8220,9 @@ function onCashFlowTypeSelectChange(type) {
     const receivedBySelect = document.getElementById('cfReceivedBy');
     const receivedByText = document.getElementById('cfReceivedByText');
     const encodedByGroup = document.getElementById('cfEncodedByGroup');
+    const approvedByGroup = document.getElementById('cfApprovedByGroup');
+    const approvedBySelect = document.getElementById('cfApprovedBy');
+    const approvedByCustom = document.getElementById('cfApprovedByCustom');
 
     if (type === 'IN') {
         if (entityLabel) entityLabel.innerHTML = 'Received From (Payer / Student Name) <span class="required" style="color:#ef4444;">*</span>';
@@ -8109,6 +8240,10 @@ function onCashFlowTypeSelectChange(type) {
             receivedByText.required = false;
         }
         if (encodedByGroup) encodedByGroup.style.gridColumn = '';
+
+        if (approvedByGroup) approvedByGroup.style.display = 'none';
+        if (approvedBySelect) approvedBySelect.required = false;
+        if (approvedByCustom) approvedByCustom.required = false;
 
         if (catSelect) {
             catSelect.innerHTML = `
@@ -8137,6 +8272,14 @@ function onCashFlowTypeSelectChange(type) {
             receivedByText.placeholder = 'e.g. Recipient Name / Payee Representative';
         }
         if (encodedByGroup) encodedByGroup.style.gridColumn = '';
+
+        // Cash Out adds field for Approved by
+        if (approvedByGroup) approvedByGroup.style.display = '';
+        if (approvedBySelect) {
+            approvedBySelect.required = true;
+            if (!approvedBySelect.value) approvedBySelect.value = '1. School President';
+            onApprovedByChange(approvedBySelect.value);
+        }
 
         if (catSelect) {
             catSelect.innerHTML = `
@@ -8174,6 +8317,19 @@ function handleSaveCashFlow(e) {
         ? ((document.getElementById('cfReceivedByText')?.value || document.getElementById('cfReceivedBy')?.value || '').trim() || '—') 
         : ((document.getElementById('cfReceivedBy')?.value || document.getElementById('cfReceivedByText')?.value || '2. Registrar/Accounting').trim());
     const encodedBy = document.getElementById('cfEncodedBy')?.value || '2. Registrar/Accounting';
+
+    let approvedBy = '';
+    if (type === 'OUT') {
+        const apprSel = document.getElementById('cfApprovedBy');
+        const apprCus = document.getElementById('cfApprovedByCustom');
+        if (apprSel && apprSel.value === 'custom') {
+            approvedBy = apprCus ? apprCus.value.trim() : '';
+        } else if (apprSel) {
+            approvedBy = apprSel.value;
+        }
+        if (!approvedBy) approvedBy = '1. School President';
+    }
+
     const payerType = document.getElementById('cfPayerType')?.value || 'enrolled';
     const selectedStudentId = document.getElementById('cfStudentSelect')?.value || '';
 
@@ -8227,6 +8383,7 @@ function handleSaveCashFlow(e) {
             entries[existingIdx].amount = amountVal;
             entries[existingIdx].method = method;
             entries[existingIdx].receivedBy = receivedBy;
+            entries[existingIdx].approvedBy = (type === 'OUT') ? approvedBy : '';
             entries[existingIdx].encodedBy = encodedBy;
             entries[existingIdx].remarks = remarks;
             entries[existingIdx].studentId = matchedStudent ? matchedStudent.id : '';
@@ -8276,6 +8433,7 @@ function handleSaveCashFlow(e) {
         amount: amountVal,
         method: method,
         receivedBy: receivedBy,
+        approvedBy: (type === 'OUT') ? approvedBy : '',
         encodedBy: encodedBy,
         encoder: encodedBy.includes('President') ? 'Niño Aloysius B. Colegado' : 'Carrelle B. Colegado',
         remarks: remarks,
@@ -8611,6 +8769,17 @@ function viewCashFlowTransaction(id) {
     const remEl = document.getElementById('vcfRemarks');
     if (remEl) remEl.textContent = item.remarks || 'None';
 
+    const apprRow = document.getElementById('vcfApprovedByRow');
+    const apprEl = document.getElementById('vcfApprovedBy');
+    if (apprRow && apprEl) {
+        if (!isIn && item.approvedBy) {
+            apprRow.style.display = 'flex';
+            apprEl.textContent = item.approvedBy;
+        } else {
+            apprRow.style.display = 'none';
+        }
+    }
+
     const printBtn = document.getElementById('btnVcfPrint');
     if (printBtn) {
         printBtn.onclick = function() {
@@ -8650,6 +8819,15 @@ function printCashFlowVoucher(id) {
         ? 'Niño Aloysius B. Colegado' 
         : (item.encodedBy && item.encodedBy.includes('President') ? 'Niño Aloysius B. Colegado' : (item.encoder || 'Carrelle B. Colegado'));
 
+    let rawAppr = item.approvedBy || '';
+    if (!rawAppr) {
+        rawAppr = 'Niño Aloysius B. Colegado';
+    } else if (rawAppr.includes('President') || rawAppr.includes('Niño') || rawAppr.includes('Nino')) {
+        rawAppr = 'Niño Aloysius B. Colegado';
+    } else if (rawAppr.includes('Registrar') || rawAppr.includes('Carrelle') || rawAppr.includes('Accounting')) {
+        rawAppr = 'Carrelle B. Colegado';
+    }
+
     function isSameSignatory(enc, rec) {
         if (!enc || !rec) return false;
         const e = enc.toString().trim().toLowerCase();
@@ -8662,8 +8840,8 @@ function printCashFlowVoucher(id) {
         return false;
     }
 
-    const isSame = isSameSignatory(rawEnc, rawRec);
     const isOut = (item.type || '').toUpperCase() === 'OUT';
+    const isSame = isOut ? isSameSignatory(rawEnc, rawAppr) : isSameSignatory(rawEnc, rawRec);
 
     let sigHtml = '';
     if (isSame) {
@@ -8681,6 +8859,7 @@ function printCashFlowVoucher(id) {
         `;
     } else {
         const rightLabel = isOut ? 'Approved By:' : 'Received By:';
+        const rightName = isOut ? rawAppr : rawRec;
         const rightSubtitle = isOut ? 'Authorized Signatory / School Approver' : 'Authorized Signatory / Recipient';
         sigHtml = `
             <div class="signatures" style="margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid;">
@@ -8693,7 +8872,7 @@ function printCashFlowVoucher(id) {
                 <div class="sig-box" style="text-align: center; width: 44%;">
                     <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left;">${rightLabel}</div>
                     <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
-                    <div class="sig-name">${escapeHtml(rawRec)}</div>
+                    <div class="sig-name">${escapeHtml(rightName)}</div>
                     <div class="sig-title">${rightSubtitle}</div>
                 </div>
             </div>
@@ -8784,6 +8963,18 @@ function printCashFlowVoucher(id) {
                     <span class="label">Remarks / Description:</span>
                     <span class="val" style="font-weight:normal; color:#334155;">${escapeHtml(item.remarks || 'None')}</span>
                 </div>
+                ${isOut && item.approvedBy ? `
+                <div class="row">
+                    <span class="label">Approved By:</span>
+                    <span class="val">${escapeHtml(item.approvedBy)}</span>
+                </div>
+                ` : ''}
+                ${isOut && item.receivedBy && item.receivedBy !== '—' ? `
+                <div class="row">
+                    <span class="label">Received By (Payee Representative):</span>
+                    <span class="val">${escapeHtml(item.receivedBy)}</span>
+                </div>
+                ` : ''}
                 <div class="row" style="border-bottom: 2px solid #0b2545; padding: 14px 0;">
                     <span class="label" style="font-size: 15px;">TOTAL AMOUNT TRANSACTED:</span>
                     <span class="val amount-highlight">&#8369;${formatNumber(item.amount)}</span>

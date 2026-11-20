@@ -808,6 +808,14 @@ img, canvas, svg, video, picture {
 }
 
 /* App hidden before login */
+html:not(.user-logged-in):not(.direct-profile-view),
+html:not(.user-logged-in):not(.direct-profile-view) body {
+    overflow: hidden !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+}
+
 .app-hidden .sidebar,
 .app-hidden .mobile-header,
 .app-hidden .main-content {
@@ -6783,6 +6791,80 @@ input, select, textarea {
     z-index: 9999 !important;
 }
 
+#learnerMobileModal .modal-content {
+    max-width: 440px !important;
+    width: 94% !important;
+    max-height: 90dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border-radius: 18px !important;
+    padding: 0 !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+}
+
+#learnerMobileModal .modal-content > div:first-child {
+    flex-shrink: 0 !important;
+    position: relative !important;
+}
+
+#learnerMobileModal .modal-content .modal-close {
+    width: auto !important;
+    position: absolute !important;
+    top: 12px !important;
+    right: 16px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    display: block !important;
+}
+
+#learnerMobileModal .modal-content > div:last-child {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 20px 22px !important;
+}
+
+#learnerMobileQrLarge {
+    width: 170px !important;
+    height: 170px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#learnerMobileQrLarge svg {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+}
+
+#learnerMobileModal .pass-action-buttons,
+#learnerMobileModal .modal-content div[style*="display:flex; justify-content:center; flex-wrap:wrap; gap:8px"] {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#learnerMobileModal .modal-content button:not(.modal-close) {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    font-size: 0.82rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+
 #qrScannerModal {
     z-index: 10000 !important;
 }
@@ -12287,22 +12369,35 @@ html.direct-profile-view #btnEditFromView {
 
     /* Learner Mobile Pass Modal (learnerMobileModal) Responsive Fit */
     #learnerMobileModal .modal-content {
-        width: 94% !important;
-        max-width: 94% !important;
-        margin: 12px auto !important;
+        width: 95% !important;
+        max-width: 95% !important;
+        max-height: 92dvh !important;
+        margin: auto !important;
         border-radius: 16px !important;
         box-sizing: border-box !important;
-        overflow-x: hidden !important;
+        overflow: hidden !important;
     }
     #learnerMobileModal .modal-content > div:first-child {
         padding: 16px 14px 12px !important;
+        position: relative !important;
+    }
+    #learnerMobileModal .modal-content .modal-close {
+        width: auto !important;
+        position: absolute !important;
+        right: 14px !important;
+        top: 10px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: none !important;
     }
     #learnerMobileModal .modal-content > div:last-child {
         padding: 14px 12px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
     }
     #learnerMobileQrLarge {
-        width: 160px !important;
-        height: 160px !important;
+        width: 145px !important;
+        height: 145px !important;
     }
     #learnerMobileQrLarge svg {
         width: 100% !important;
@@ -12316,14 +12411,20 @@ html.direct-profile-view #btnEditFromView {
         box-sizing: border-box !important;
     }
     #learnerMobileModal .modal-content [style*="grid-template-columns: 1fr 1fr"] {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: 1fr 1fr !important;
         gap: 6px !important;
     }
-    #learnerMobileModal .modal-content button {
+    #learnerMobileModal .modal-content div[style*="display:flex; justify-content:center; flex-wrap:wrap; gap:8px"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    #learnerMobileModal .modal-content button:not(.modal-close) {
         width: 100% !important;
         justify-content: center !important;
-        padding: 10px 14px !important;
-        margin: 2px 0 !important;
+        padding: 8px 10px !important;
+        margin: 0 !important;
+        font-size: 0.80rem !important;
     }
 }
 
