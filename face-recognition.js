@@ -230,17 +230,8 @@
         if (logs.length > 1000) logs.pop();
         saveAttendanceLogs(logs);
 
-        // Also integrate with global MDSJFI audit activities trail
-        if (typeof global.logActivity === 'function') {
-            try {
-                const actionVerb = (action === 'LOG_IN') ? 'Facial Recognition Log In' : 'Facial Recognition Log Out';
-                global.logActivity(
-                    'Facial Attendance',
-                    `${actionVerb} recorded for ${logEntry.name} (${logEntry.role}, ${logEntry.identifier}) [Confidence: ${logEntry.confidence}%]`,
-                    person.isStudent ? person : null
-                );
-            } catch(e) {}
-        }
+        // Note: Routine attendance scans are tracked in dedicated Facial Attendance logs
+        // and intentionally omitted from the main institutional audit trail to avoid log noise.
 
         return logEntry;
     }

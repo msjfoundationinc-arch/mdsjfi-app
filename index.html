@@ -16,14 +16,14 @@
     }
     </script>
     <!-- Crisp High-Definition Favicon Architecture (Zero Tab Bleed / Overlap, 100% Transparent Background) -->
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=20261120_06">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=20261120_06">
-    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=20261120_06">
-    <link rel="shortcut icon" href="favicon.ico?v=20261120_06">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261120_06">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=20261121_01">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=20261121_01">
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=20261121_01">
+    <link rel="shortcut icon" href="favicon.ico?v=20261121_01">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_01">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261120_13">
+    <link rel="stylesheet" href="styles.css?v=20261121_01">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -5954,6 +5954,9 @@
                     <button type="button" class="btn-secondary" onclick="printClearanceRoster()" title="Print Examination Clearance Roster with Signatures">
                         <i class="fas fa-print"></i> Print Clearance List
                     </button>
+                    <button type="button" class="btn-secondary" onclick="exportClearanceRosterPdf()" title="Export Examination Clearance Roster as PDF">
+                        <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Export PDF
+                    </button>
                     <button type="button" class="btn-primary" id="btnRefreshClearance" onclick="triggerClearanceRefresh(event)" title="Refresh Clearance Statuses" style="background:#16a34a; border-color:#15803d;">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
@@ -7826,6 +7829,9 @@
                 <button class="btn-secondary" id="btnPrintProfile" onclick="printStudentRecord()">
                     <i class="fas fa-print"></i> Print Profile
                 </button>
+                <button type="button" class="btn-secondary" id="btnExportProfilePdf" onclick="exportActiveProfilePdf()" title="Save / Export Learner Profile as PDF">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Export PDF
+                </button>
                 <button class="btn-primary" id="btnEditFromView" onclick="if (typeof currentViewId !== 'undefined' && currentViewId) { closeModal('viewModal'); editStudent(currentViewId); }">
                     <i class="fas fa-edit"></i> Edit Record
                 </button>
@@ -8190,6 +8196,9 @@
             <div class="modal-footer">
                 <button class="btn-secondary" id="btnPrintSOA" onclick="printSOAModal()">
                     <i class="fas fa-print"></i> Print Statement of Account
+                </button>
+                <button type="button" class="btn-secondary" id="btnExportSOAPdf" onclick="exportSOAToPdf()" title="Save / Export Statement of Account as PDF">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Export PDF
                 </button>
                 <button class="btn-primary" id="btnUpdateSOABottom" onclick="toggleSOAEditMode()">
                     <i class="fas fa-edit"></i> <span id="btnUpdateSOABottomText">Update SOA</span>
@@ -8740,6 +8749,9 @@
                     <button type="button" class="btn btn-primary" id="btnVcfPrint" style="padding: 8px 18px; font-weight: 600; font-size: 0.85rem; display:inline-flex; align-items:center; gap:6px;">
                         <i class="fas fa-print"></i> Print Transaction Voucher / Receipt
                     </button>
+                    <button type="button" class="btn btn-secondary" id="btnVcfPdf" style="padding: 8px 18px; font-weight: 600; font-size: 0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Export PDF
+                    </button>
                 </div>
             </div>
         </div>
@@ -8804,11 +8816,12 @@
     <!-- Local Chart.js & SheetJS for 100% Offline Capability -->
     <script src="chart.umd.min.js"></script>
     <script src="xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Webcam Facial Recognition & Biometric Attendance Engine -->
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261120_13"></script>
+    <script src="app.js?v=20261121_01"></script>
 </body>
 </html>
 

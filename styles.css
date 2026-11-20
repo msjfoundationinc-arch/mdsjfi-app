@@ -11928,6 +11928,154 @@ html.guest-qr-view:not(.user-logged-in) .guest-profile-auth-bar {
     display: flex !important;
 }
 
+/* Scanned QR Mobile View - Remove all file uploads, modifications, and restrict to read-only pass viewing */
+html.guest-qr-view .avatar-action-btns,
+html.direct-profile-view .avatar-action-btns,
+html.guest-qr-view button[onclick*="uploadPhotoFromProfile"],
+html.direct-profile-view button[onclick*="uploadPhotoFromProfile"],
+html.guest-qr-view button[onclick*="takePhotoFromProfile"],
+html.direct-profile-view button[onclick*="takePhotoFromProfile"],
+html.guest-qr-view button[onclick*="deletePhotoFromProfile"],
+html.direct-profile-view button[onclick*="deletePhotoFromProfile"],
+html.guest-qr-view button[onclick*="triggerDocUploadFromProfile"],
+html.direct-profile-view button[onclick*="triggerDocUploadFromProfile"],
+html.guest-qr-view button[onclick*="deleteDocFromProfile"],
+html.direct-profile-view button[onclick*="deleteDocFromProfile"],
+html.guest-qr-view button[onclick*="openFaceEnrollmentForCurrentStudent"],
+html.direct-profile-view button[onclick*="openFaceEnrollmentForCurrentStudent"],
+html.guest-qr-view .view-doc-btn-wrap button:not(.btn-info),
+html.direct-profile-view .view-doc-btn-wrap button:not(.btn-info),
+html.guest-qr-view #btnDeleteFromView,
+html.direct-profile-view #btnDeleteFromView,
+html.guest-qr-view #btnArchiveFromView,
+html.direct-profile-view #btnArchiveFromView,
+html.guest-qr-view #btnEditFromView,
+html.direct-profile-view #btnEditFromView {
+    display: none !important;
+}
+
+/* Learner Profile Avatar Container & Initials Fallback */
+.student-avatar {
+    width: 78px !important;
+    height: 78px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    background: #e0f2fe !important;
+    border: 3px solid #0284c7 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.student-avatar img,
+.student-avatar-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: 50% !important;
+}
+
+.student-avatar-initials {
+    font-size: 1.45rem !important;
+    font-weight: 800 !important;
+    color: #0369a1 !important;
+    text-transform: uppercase !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
+    letter-spacing: 1px !important;
+}
+
+/* Responsive Fix for Learner Profile Modal & Eliminating Field Overlapping on Mobile View */
+@media (max-width: 768px) {
+    #viewModal .modal-content {
+        width: 95% !important;
+        max-width: 95% !important;
+        padding: 12px 14px !important;
+        margin: 10px auto !important;
+        border-radius: 14px !important;
+    }
+    #viewModal .modal-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 10px !important;
+        padding: 14px 10px !important;
+    }
+    #viewModal .student-profile-header {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    #viewModal .view-header-right-actions {
+        width: 100% !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    #viewModal .view-learner-qr-box {
+        width: 100% !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+    #viewModal .detail-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    #viewModal .detail-section {
+        padding: 12px 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    #viewModal .detail-row {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        gap: 2px !important;
+        padding: 6px 0 !important;
+        width: 100% !important;
+        border-bottom: 1px dotted #e2e8f0 !important;
+    }
+    #viewModal .detail-row span {
+        font-size: 0.76rem !important;
+        color: #64748b !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.3px !important;
+        line-height: 1.2 !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    #viewModal .detail-row strong {
+        font-size: 0.88rem !important;
+        color: #0f172a !important;
+        text-align: left !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        width: 100% !important;
+        line-height: 1.35 !important;
+    }
+    #viewModal .modal-footer {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 8px !important;
+        padding: 12px 10px !important;
+    }
+    #viewModal .modal-footer button {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 10px 14px !important;
+    }
+}
+
 
 
 

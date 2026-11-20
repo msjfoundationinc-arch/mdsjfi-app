@@ -2747,13 +2747,33 @@ function viewStudent(id) {
     const avatar = document.getElementById('viewAvatar');
     const photoDelBtn = document.getElementById('btnDeletePhotoFromProfile');
     const photoEnlargeBtn = document.getElementById('btnEnlargeProfilePhoto');
+    const isGuestProfileView = document.documentElement.classList.contains('guest-qr-view') || 
+                               document.documentElement.classList.contains('direct-profile-view') || 
+                               (typeof getCurrentUser === 'function' && !getCurrentUser());
+
     if (avatar) {
-        if (s.photo) {
-            avatar.innerHTML = `<img src="${s.photo}" alt="Student Photo" class="student-avatar-img">`;
-            if (photoDelBtn) photoDelBtn.style.display = 'inline-block';
+        let photoSrc = s.photo || '';
+        // If profile photo is missing, fall back to Face Biometrics enrollment photo
+        if (!photoSrc && window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
+            try {
+                const faceRec = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id);
+                if (faceRec && faceRec.facePhoto) {
+                    photoSrc = faceRec.facePhoto;
+                }
+            } catch(e) {}
+        }
+
+        if (photoSrc) {
+            avatar.innerHTML = `<img src="${photoSrc}" alt="Student Photo" class="student-avatar-img">`;
+            if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
             if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
         } else {
-            avatar.innerHTML = `<i class="fas fa-user-graduate"></i>`;
+            // Render crisp institutional initials badge so profile avatar is always attractive and never blank
+            const nameParts = (s.fullName || `${s.firstName || ''} ${s.lastName || ''}`).trim().split(/\s+/);
+            const initials = nameParts.length >= 2 
+                ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+                : ((nameParts[0] ? nameParts[0][0] : 'S')).toUpperCase();
+            avatar.innerHTML = `<span class="student-avatar-initials">${escHtml(initials)}</span>`;
             if (photoDelBtn) photoDelBtn.style.display = 'none';
             if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'none';
         }
@@ -3320,6 +3340,10 @@ function renderDocPreview(prefix, doc) {
     const btnWrap = document.getElementById(prefix + 'BtnWrap');
     if (!details || !btnWrap) return;
 
+    const isGuestProfileView = document.documentElement.classList.contains('guest-qr-view') || 
+                               document.documentElement.classList.contains('direct-profile-view') || 
+                               (typeof getCurrentUser === 'function' && !getCurrentUser());
+
     if (doc && doc.data) {
         details.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:2px;">
@@ -3330,19 +3354,29 @@ function renderDocPreview(prefix, doc) {
                 <small style="color:#64748b; font-size:0.75rem;">Size: ${doc.size || 'Attached'}</small>
             </div>
         `;
-        btnWrap.innerHTML = `
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%;">
-                <button type="button" class="btn-sm btn-info" onclick="previewDocData('${prefix}')" title="Click to view uploaded file">
-                    <i class="fas fa-eye"></i> View File
-                </button>
-                <button type="button" class="btn-sm btn-danger" onclick="deleteDocFromProfile('${prefix}')" title="Delete or replace this file">
-                    <i class="fas fa-trash-alt"></i> Delete
-                </button>
-                <button type="button" class="btn-sm btn-secondary" onclick="triggerDocUploadFromProfile('${prefix}')" title="Replace with another file">
-                    <i class="fas fa-sync-alt"></i> Replace
-                </button>
-            </div>
-        `;
+        if (isGuestProfileView) {
+            btnWrap.innerHTML = `
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%;">
+                    <button type="button" class="btn-sm btn-info" onclick="previewDocData('${prefix}')" title="Click to view uploaded file">
+                        <i class="fas fa-eye"></i> View File
+                    </button>
+                </div>
+            `;
+        } else {
+            btnWrap.innerHTML = `
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%;">
+                    <button type="button" class="btn-sm btn-info" onclick="previewDocData('${prefix}')" title="Click to view uploaded file">
+                        <i class="fas fa-eye"></i> View File
+                    </button>
+                    <button type="button" class="btn-sm btn-danger" onclick="deleteDocFromProfile('${prefix}')" title="Delete or replace this file">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                    <button type="button" class="btn-sm btn-secondary" onclick="triggerDocUploadFromProfile('${prefix}')" title="Replace with another file">
+                        <i class="fas fa-sync-alt"></i> Replace
+                    </button>
+                </div>
+            `;
+        }
     } else {
         details.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:2px;">
@@ -3352,11 +3386,15 @@ function renderDocPreview(prefix, doc) {
                 <span style="color:#94a3b8; font-size:0.8rem; font-style:italic;">No official document on file</span>
             </div>
         `;
-        btnWrap.innerHTML = `
-            <button type="button" class="btn-sm btn-primary" onclick="triggerDocUploadFromProfile('${prefix}')" title="Upload official file">
-                <i class="fas fa-upload"></i> Upload File
-            </button>
-        `;
+        if (isGuestProfileView) {
+            btnWrap.innerHTML = '';
+        } else {
+            btnWrap.innerHTML = `
+                <button type="button" class="btn-sm btn-primary" onclick="triggerDocUploadFromProfile('${prefix}')" title="Upload official file">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
+            `;
+        }
     }
 }
 
@@ -4040,19 +4078,51 @@ function printSOAModal() {
 
     const rowsHtml = payments.length > 0 ? payments.map((p, idx) => `
         <tr>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${idx + 1}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${p.date ? (typeof formatDate === 'function' ? formatDate(p.date) : p.date) : (p.date || '—')}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; font-family:monospace; font-weight:bold; text-align:center;">${escapeHtml(p.orNumber || p.refNo || '—')}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:left;">${escapeHtml(p.term || p.particulars || 'Tuition Fee Installment')}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${escapeHtml(p.method || 'Cash')}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:right; font-weight:bold; color:#0369a1;">&#8369;${formatNumber(p.amount)}</td>
+            <td style="padding:4.5px 6px; border:1px solid #cbd5e1; font-size:10.5px; text-align:center;">${idx + 1}</td>
+            <td style="padding:4.5px 6px; border:1px solid #cbd5e1; font-size:10.5px; text-align:center;">${p.date ? (typeof formatDate === 'function' ? formatDate(p.date) : p.date) : (p.date || '—')}</td>
+            <td style="padding:4.5px 6px; border:1px solid #cbd5e1; font-size:10.5px; font-family:monospace; font-weight:bold; text-align:center;">${escapeHtml(p.orNumber || p.refNo || '—')}</td>
+            <td style="padding:4.5px 6px; border:1px solid #cbd5e1; font-size:10.5px; text-align:left; word-break:break-word;">${escapeHtml(p.term || p.particulars || 'Tuition Fee Installment')}</td>
+            <td style="padding:4.5px 6px; border:1px solid #cbd5e1; font-size:10.5px; text-align:center;">${escapeHtml(p.method || 'Cash')}</td>
+            <td style="padding:4.5px 6px; border:1px solid #cbd5e1; font-size:10.5px; text-align:right; font-weight:bold; color:#0369a1;">&#8369;${formatNumber(p.amount)}</td>
         </tr>
     `).join('') : `
         <tr>
-            <td colspan="6" style="padding:22px; text-align:center; color:#64748b; font-size:12px; border:1px solid #cbd5e1;">
+            <td colspan="6" style="padding:14px; text-align:center; color:#64748b; font-size:11px; border:1px solid #cbd5e1;">
                 No payment installments recorded yet for this school year.
             </td>
         </tr>
+    `;
+
+    const rawEnc = "CARRELLE B. COLEGADO";
+    const rawRec = "NIÑO ALOYSIUS B. COLEGADO";
+    const isSameSigner = (typeof isSameSignatoryPerson === 'function') 
+        ? isSameSignatoryPerson(rawEnc, rawRec)
+        : (rawEnc.trim().toLowerCase() === rawRec.trim().toLowerCase());
+
+    const sigHtml = isSameSigner ? `
+        <div class="signatures" style="margin-top: 20px; display: flex; justify-content: flex-start; page-break-inside: avoid; break-inside: avoid;">
+            <div class="sig-box" style="text-align: center; width: 44%;">
+                <div class="sig-label" style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 24px; text-align: left;">Encoded &amp; Approved / Received By:</div>
+                <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+                <div class="sig-name" style="font-weight: bold; font-size: 12px;">${escapeHtml(rawEnc)}</div>
+                <div class="sig-title" style="font-size: 10px; color: #475569;">Official Encoder / Authorized Signatory / Recipient</div>
+            </div>
+        </div>
+    ` : `
+        <div class="signatures" style="margin-top: 20px; display: flex; justify-content: space-between; page-break-inside: avoid; break-inside: avoid;">
+            <div class="sig-box" style="text-align: center; width: 44%;">
+                <div class="sig-label" style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 24px; text-align: left;">Prepared &amp; Certified By:</div>
+                <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+                <div class="sig-name" style="font-weight: bold; font-size: 12px;">CARRELLE B. COLEGADO</div>
+                <div class="sig-title" style="font-size: 10px; color: #475569;">Registrar / In-Charge, Accounting Office</div>
+            </div>
+            <div class="sig-box" style="text-align: center; width: 44%;">
+                <div class="sig-label" style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 24px; text-align: left;">Approved &amp; Verified By:</div>
+                <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+                <div class="sig-name" style="font-weight: bold; font-size: 12px;">NI&Ntilde;O ALOYSIUS B. COLEGADO</div>
+                <div class="sig-title" style="font-size: 10px; color: #475569;">School President</div>
+            </div>
+        </div>
     `;
 
     printWin.document.write(`
@@ -4061,55 +4131,77 @@ function printSOAModal() {
         <head>
             <title>MDSJFI - Official Statement of Account - ${escapeHtml(s.lastName)}, ${escapeHtml(s.firstName)}</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 24px; color: #1e293b; background: #fff; }
-                .header { display: flex; align-items: center; justify-content: center; gap: 16px; border-bottom: 2px solid #0b2545; padding-bottom: 12px; margin-bottom: 16px; }
-                .header h2 { margin: 0; color: #0b2545; font-size: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
-                .header p { margin: 3px 0 0 0; font-size: 12px; color: #64748b; }
-                .meta-bar { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0; }
-                .student-card { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: grid; grid-template-columns: 2fr 1fr; gap: 10px; font-size: 12.5px; }
-                .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
-                .stat-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; text-align: center; background: #fafafa; }
+                * { box-sizing: border-box; }
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 12px 16px; color: #1e293b; background: #fff; font-size: 11px; line-height: 1.3; }
+                .header { display: flex; align-items: center; justify-content: center; gap: 14px; border-bottom: 2px solid #0b2545; padding-bottom: 8px; margin-bottom: 8px; }
+                .header img { height: 50px; width: 50px; object-fit: contain; }
+                .header h2 { margin: 0; color: #0b2545; font-size: 16px; text-transform: uppercase; letter-spacing: 0.4px; }
+                .header p { margin: 1px 0 0 0; font-size: 10.5px; color: #475569; }
+                .header h3 { margin: 3px 0 0 0; color: #1e293b; font-size: 13px; letter-spacing: 0.4px; text-transform: uppercase; }
+                .student-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 6px; font-size: 11px; }
+                .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+                .stat-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 6px; text-align: center; background: #fafafa; }
                 .stat-box.highlight { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
                 .stat-box.settled { background: #dcfce7; border-color: #16a34a; color: #15803d; }
-                .stat-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 4px; }
-                .stat-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+                .stat-label { font-size: 9.5px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 2px; }
+                .stat-val { font-size: 13px; font-weight: 800; color: #0f172a; }
                 .stat-box.highlight .stat-val { color: #dc2626; }
                 .stat-box.settled .stat-val { color: #16a34a; }
-                table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; font-size: 12px; }
-                th { background: #0b2545 !important; color: #fff !important; padding: 8px 10px !important; font-size: 11px !important; text-transform: uppercase !important; border: 1px solid #0b2545 !important; vertical-align: middle !important; }
-                td { padding: 7px 10px !important; border: 1px solid #cbd5e1 !important; vertical-align: middle !important; }
-                .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                table { width: 100% !important; border-collapse: collapse !important; margin-top: 4px; font-size: 10.5px; table-layout: fixed !important; }
+                th { background: #0b2545 !important; color: #fff !important; padding: 5px 6px !important; font-size: 10px !important; text-transform: uppercase !important; border: 1px solid #0b2545 !important; vertical-align: middle !important; }
+                td { padding: 4.5px 6px !important; border: 1px solid #cbd5e1 !important; vertical-align: middle !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
+                tfoot tr td { padding: 5px 6px !important; }
+                .signatures { margin-top: 18px; display: flex; justify-content: space-between; page-break-inside: avoid; break-inside: avoid; }
                 .sig-box { text-align: center; width: 44%; }
-                .sig-label { font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left; }
-                .sig-line { border-top: 1.5px solid #000; margin-bottom: 4px; }
-                .sig-name { font-weight: bold; font-size: 13px; }
-                .sig-title { font-size: 11px; color: #475569; }
+                .sig-label { font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 24px; text-align: left; }
+                .sig-line { border-top: 1.5px solid #000; margin-bottom: 3px; }
+                .sig-name { font-weight: bold; font-size: 12px; }
+                .sig-title { font-size: 10px; color: #475569; }
                 @media print {
-                    @page { size: portrait; margin: 12mm; }
-                    body { margin: 0; }
+                    @page { size: portrait; margin: 8mm 10mm; }
+                    body { margin: 0; padding: 0; }
+                    .no-print-bar { display: none !important; }
                 }
             </style>
         </head>
         <body>
+            <div class="no-print-bar" style="background:#0b2545; color:#fff; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; border-radius:6px; margin-bottom:10px; font-family:sans-serif; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                <div style="font-weight:700; font-size:12px; display:flex; align-items:center; gap:8px;">
+                    <img src="school-logo.png" style="height:20px; width:20px;" onerror="this.style.display='none'">
+                    <span>MDSJFI &bull; Official Statement of Account</span>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button onclick="window.print()" style="padding:5px 12px; background:#16a34a; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">
+                        &#128438; Print
+                    </button>
+                    <button onclick="exportDocToPdf()" style="padding:5px 12px; background:#2563eb; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">
+                        &#128196; Export as PDF
+                    </button>
+                    <button onclick="window.close()" style="padding:5px 10px; background:#475569; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">
+                        &#10005; Close
+                    </button>
+                </div>
+            </div>
+
             <div class="header">
-                <img src="school-logo.png" alt="MDSJFI Official Logo" style="height:65px; width:65px; object-fit:contain;" onerror="this.src='logo.jpg'; this.onerror=null;">
+                <img src="school-logo.png" alt="MDSJFI Official Logo" onerror="this.src='logo.jpg'; this.onerror=null;">
                 <div style="text-align:center;">
                     <h2>MONTESSORI DE SAN JOSE FOUNDATION INC.</h2>
-                    <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">0696 P. Burgos St., Brgy. Pag-asa, San Jose, Occidental Mindoro</p>
-                    <p style="margin: 3px 0 0 0; font-size: 12px; font-weight: bold; color: #0b2545;">School Year ${sy}</p>
-                    <h3 style="margin: 6px 0 0 0; color: #1e293b; font-size: 15px; letter-spacing: 0.5px; text-transform:uppercase;">OFFICIAL STATEMENT OF ACCOUNT (SOA)</h3>
-                    <p style="margin: 2px 0 0 0; font-size: 11px; color: #0b2545; font-weight: bold;">Learner Permanent Financial Record &bull; Printed: ${nowStr}</p>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; color: #475569;">0696 P. Burgos St., Brgy. Pag-asa, San Jose, Occidental Mindoro</p>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; font-weight: bold; color: #0b2545;">School Year ${sy}</p>
+                    <h3 style="margin: 4px 0 0 0; color: #1e293b; font-size: 13px; letter-spacing: 0.4px; text-transform:uppercase;">OFFICIAL STATEMENT OF ACCOUNT (SOA)</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 10px; color: #0b2545; font-weight: bold;">Learner Permanent Financial Record &bull; Printed: ${nowStr}</p>
                 </div>
             </div>
 
             <div class="student-card">
                 <div>
-                    <div><strong>Learner Name:</strong> <span style="font-size:14px; font-weight:700; color:#0f172a;">${escapeHtml(s.lastName)}, ${escapeHtml(s.firstName)} ${escapeHtml(s.middleName || '')}</span></div>
-                    <div style="margin-top:4px;"><strong>Grade Level &amp; Section:</strong> Grade ${s.gradeLevel} - ${escapeHtml(s.section)}</div>
+                    <div><strong>Learner Name:</strong> <span style="font-size:13px; font-weight:700; color:#0f172a;">${escapeHtml(s.lastName)}, ${escapeHtml(s.firstName)} ${escapeHtml(s.middleName || '')}</span></div>
+                    <div style="margin-top:2px;"><strong>Grade Level &amp; Section:</strong> Grade ${s.gradeLevel} - ${escapeHtml(s.section)}</div>
                 </div>
                 <div>
                     <div><strong>LRN:</strong> <span style="font-family:monospace; font-weight:700;">${escapeHtml(s.lrn)}</span></div>
-                    <div style="margin-top:4px;"><strong>ESC Grantee Status:</strong> <span style="font-weight:700; color:${isEsc ? '#15803d' : '#64748b'};">${isEsc ? 'YES (ESC PEAC Subsidy Grantee)' : 'NO (Regular)'}</span></div>
+                    <div style="margin-top:2px;"><strong>ESC Grantee Status:</strong> <span style="font-weight:700; color:${isEsc ? '#15803d' : '#64748b'};">${isEsc ? 'YES (ESC PEAC Subsidy Grantee)' : 'NO (Regular)'}</span></div>
                 </div>
             </div>
 
@@ -4132,16 +4224,16 @@ function printSOAModal() {
                 </div>
             </div>
 
-            <h4 style="margin:16px 0 6px 0; font-size:13px; text-transform:uppercase; color:#0b2545; letter-spacing:0.4px;">Itemized Installment Payment History</h4>
+            <h4 style="margin:10px 0 4px 0; font-size:11.5px; text-transform:uppercase; color:#0b2545; letter-spacing:0.3px;">Itemized Installment Payment History</h4>
             <table>
                 <thead>
                     <tr>
-                        <th style="width:6%; text-align:center;">#</th>
+                        <th style="width:5%; text-align:center;">#</th>
                         <th style="width:16%; text-align:center;">Payment Date</th>
-                        <th style="width:20%; text-align:center;">OR / Ref. No.</th>
-                        <th style="width:28%; text-align:left;">Particulars / Description</th>
-                        <th style="width:14%; text-align:center;">Method</th>
-                        <th style="width:16%; text-align:right;">Amount (PHP)</th>
+                        <th style="width:18%; text-align:center;">OR / Ref. No.</th>
+                        <th style="width:32%; text-align:left;">Particulars / Description</th>
+                        <th style="width:12%; text-align:center;">Method</th>
+                        <th style="width:17%; text-align:right;">Amount (PHP)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -4149,33 +4241,41 @@ function printSOAModal() {
                 </tbody>
                 <tfoot>
                     <tr style="background:#f1f5f9; font-weight:bold;">
-                        <td colspan="5" style="text-align:right; font-size:12px; padding:8px 10px;">TOTAL PAYMENTS RECORDED:</td>
-                        <td style="text-align:right; font-size:13px; color:#0369a1; padding:8px 10px;">&#8369;${formatNumber(totalPaid)}</td>
+                        <td colspan="5" style="text-align:right; font-size:10.5px; padding:5px 6px;">TOTAL PAYMENTS RECORDED:</td>
+                        <td style="text-align:right; font-size:11.5px; color:#0369a1; padding:5px 6px;">&#8369;${formatNumber(totalPaid)}</td>
                     </tr>
                     <tr style="background:${remainingBalance === 0 ? '#dcfce7' : '#fee2e2'}; font-weight:bold;">
-                        <td colspan="5" style="text-align:right; font-size:12px; padding:8px 10px;">NET OUTSTANDING BALANCE:</td>
-                        <td style="text-align:right; font-size:13px; color:${remainingBalance === 0 ? '#15803d' : '#dc2626'}; padding:8px 10px;">&#8369;${formatNumber(remainingBalance)}</td>
+                        <td colspan="5" style="text-align:right; font-size:10.5px; padding:5px 6px;">NET OUTSTANDING BALANCE:</td>
+                        <td style="text-align:right; font-size:11.5px; color:${remainingBalance === 0 ? '#15803d' : '#dc2626'}; padding:5px 6px;">&#8369;${formatNumber(remainingBalance)}</td>
                     </tr>
                 </tfoot>
             </table>
 
-            <div class="signatures">
-                <div class="sig-box">
-                    <div class="sig-label">Prepared &amp; Certified By:</div>
-                    <div class="sig-line"></div>
-                    <div class="sig-name">CARRELLE B. COLEGADO</div>
-                    <div class="sig-title">Registrar / In-Charge, Accounting Office</div>
-                </div>
-                <div class="sig-box">
-                    <div class="sig-label">Approved &amp; Verified By:</div>
-                    <div class="sig-line"></div>
-                    <div class="sig-name">NI&Ntilde;O ALOYSIUS B. COLEGADO</div>
-                    <div class="sig-title">School President</div>
-                </div>
-            </div>
+            ${sigHtml}
 
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
             <script>
-                window.onload = function() { window.print(); };
+                function exportDocToPdf() {
+                    if (typeof html2pdf !== 'undefined') {
+                        const bar = document.querySelector('.no-print-bar');
+                        if (bar) bar.style.display = 'none';
+                        const opt = {
+                            margin: [8, 10, 8, 10],
+                            filename: (document.title || 'MDSJFI_SOA').replace(/[^a-z0-9_\\-\\.]/gi, '_') + '.pdf',
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        html2pdf().set(opt).from(document.body).save().then(() => {
+                            if (bar) bar.style.display = 'flex';
+                        }).catch(() => {
+                            if (bar) bar.style.display = 'flex';
+                            window.print();
+                        });
+                    } else {
+                        window.print();
+                    }
+                }
             </script>
         </body>
         </html>
@@ -6070,6 +6170,9 @@ function initForm() {
                 students[index] = updated;
                 saveStudents();
                 showToast('Student record updated successfully!', 'success');
+                if (typeof logActivity === 'function') {
+                    logActivity('Student Updated', `Updated profile records for ${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`, updated);
+                }
 
                 // Instant email notification to ADMIN_EMAIL via nodemailer
                 sendNewDataEmailAlert({
@@ -6106,6 +6209,9 @@ function initForm() {
             students.unshift(newStudent);
             saveStudents();
             showToast(`Student ${newStudent.firstName} ${newStudent.lastName} enrolled successfully! Generated dedicated Mobile QR Pass.`, 'success');
+            if (typeof logActivity === 'function') {
+                logActivity('Student Enrolled', `New student ${newStudent.firstName} ${newStudent.lastName} (LRN: ${newStudent.lrn}) enrolled in Grade ${newStudent.gradeLevel} - ${newStudent.section || 'General'}`, newStudent);
+            }
 
             // Instant email notification to ADMIN_EMAIL via nodemailer
             sendNewDataEmailAlert({
@@ -8529,31 +8635,40 @@ function printCashFlowVoucher(id) {
     }
 
     const isSame = isSameSignatory(rawEnc, rawRec);
-    const sigHtml = isSame ? `
-            <div class="signatures" style="margin-top: 40px; display: flex; justify-content: center; page-break-inside: avoid;">
-                <div class="sig-box" style="text-align: center; width: 340px;">
-                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: center;">Encoded &amp; Received / Approved By:</div>
+    const isOut = item.type === 'OUT';
+
+    let sigHtml = '';
+    if (isSame) {
+        const singleLabel = isOut ? 'Encoded &amp; Approved By:' : 'Encoded &amp; Approved / Received By:';
+        const singleSubtitle = isOut ? 'Official Encoder / Authorized Signatory' : 'Official Encoder / Authorized Signatory / Recipient';
+        sigHtml = `
+            <div class="signatures" style="margin-top: 35px; display: flex; justify-content: flex-start; page-break-inside: avoid;">
+                <div class="sig-box" style="text-align: center; width: 44%;">
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left;">${singleLabel}</div>
                     <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
                     <div class="sig-name" style="font-weight: bold; font-size: 13px;">${escapeHtml(rawEnc)}</div>
-                    <div class="sig-title" style="font-size: 11px; color: #475569;">${(rawEnc.includes('President') || rawEnc.includes('Niño') || rawEnc.includes('Ni\u00D1o')) ? 'School President' : ((rawEnc.includes('Registrar') || rawEnc.includes('Carrelle')) ? 'Registrar / In-Charge, Accounting Office' : 'Authorized Signatory &amp; Encoder')}</div>
+                    <div class="sig-title" style="font-size: 11px; color: #475569;">${singleSubtitle}</div>
                 </div>
             </div>
-    ` : `
-            <div class="signatures" style="margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid;">
+        `;
+    } else {
+        sigHtml = `
+            <div class="signatures" style="margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid;">
                 <div class="sig-box" style="text-align: center; width: 44%;">
-                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left;">Encoded By:</div>
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left;">Encoded By:</div>
                     <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
                     <div class="sig-name">${escapeHtml(rawEnc)}</div>
                     <div class="sig-title">Official Encoder / Accounting Staff</div>
                 </div>
                 <div class="sig-box" style="text-align: center; width: 44%;">
-                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left;">Approved / Received By:</div>
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left;">Approved / Received By:</div>
                     <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
                     <div class="sig-name">${escapeHtml(rawRec)}</div>
                     <div class="sig-title">Authorized Signatory / Recipient</div>
                 </div>
             </div>
-    `;
+        `;
+    }
 
     printWin.document.write(`
         <!DOCTYPE html>
@@ -8571,19 +8686,37 @@ function printCashFlowVoucher(id) {
                 .row .label { color: #64748b; font-weight: 600; width: 220px; }
                 .row .val { color: #0f172a; font-weight: bold; flex: 1; }
                 .amount-highlight { font-size: 20px; color: ${badgeColor}; }
-                .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                .signatures { margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid; }
                 .sig-box { text-align: center; width: 44%; }
-                .sig-label { font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left; }
+                .sig-label { font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left; }
                 .sig-line { border-top: 1.5px solid #000; margin-bottom: 4px; }
                 .sig-name { font-weight: bold; font-size: 13px; }
                 .sig-title { font-size: 11px; color: #475569; }
                 @media print {
                     @page { size: portrait; margin: 12mm; }
                     body { margin: 0; }
+                    .no-print-bar { display: none !important; }
                 }
             </style>
         </head>
         <body>
+            <div class="no-print-bar" style="position: sticky; top: 0; left: 0; right: 0; z-index: 9999; background: #0b2545; color: #fff; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.25); margin: -24px -24px 20px -24px;">
+                <div style="font-weight: 700; font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
+                    <img src="school-logo.png" style="width: 24px; height: 24px; object-fit: contain;">
+                    <span>MDSJFI Official Voucher Preview</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="window.print()" style="background: #16a34a; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-print"></i> Print Voucher
+                    </button>
+                    <button onclick="exportDocToPdf()" style="background: #0284c7; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-file-pdf"></i> Export as PDF
+                    </button>
+                    <button onclick="window.close()" style="background: #475569; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">
+                        Close
+                    </button>
+                </div>
+            </div>
             <div class="header">
                 <img src="school-logo.png" alt="MDSJFI Official Logo" style="height:65px; width:65px; object-fit:contain;" onerror="this.src='logo.jpg'; this.onerror=null;">
                 <div style="text-align:center;">
@@ -8629,8 +8762,29 @@ function printCashFlowVoucher(id) {
 
             ${sigHtml}
 
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
             <script>
-                window.onload = function() { window.print(); };
+                function exportDocToPdf() {
+                    if (typeof html2pdf !== 'undefined') {
+                        const bar = document.querySelector('.no-print-bar');
+                        if (bar) bar.style.display = 'none';
+                        const opt = {
+                            margin: [10, 10, 10, 10],
+                            filename: ('MDSJFI_Voucher_' + '${escapeHtml(item.refNo)}').replace(/[^a-z0-9_\\-\\.]/gi, '_') + '.pdf',
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        html2pdf().set(opt).from(document.body).save().then(() => {
+                            if (bar) bar.style.display = 'flex';
+                        }).catch(() => {
+                            if (bar) bar.style.display = 'flex';
+                            window.print();
+                        });
+                    } else {
+                        window.print();
+                    }
+                }
             </script>
         </body>
         </html>
@@ -15044,6 +15198,76 @@ document.addEventListener('click', function(e) {
     else if (action === 'edit') editStudent(id);
     else if (action === 'delete') confirmDelete(id);
 });
+
+// ======================== PDF EXPORT SUITE ========================
+function genericExportElementToPdf(elementId, defaultFilename, orientation = 'portrait', margin = [10, 10, 10, 10]) {
+    const el = (typeof elementId === 'string') ? document.getElementById(elementId) : elementId;
+    if (!el) {
+        if (typeof showToast === 'function') showToast('Element to export was not found.', 'warning');
+        return;
+    }
+    if (typeof html2pdf !== 'undefined') {
+        const opt = {
+            margin: margin,
+            filename: (defaultFilename || 'MDSJFI_Export').replace(/[^a-z0-9_\-\.]/gi, '_') + '.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: orientation }
+        };
+        if (typeof showToast === 'function') showToast('Preparing PDF export...', 'info');
+        html2pdf().set(opt).from(el).save().then(() => {
+            if (typeof showToast === 'function') showToast('PDF downloaded successfully!', 'success');
+        }).catch(err => {
+            console.warn('html2pdf error, falling back to print:', err);
+            window.print();
+        });
+    } else {
+        window.print();
+    }
+}
+window.genericExportElementToPdf = genericExportElementToPdf;
+
+function exportActiveProfilePdf() {
+    const modalContent = document.querySelector('#viewModal .modal-content') || document.getElementById('viewModal');
+    const name = document.getElementById('viewFullName')?.textContent || 'Learner_Profile';
+    genericExportElementToPdf(modalContent, `MDSJFI_Profile_${name}`, 'portrait', [8, 8, 8, 8]);
+}
+window.exportActiveProfilePdf = exportActiveProfilePdf;
+
+function exportSOAToPdf() {
+    if (typeof printSOAModal === 'function') {
+        printSOAModal();
+    }
+}
+window.exportSOAToPdf = exportSOAToPdf;
+
+function exportClearanceRosterPdf() {
+    if (typeof printClearanceRoster === 'function') {
+        printClearanceRoster();
+    }
+}
+window.exportClearanceRosterPdf = exportClearanceRosterPdf;
+
+function exportCashFlowVoucherPdf() {
+    const vcfModal = document.querySelector('#viewCashFlowModal .modal-content') || document.getElementById('viewCashFlowModal');
+    const ref = document.getElementById('vcfRefNo')?.textContent || 'Voucher';
+    genericExportElementToPdf(vcfModal, `MDSJFI_Voucher_${ref}`, 'portrait', [8, 8, 8, 8]);
+}
+window.exportCashFlowVoucherPdf = exportCashFlowVoucherPdf;
+
+function exportCashFlowReportPdf() {
+    if (typeof printCashFlowReport === 'function') {
+        printCashFlowReport();
+    }
+}
+window.exportCashFlowReportPdf = exportCashFlowReportPdf;
+
+function exportPayrollSummaryPdf() {
+    if (typeof printPayrollSummaryReport === 'function') {
+        printPayrollSummaryReport();
+    }
+}
+window.exportPayrollSummaryPdf = exportPayrollSummaryPdf;
 
 // ======================== SESSION PERSISTENCE ========================
 // Session is stored in sessionStorage (preserved across browser refresh F5, but purposely closing the window clears the session so reopening starts at the login screen). Explicit logout is handled via handleLogout.
