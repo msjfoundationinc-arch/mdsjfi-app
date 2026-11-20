@@ -2121,6 +2121,8 @@ function refreshSOAPage() {
         // Status Filter
         if (selectedStatus === 'has_balance' && bal <= 0) return;
         if (selectedStatus === 'fully_paid' && bal > 0) return;
+        if (selectedStatus === 'partial' && (bal <= 0 || paid <= 0)) return;
+        if (selectedStatus === 'unpaid' && paid > 0) return;
         if (selectedStatus === 'discounted' && !isDisc) return;
 
         const isFullyPaid = bal === 0;
@@ -2129,10 +2131,10 @@ function refreshSOAPage() {
             : `<span class="badge-esc no" style="white-space:nowrap;">None</span>`;
 
         const statusBadge = isFullyPaid
-            ? '<span class="status-badge active"><i class="fas fa-check-circle"></i> Paid</span>'
+            ? '<span class="status-badge paid"><i class="fas fa-check-circle"></i> PAID</span>'
             : (paid > 0 
-                ? '<span class="status-badge active"><i class="fas fa-clock"></i> Partial</span>' 
-                : '<span class="status-badge inactive"><i class="fas fa-exclamation-circle"></i> Unpaid</span>');
+                ? '<span class="status-badge partial"><i class="fas fa-clock"></i> Partial</span>' 
+                : '<span class="status-badge unpaid"><i class="fas fa-exclamation-circle"></i> Unpaid</span>');
 
         rows.push(`
             <tr data-student-id="${s.id}">
@@ -3782,13 +3784,17 @@ function openSOAModal(id) {
     const balCard = document.getElementById('soaBalanceCard');
     const balSymbol = document.getElementById('soaBalanceSymbol');
     if (remainingBalance === 0) {
-        if (statusPill) { statusPill.textContent = 'SETTLED'; statusPill.className = 'soa-status-pill settled'; }
+        if (statusPill) { statusPill.textContent = 'PAID'; statusPill.className = 'soa-status-pill paid settled'; }
         if (balCard) balCard.className = 'soa-stat-card card-balance soa-balance-hero settled';
         if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else if (totalPaid > 0) {
+        if (statusPill) { statusPill.textContent = 'PARTIAL'; statusPill.className = 'soa-status-pill partial'; }
+        if (balCard) balCard.className = 'soa-stat-card card-balance soa-balance-hero partial';
+        if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-clock"></i>';
     } else {
-        if (statusPill) { statusPill.textContent = 'UNSETTLED'; statusPill.className = 'soa-status-pill unsettled'; }
+        if (statusPill) { statusPill.textContent = 'UNPAID'; statusPill.className = 'soa-status-pill unpaid unsettled'; }
         if (balCard) balCard.className = 'soa-stat-card card-balance soa-balance-hero unsettled';
-        if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-balance-scale"></i>';
+        if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
     }
 
     // Print header values
@@ -3970,13 +3976,17 @@ function updateSOALiveTotals(s) {
     const balCard = document.getElementById('soaBalanceCard');
     const balSymbol = document.getElementById('soaBalanceSymbol');
     if (remainingBalance === 0) {
-        if (statusPill) { statusPill.textContent = 'SETTLED'; statusPill.className = 'soa-status-pill settled'; }
+        if (statusPill) { statusPill.textContent = 'PAID'; statusPill.className = 'soa-status-pill paid settled'; }
         if (balCard) balCard.className = 'soa-stat-card card-balance soa-balance-hero settled';
         if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else if (totalPaid > 0) {
+        if (statusPill) { statusPill.textContent = 'PARTIAL'; statusPill.className = 'soa-status-pill partial'; }
+        if (balCard) balCard.className = 'soa-stat-card card-balance soa-balance-hero partial';
+        if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-clock"></i>';
     } else {
-        if (statusPill) { statusPill.textContent = 'UNSETTLED'; statusPill.className = 'soa-status-pill unsettled'; }
+        if (statusPill) { statusPill.textContent = 'UNPAID'; statusPill.className = 'soa-status-pill unpaid unsettled'; }
         if (balCard) balCard.className = 'soa-stat-card card-balance soa-balance-hero unsettled';
-        if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-balance-scale"></i>';
+        if (balSymbol) balSymbol.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
     }
 }
 window.updateSOALiveTotals = updateSOALiveTotals;
