@@ -32,6 +32,22 @@ const server = http.createServer(async (req, res) => {
         return sendAlertHandler(req, res);
     }
 
+    // Direct Student Profile SPA Route (/student/:id or /profile/:id)
+    if (pathname.startsWith('/student/') || pathname.startsWith('/profile/')) {
+        const filePath = path.join(ROOT, 'index.html');
+        return fs.readFile(filePath, (readErr, content) => {
+            if (readErr) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                return res.end('Server Error');
+            }
+            res.writeHead(200, {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-cache'
+            });
+            res.end(content);
+        });
+    }
+
     // Static File Serving
     let filePath = path.join(ROOT, pathname === '/' ? 'index.html' : pathname);
     

@@ -221,11 +221,16 @@ async function sendDataAlert(data) {
     }
 
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
             user: creds.user,
             pass: creds.pass
-        }
+        },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000
     });
 
     const category = data.category || 'School Registry';

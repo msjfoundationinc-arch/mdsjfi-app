@@ -7,6 +7,19 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Montessori de San Jose Foundation Inc. — Student Database</title>
+    <script>
+    // Ensure relative assets resolve to root if loaded via /student/ or /profile/ subpath
+    if (window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/profile/') !== -1) {
+        var baseTag = document.createElement('base');
+        baseTag.href = window.location.origin + '/';
+        document.head.appendChild(baseTag);
+    }
+    </script>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2152,56 +2165,6 @@
                     <option value="YES">ESC Grantee (YES)</option>
                     <option value="NO">Non-ESC (NO)</option>
                 </select>
-                <select id="filterProvince" class="filter-select" title="Filter by Province / Region">
-                    <option value="">All Provinces / Regions</option>
-                    <option value="Batangas">Batangas (School Province)</option>
-                    <option value="Metro Manila (NCR)">Metro Manila (NCR)</option>
-                    <option value="Cavite">Cavite</option>
-                    <option value="Laguna">Laguna</option>
-                    <option value="Rizal">Rizal</option>
-                    <option value="Quezon">Quezon</option>
-                    <option value="Occidental Mindoro">Occidental Mindoro</option>
-                    <option value="Oriental Mindoro">Oriental Mindoro</option>
-                </select>
-                <select id="filterMunicipality" class="filter-select" title="Filter by Municipality / City">
-                    <option value="">All Municipalities / Cities</option>
-                    <optgroup label="★ Batangas LGUs">
-                        <option value="San Jose">San Jose (School Town)</option>
-                        <option value="Lipa City">Lipa City</option>
-                        <option value="Batangas City">Batangas City</option>
-                        <option value="Rosario">Rosario</option>
-                        <option value="Ibaan">Ibaan</option>
-                        <option value="Cuenca">Cuenca</option>
-                        <option value="Alitagtag">Alitagtag</option>
-                        <option value="Taysan">Taysan</option>
-                        <option value="San Pascual">San Pascual</option>
-                        <option value="Bauan">Bauan</option>
-                        <option value="Tanauan City">Tanauan City</option>
-                        <option value="Santo Tomas City">Santo Tomas City</option>
-                        <option value="Malvar">Malvar</option>
-                        <option value="Mataasnakahoy">Mataasnakahoy</option>
-                        <option value="Balete">Balete</option>
-                        <option value="Padre Garcia">Padre Garcia</option>
-                        <option value="San Juan">San Juan</option>
-                        <option value="Lobo">Lobo</option>
-                        <option value="Taal">Taal</option>
-                        <option value="Lemery">Lemery</option>
-                        <option value="Calaca City">Calaca City</option>
-                        <option value="Balayan">Balayan</option>
-                        <option value="Calatagan">Calatagan</option>
-                        <option value="Lian">Lian</option>
-                        <option value="Nasugbu">Nasugbu</option>
-                        <option value="Tuy">Tuy</option>
-                        <option value="Mabini">Mabini</option>
-                        <option value="Tingloy">Tingloy</option>
-                        <option value="Agoncillo">Agoncillo</option>
-                        <option value="San Nicolas">San Nicolas</option>
-                        <option value="Santa Teresita">Santa Teresita</option>
-                        <option value="Talisay">Talisay</option>
-                        <option value="Laurel">Laurel</option>
-                        <option value="San Luis">San Luis</option>
-                    </optgroup>
-                </select>
                 <button class="btn-clear-filters" id="btnClearFilters" onclick="clearAllFilters()" title="Clear all filters">
                     <i class="fas fa-times"></i> Clear
                 </button>
@@ -2311,7 +2274,7 @@
                         </div>
                         <div class="photo-controls">
                             <h4>Student Identification Photo</h4>
-                            <p class="photo-help-text">Upload a clear 2x2 or passport-style photo of the student. Supported formats: JPG, PNG, WebP (auto-optimized).</p>
+                            <p class="photo-help-text">Upload a clear 2x2 photo or take an instant photo using your device camera. Photos are automatically resized and compressed (max 500&times;500px, ~80% quality).</p>
                             
                             <!-- Photo uploading progress indicator -->
                             <div class="doc-uploading-indicator" id="photoUploadingIndicator" style="display:none; margin-bottom:10px;">
@@ -2327,21 +2290,55 @@
                                 <i class="fas fa-check-circle"></i> Photo Uploaded Successfully
                             </div>
 
-                            <div class="photo-btn-group">
-                                <label class="btn-secondary btn-upload-label" for="studentPhotoInput" id="btnChoosePhotoLabel">
-                                    <i class="fas fa-camera"></i> Choose Photo
+                            <div class="photo-btn-group" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                                <!-- Option 1: File Upload -->
+                                <label class="btn-secondary btn-upload-label" for="studentPhotoInput" id="btnChoosePhotoLabel" style="cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fas fa-folder-open"></i> Choose File
                                 </label>
                                 <input type="file" id="studentPhotoInput" accept="image/*" style="display:none;">
                                 
+                                <!-- Option 2: Camera Capture -->
+                                <button type="button" class="btn-secondary" id="btnStartPhotoCamera" onclick="startStudentPhotoCamera()" style="display:inline-flex; align-items:center; gap:6px; margin:0;">
+                                    <i class="fas fa-camera"></i> Take Photo
+                                </button>
+
+                                <!-- Retake button -->
+                                <button type="button" class="btn-sm btn-secondary" id="btnRetakePhoto" onclick="retakeStudentPhoto()" style="display:none; align-items:center; gap:5px;" title="Retake photo using camera">
+                                    <i class="fas fa-redo"></i> Retake Photo
+                                </button>
+
                                 <!-- Clickable button to see uploaded file -->
-                                <button type="button" class="btn-sm btn-info" id="btnPreviewPhoto" onclick="previewCurrentPhoto()" style="display:none;">
+                                <button type="button" class="btn-sm btn-info" id="btnPreviewPhoto" onclick="previewCurrentPhoto()" style="display:none; align-items:center; gap:5px;">
                                     <i class="fas fa-eye"></i> View Photo
                                 </button>
                                 
                                 <!-- Delete/replace button option -->
-                                <button type="button" class="btn-sm btn-danger btn-remove-photo" id="btnRemovePhoto" onclick="removeCurrentPhoto(true)" style="display:none;" title="Delete or replace this photo">
+                                <button type="button" class="btn-sm btn-danger btn-remove-photo" id="btnRemovePhoto" onclick="removeCurrentPhoto(true)" style="display:none; align-items:center; gap:5px;" title="Delete or replace this photo">
                                     <i class="fas fa-trash-alt"></i> Delete / Replace Photo
                                 </button>
+                            </div>
+
+                            <!-- Live Camera Viewfinder & Controls -->
+                            <div id="photoCameraContainer" style="display:none; margin-top:14px; background:#0f172a; border-radius:12px; padding:14px; text-align:center; max-width:320px; box-shadow:0 8px 20px rgba(0,0,0,0.25);">
+                                <div style="position:relative; width:100%; aspect-ratio:1/1; max-width:260px; margin:0 auto; border-radius:10px; overflow:hidden; background:#000;">
+                                    <video id="photoCameraVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+                                    <!-- Framing Guide Circle -->
+                                    <div style="position:absolute; inset:12px; border:2px dashed rgba(255,255,255,0.7); border-radius:50%; pointer-events:none; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);"></div>
+                                    <div style="position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.65); color:#fff; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:12px; display:flex; align-items:center; gap:5px;">
+                                        <span style="width:7px; height:7px; border-radius:50%; background:#ef4444; display:inline-block;"></span> LIVE
+                                    </div>
+                                </div>
+                                <div style="margin-top:12px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-primary" id="btnCapturePhoto" onclick="captureStudentPhoto()" style="background:#16a34a; border-color:#15803d; font-size:0.85rem; padding:6px 14px; display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fas fa-camera"></i> Capture
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnSwitchPhotoCamera" onclick="switchStudentCameraFacing()" style="font-size:0.85rem; padding:6px 10px; display:inline-flex; align-items:center; gap:5px;" title="Switch Front/Rear Camera">
+                                        <i class="fas fa-sync-alt"></i> Flip
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelPhotoCamera" onclick="stopStudentPhotoCamera()" style="font-size:0.85rem; padding:6px 10px; display:inline-flex; align-items:center; gap:5px;">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
                             </div>
                             <input type="hidden" id="studentPhoto" value="">
                         </div>
@@ -7407,11 +7404,14 @@
                 </div>
                 <div class="student-profile-header">
                     <div class="student-avatar-col" style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-                        <div class="student-avatar" id="viewAvatar">
+                        <div class="student-avatar" id="viewAvatar" onclick="enlargeStudentProfilePhoto()" title="Click to view profile photo">
                             <img id="viewAvatarImg" src="" alt="Student Profile" style="display:none;">
                             <span id="viewAvatarFallback"><i class="fas fa-user-graduate"></i></span>
                         </div>
-                        <div class="avatar-action-btns" style="display:flex; gap:4px;">
+                        <div class="avatar-action-btns" style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
+                            <button type="button" class="btn-xs btn-outline-info" id="btnEnlargeProfilePhoto" onclick="enlargeStudentProfilePhoto()" title="View Profile Photo" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; border:1px solid #0284c7; background:#e0f2fe; color:#0369a1; cursor:pointer; font-weight:600; display:none;">
+                                <i class="fas fa-search-plus"></i> View Profile Photo
+                            </button>
                             <button type="button" class="btn-xs btn-outline-primary" onclick="uploadPhotoFromProfile()" title="Change student photo" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; cursor:pointer;">
                                 <i class="fas fa-camera"></i> Photo
                             </button>
@@ -7437,11 +7437,11 @@
                         <i class="fas fa-camera"></i> Face Biometrics
                     </button>
                     <!-- Learner Mobile View QR Code Widget -->
-                    <div class="view-learner-qr-box" id="viewLearnerQrBox" onclick="openLearnerMobilePass()" title="Click to enlarge Mobile QR Pass / Scan on Smartphone" style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 5px 12px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+                    <div class="view-learner-qr-box" id="viewLearnerQrBox" onclick="openLearnerMobilePass(currentViewId)" title="Click to view full-size QR code & mobile pass" style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 5px 12px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
                         <div id="viewQrMini" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px; overflow: hidden; flex-shrink: 0;"></div>
                         <div style="text-align: left; line-height: 1.25;">
-                            <span style="display: flex; align-items: center; gap: 4px; font-size: 0.74rem; font-weight: 700; color: var(--primary);"><i class="fas fa-qrcode"></i> Mobile QR</span>
-                            <span style="display: block; font-size: 0.68rem; color: #64748b; font-weight: 500;">Scan on phone</span>
+                            <span style="display: flex; align-items: center; gap: 4px; font-size: 0.74rem; font-weight: 700; color: var(--primary);"><i class="fas fa-qrcode"></i> Student QR</span>
+                            <span style="display: flex; align-items: center; gap: 3px; font-size: 0.68rem; color: #0284c7; font-weight: 600;"><i class="fas fa-expand-alt" style="font-size:0.60rem;"></i> View Pass</span>
                         </div>
                     </div>
                     <span class="status-badge" id="viewStatus">Active</span>
@@ -7664,9 +7664,11 @@
             
             <div style="padding: 22px; text-align: center; background: #f8fafc;">
                 <!-- QR Code Box -->
-                <div style="display:inline-block; background:#fff; padding:14px; border-radius:14px; box-shadow:0 4px 14px rgba(0,0,0,0.08); border:1.5px solid #e2e8f0; margin-bottom:16px;">
+                <div style="display:inline-block; background:#fff; padding:16px; border-radius:14px; box-shadow:0 4px 14px rgba(0,0,0,0.08); border:1.5px solid #e2e8f0; margin-bottom:12px;">
                     <div id="learnerMobileQrLarge" style="width:200px; height:200px; margin:0 auto; display:flex; align-items:center; justify-content:center; overflow:hidden;"></div>
                 </div>
+                <!-- Direct Online Profile Target URL -->
+                <div id="mobilePassUrlText" style="font-size:0.72rem; color:#0369a1; word-break:break-all; font-family:monospace; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:6px 10px; margin:0 auto 14px; max-width:360px; user-select:all;" title="Learner Direct Profile URL">https://mdsjfi-app-l2es.vercel.app/</div>
 
                 <!-- Student Information Card -->
                 <div style="background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:14px; text-align:left; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
@@ -8447,13 +8449,14 @@
                             </select>
                         </div>
                         <div class="form-group" id="cfReceivedByGroup">
-                            <label for="cfReceivedBy" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">
+                            <label for="cfReceivedBy" id="cfReceivedByLabel" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">
                                 Received By <span class="required" style="color:#ef4444;">*</span>
                             </label>
                             <select id="cfReceivedBy" required style="width:100%; height:38px; padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.88rem; font-weight:600;">
                                 <option value="1. School President">1. School President (Niño Aloysius B. Colegado)</option>
                                 <option value="2. Registrar/Accounting" selected>2. Registrar/Accounting (Carrelle B. Colegado)</option>
                             </select>
+                            <input type="text" id="cfReceivedByText" placeholder="Enter recipient / Received by name" style="display:none; width:100%; height:38px; padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.88rem;">
                         </div>
                         <div class="form-group" id="cfEncodedByGroup">
                             <label for="cfEncodedBy" style="font-weight:600; font-size:0.84rem; display:block; margin-bottom:5px;">

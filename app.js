@@ -655,32 +655,60 @@ function initApp() {
     try { applySidebarCollapseState(); } catch(e) {}
     try { if (typeof window.initThemeMode === 'function') window.initThemeMode(); } catch(e) {}
 
-    // Check for direct mobile QR scan (?lrn=...)
+    // Check for direct mobile / online QR scan or URL route (/profile/[student_id], ?profile=..., ?lrn=...)
+    let directStudentTarget = null;
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const lrnParam = urlParams.get('lrn');
-        if (lrnParam) {
-            const matched = (students || []).find(s => String(s.lrn).trim() === String(lrnParam).trim() || s.id === lrnParam);
-            if (matched) {
-                setTimeout(() => {
-                    openLearnerMobilePass(matched.id);
-                }, 200);
-            }
+        const studentKey = getStudentIdFromUrl();
+        if (studentKey) {
+            directStudentTarget = findStudent(studentKey);
         }
     } catch(e) {}
 
     const u = getCurrentUser();
     if (u && u.username) {
         showApp(u);
-    } else {
-        const overlay = document.getElementById('loginOverlay');
-        if (overlay) {
-            overlay.classList.remove('hidden');
-            overlay.style.removeProperty('display');
-            overlay.style.display = 'flex';
+        if (directStudentTarget) {
+            // Automatically push through directly to the specific student's profile
+            setTimeout(() => {
+                viewStudent(directStudentTarget.id);
+                try {
+                    if (!window.location.pathname.includes('/student/') && !window.location.pathname.includes('/profile/')) {
+                        const cleanPath = window.location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+                        window.history.replaceState({}, '', (cleanPath || '') + '/?student=' + encodeURIComponent(directStudentTarget.id));
+                    }
+                } catch(e) {}
+            }, 100);
         }
-        document.documentElement.classList.remove('user-logged-in');
-        document.body.classList.add('app-hidden');
+    } else {
+        if (directStudentTarget) {
+            // Direct profile view for scanned QR code without requiring manual login or searching
+            const overlay = document.getElementById('loginOverlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+                overlay.style.removeProperty('display');
+                overlay.style.display = 'none';
+            }
+            document.documentElement.classList.add('direct-profile-view');
+            document.body.classList.remove('app-hidden');
+            setTimeout(() => {
+                viewStudent(directStudentTarget.id);
+                try {
+                    if (!window.location.pathname.includes('/student/') && !window.location.pathname.includes('/profile/')) {
+                        const cleanPath = window.location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+                        window.history.replaceState({}, '', (cleanPath || '') + '/?student=' + encodeURIComponent(directStudentTarget.id));
+                    }
+                } catch(e) {}
+            }, 50);
+        } else {
+            const overlay = document.getElementById('loginOverlay');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.style.removeProperty('display');
+                overlay.style.display = 'flex';
+            }
+            document.documentElement.classList.remove('user-logged-in');
+            document.body.classList.add('app-hidden');
+        }
     }
 }
 
@@ -816,8 +844,12 @@ function navigateTo(pageId) {
         }
     }
 
+    if (pageId !== 'add-student' && typeof stopStudentPhotoCamera === 'function') {
+        stopStudentPhotoCamera();
+    }
+
     // Toggle view-fit-window mode for fixed-height single-window views
-    const fitWindowPages = ['clearance', 'payroll', 'teachers', 'cash-flow', 'grade7', 'grade8', 'grade9', 'grade10'];
+    const fitWindowPages = ['clearance', 'payroll', 'teachers', 'cash-flow', 'grade7', 'grade8', 'grade9', 'grade10', 'soa'];
     if (fitWindowPages.includes(pageId)) {
         document.body.classList.add('view-fit-window');
     } else {
@@ -1886,6 +1918,7 @@ function refreshStudentsTable() {
                     <td><span class="status-badge ${(s.enrollmentStatus || 'Active').toLowerCase()}">${escHtml(s.enrollmentStatus || 'Active')}</span></td>
                     <td style="text-align:center; white-space:nowrap; overflow:visible;">${docBadge}</td>
                     <td class="actions-cell">
+                        <button type="button" class="btn-icon qr" title="Learner Mobile QR Pass" data-action="qr" data-id="${s.id}" onclick="openLearnerMobilePass('${s.id}')" style="color:#0284c7;"><i class="fas fa-qrcode"></i></button>
                         <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
                         <button type="button" class="btn-icon soa" title="Statement of Account" data-action="soa" data-id="${s.id}" onclick="openSOAModal('${s.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
                         <button type="button" class="btn-icon edit" title="Edit Record" data-action="edit" data-id="${s.id}" onclick="editStudent('${s.id}')"><i class="fas fa-edit"></i></button>
@@ -2008,6 +2041,7 @@ function refreshGradeTable(grade) {
                 <td>${escBadge}</td>
                 <td><span class="status-badge ${(s.enrollmentStatus || 'Active').toLowerCase()}">${escHtml(s.enrollmentStatus || 'Active')}</span></td>
                 <td class="actions-cell">
+                    <button type="button" class="btn-icon qr" title="Learner Mobile QR Pass" data-action="qr" data-id="${s.id}" onclick="openLearnerMobilePass('${s.id}')" style="color:#0284c7;"><i class="fas fa-qrcode"></i></button>
                     <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
                     <button type="button" class="btn-icon soa" title="Statement of Account" data-action="soa" data-id="${s.id}" onclick="openSOAModal('${s.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
                     <button type="button" class="btn-icon edit" title="Edit Record" data-action="edit" data-id="${s.id}" onclick="editStudent('${s.id}')"><i class="fas fa-edit"></i></button>
@@ -2656,13 +2690,16 @@ function viewStudent(id) {
 
     const avatar = document.getElementById('viewAvatar');
     const photoDelBtn = document.getElementById('btnDeletePhotoFromProfile');
+    const photoEnlargeBtn = document.getElementById('btnEnlargeProfilePhoto');
     if (avatar) {
         if (s.photo) {
             avatar.innerHTML = `<img src="${s.photo}" alt="Student Photo" class="student-avatar-img">`;
             if (photoDelBtn) photoDelBtn.style.display = 'inline-block';
+            if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
         } else {
             avatar.innerHTML = `<i class="fas fa-user-graduate"></i>`;
             if (photoDelBtn) photoDelBtn.style.display = 'none';
+            if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'none';
         }
     }
 
@@ -2697,58 +2734,115 @@ function viewStudent(id) {
     openModal('viewModal');
 }
 
-// ======================== LEARNER MOBILE QR PASS ========================
+// ======================== LEARNER UNIQUE QR CODE & DIRECT PROFILE URL ========================
+
+const OFFICIAL_APP_URL = 'https://mdsjfi-app-l2es.vercel.app';
+
+function getStudentProfileUrl(s) {
+    if (!s) return '';
+    const studentId = s.id || s.lrn || '';
+    if (!studentId) return '';
+    const encodedId = encodeURIComponent(studentId);
+
+    // Official production domain for all learner QR codes and direct online access
+    let origin = OFFICIAL_APP_URL;
+
+    // If currently running in a production browser environment on a live non-localhost domain
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null') {
+        const curOrigin = window.location.origin;
+        if (!curOrigin.includes('localhost') && !curOrigin.includes('127.0.0.1') && window.location.protocol.startsWith('http')) {
+            origin = curOrigin.replace(/^http:\/\//i, 'https://').replace(/\/+$/, '');
+        }
+    }
+
+    // Direct absolute URL uniquely locating the specific learner
+    return `${origin}/?student=${encodedId}`;
+}
+window.getStudentProfileUrl = getStudentProfileUrl;
+
+function getStudentIdFromUrl() {
+    try {
+        if (typeof window === 'undefined' || !window.location) return null;
+        const pathname = window.location.pathname || '';
+        // Match /student/[student_id]
+        const studentMatch = pathname.match(/\/student\/([^\/\?#]+)/i);
+        if (studentMatch && studentMatch[1]) {
+            return decodeURIComponent(studentMatch[1]).trim();
+        }
+        // Match /profile/[student_id]
+        const profileMatch = pathname.match(/\/profile\/([^\/\?#]+)/i);
+        if (profileMatch && profileMatch[1]) {
+            return decodeURIComponent(profileMatch[1]).trim();
+        }
+        // Match hash #student/... or #profile/...
+        const hash = window.location.hash || '';
+        const hashMatch = hash.match(/#\/?(?:student|profile)(?:\/|=)([^\/\?#]+)/i);
+        if (hashMatch && hashMatch[1]) {
+            return decodeURIComponent(hashMatch[1]).trim();
+        }
+        // Match query params ?student=... or ?profile=... or ?id=... or ?student_id=... or ?lrn=...
+        const searchParams = new URLSearchParams(window.location.search);
+        const pVal = searchParams.get('student') || searchParams.get('profile') || searchParams.get('id') || searchParams.get('student_id') || searchParams.get('lrn');
+        if (pVal) {
+            return decodeURIComponent(pVal).trim();
+        }
+    } catch(e) {}
+    return null;
+}
+window.getStudentIdFromUrl = getStudentIdFromUrl;
+
+function openStudentProfileInNewTab(event, studentId) {
+    if (event) {
+        try {
+            event.preventDefault();
+            event.stopPropagation();
+        } catch(e) {}
+    }
+    const id = studentId || (typeof currentViewId !== 'undefined' ? currentViewId : null);
+    const s = findStudent(id);
+    if (!s) return;
+    const url = getStudentProfileUrl(s);
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+window.openStudentProfileInNewTab = openStudentProfileInNewTab;
 
 function getStudentQrPayload(s) {
     if (!s) return '';
-    const origin = window.location.origin;
-    const pathname = window.location.pathname;
-    const isHttp = window.location.protocol.startsWith('http');
-    
-    // If hosted over http/https, link directly to mobile view URL
-    if (isHttp && origin && !origin.includes('null')) {
-        return `${origin}${pathname}?lrn=${encodeURIComponent(s.lrn || s.id)}`;
-    }
-
-    // Standard offline / local digital ID card payload (compact & scannable)
-    const escStatus = (s.escGrantee || 'NO').toUpperCase() === 'YES' ? 'YES' : 'NO';
-    const contact = s.guardianContact || s.contactNumber || s.emergencyContact || 'N/A';
-    
-    return [
-        'MDSJFI OFFICIAL LEARNER PASS',
-        `LRN: ${s.lrn || 'N/A'}`,
-        `Learner: ${s.lastName}, ${s.firstName} ${s.middleName || ''}`.trim(),
-        `Grade ${s.gradeLevel} - ${s.section}`,
-        `S.Y. ${s.schoolYear || '2026-2027'} | ESC: ${escStatus}`,
-        `Status: ${s.enrollmentStatus || 'Active'}`,
-        `Contact: ${contact}`,
-        `Montessori De San Jose Foundation Inc.`
-    ].join('\n');
+    // Automatically encodes unique online profile URL for mobile camera and QR scanner
+    return getStudentProfileUrl(s);
 }
 window.getStudentQrPayload = getStudentQrPayload;
 
 function renderStudentQr(s) {
     if (!s || typeof QRCode === 'undefined') return;
-    const payload = getStudentQrPayload(s);
+    const profileUrl = getStudentProfileUrl(s);
     const miniWrap = document.getElementById('viewQrMini');
     if (miniWrap) {
-        miniWrap.innerHTML = QRCode.createSvg(payload, 2, 0);
+        miniWrap.innerHTML = QRCode.createSvg(profileUrl, 2, 0);
     }
 }
 window.renderStudentQr = renderStudentQr;
 
 function openLearnerMobilePass(studentId, isDirectScan = false) {
-    const id = studentId || currentViewId;
+    const id = studentId || (typeof currentViewId !== 'undefined' ? currentViewId : null);
     const s = findStudent(id);
-    if (!s) return;
+    if (!s) {
+        showToast('Please select a student first.', 'warning');
+        return;
+    }
 
     currentViewId = s.id;
     window.currentViewId = s.id;
 
-    const payload = getStudentQrPayload(s);
+    const profileUrl = getStudentProfileUrl(s);
     const largeWrap = document.getElementById('learnerMobileQrLarge');
     if (largeWrap && typeof QRCode !== 'undefined') {
-        largeWrap.innerHTML = QRCode.createSvg(payload, 5, 2);
+        largeWrap.innerHTML = QRCode.createSvg(profileUrl, 5, 2);
+    }
+
+    const urlEl = document.getElementById('mobilePassUrlText');
+    if (urlEl) {
+        urlEl.textContent = profileUrl;
     }
 
     const setT = (elemId, val) => {
@@ -2966,33 +3060,42 @@ function handleQrScanResult(scannedText) {
     if (!scannedText) return;
     const text = String(scannedText).trim();
 
-    let targetLrn = '';
-    const urlMatch = text.match(/[?&]lrn=([^&]+)/i);
-    if (urlMatch) {
-        targetLrn = decodeURIComponent(urlMatch[1]).trim();
+    let targetKey = '';
+    const studentMatch = text.match(/\/student\/([^\/\?#]+)/i);
+    const profileMatch = text.match(/\/profile\/([^\/\?#]+)/i);
+    const queryMatch = text.match(/[?&](?:student|profile|id|student_id|lrn)=([^&#]+)/i);
+    const hashMatch = text.match(/#\/?(?:student|profile)(?:\/|=)([^\/\?#]+)/i);
+    if (studentMatch && studentMatch[1]) {
+        targetKey = decodeURIComponent(studentMatch[1]).trim();
+    } else if (profileMatch && profileMatch[1]) {
+        targetKey = decodeURIComponent(profileMatch[1]).trim();
+    } else if (queryMatch && queryMatch[1]) {
+        targetKey = decodeURIComponent(queryMatch[1]).trim();
+    } else if (hashMatch && hashMatch[1]) {
+        targetKey = decodeURIComponent(hashMatch[1]).trim();
     } else {
-        const lrnMatch = text.match(/LRN[:\s]+(\d{10,14})/i);
-        if (lrnMatch) {
-            targetLrn = lrnMatch[1].trim();
+        const idMatch = text.match(/STU-[\w-]+/i);
+        if (idMatch) {
+            targetKey = idMatch[0].trim();
         } else {
-            const pureDigits = text.match(/\b\d{10,14}\b/);
-            if (pureDigits) {
-                targetLrn = pureDigits[0].trim();
+            const lrnMatch = text.match(/LRN[:\s]+(\d{10,14})/i);
+            if (lrnMatch) {
+                targetKey = lrnMatch[1].trim();
             } else {
-                const idMatch = text.match(/STU-[\w-]+/i);
-                if (idMatch) {
-                    targetLrn = idMatch[0].trim();
+                const pureDigits = text.match(/\b\d{10,14}\b/);
+                if (pureDigits) {
+                    targetKey = pureDigits[0].trim();
                 } else {
-                    targetLrn = text;
+                    targetKey = text;
                 }
             }
         }
     }
 
-    const s = (students || []).find(st => 
-        (st.lrn && String(st.lrn).trim() === targetLrn) || 
-        st.id === targetLrn || 
-        String(st.id).replace(/^STU-/, '') === targetLrn.replace(/^STU-/, '') ||
+    const s = findStudent(targetKey) || (students || []).find(st => 
+        (st.id && st.id.toLowerCase() === targetKey.toLowerCase()) ||
+        (st.lrn && String(st.lrn).trim() === targetKey) || 
+        (st.id && String(st.id).replace(/^STU-/, '').toLowerCase() === targetKey.replace(/^STU-/, '').toLowerCase()) ||
         (`${st.lastName}, ${st.firstName}`.toLowerCase().includes(text.toLowerCase()) && text.length > 3)
     );
 
@@ -3000,10 +3103,17 @@ function handleQrScanResult(scannedText) {
         playScanBeep();
         stopQrCamera();
         closeModal('qrScannerModal');
-        showToast(`Found student: ${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, 'success');
-        setTimeout(() => {
-            viewStudent(s.id);
-        }, 150);
+        showToast(`QR Scanned: Found ${s.lastName}, ${s.firstName} (Grade ${s.gradeLevel} - ${s.section})`, 'success');
+        
+        // AUTOMATICALLY PUSH THROUGH DIRECTLY TO THIS SPECIFIC STUDENT'S PROFILE
+        viewStudent(s.id);
+        
+        // Also update URL state cleanly
+        try {
+            const origin = window.location.origin;
+            const cleanPath = window.location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+            window.history.replaceState({}, '', `${origin}${cleanPath}/student/${encodeURIComponent(s.id)}`);
+        } catch(e) {}
     } else {
         const statusBox = document.getElementById('qrScannerStatusBox');
         const statusMsg = document.getElementById('qrScannerStatusMsg');
@@ -3012,9 +3122,9 @@ function handleQrScanResult(scannedText) {
             statusBox.style.background = '#fef2f2';
             statusBox.style.borderColor = '#fca5a5';
             statusMsg.style.color = '#dc2626';
-            statusMsg.textContent = `No student record found matching "${targetLrn}". Please verify LRN.`;
+            statusMsg.textContent = `No student record found matching "${targetKey}". Please verify QR code.`;
         }
-        showToast(`No student found matching "${targetLrn}".`, 'warning');
+        showToast(`No student found matching "${targetKey}".`, 'warning');
     }
 }
 window.handleQrScanResult = handleQrScanResult;
@@ -3309,6 +3419,8 @@ window.handleDirectPhotoUpload = function(event) {
         }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'inline-block';
+        const enlBtn = document.getElementById('btnEnlargeProfilePhoto');
+        if (enlBtn) enlBtn.style.display = 'inline-block';
 
         renderPrintableStudentProfile(s);
         try { refreshStudentsTable(); } catch(e){}
@@ -3333,6 +3445,8 @@ window.deletePhotoFromProfile = function() {
         }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'none';
+        const enlBtn = document.getElementById('btnEnlargeProfilePhoto');
+        if (enlBtn) enlBtn.style.display = 'none';
 
         renderPrintableStudentProfile(s);
         try { refreshStudentsTable(); } catch(e){}
@@ -3369,6 +3483,21 @@ function previewDocData(prefix) {
 
     viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
 }
+
+function enlargeStudentProfilePhoto() {
+    const s = (typeof currentViewId !== 'undefined' && currentViewId) ? findStudent(currentViewId) : null;
+    if (!s || !s.photo) {
+        showToast('No profile photo uploaded for this student.', 'info');
+        return;
+    }
+    const fullName = `${s.lastName}, ${s.firstName} ${s.middleName || ''}${s.suffix ? ' ' + s.suffix : ''}`.trim();
+    viewDocumentInModal(
+        `${fullName} — Profile Photo`,
+        `LRN: ${s.lrn || '—'} | Grade ${s.gradeLevel} - ${s.section}`,
+        { data: s.photo, name: `${s.lastName}_${s.firstName}_photo.jpg`, type: 'image/jpeg' }
+    );
+}
+window.enlargeStudentProfilePhoto = enlargeStudentProfilePhoto;
 
 function viewDocumentInModal(title, subtitle, doc) {
     const titleEl = document.getElementById('docViewerTitle');
@@ -4489,6 +4618,19 @@ function closeModal(id) {
     if (!document.querySelector('.modal-overlay.show, .modal-overlay.active')) {
         document.body.style.overflow = '';
     }
+    if ((id === 'viewModal' || id === 'learnerMobileModal') && document.documentElement.classList.contains('direct-profile-view')) {
+        const u = getCurrentUser();
+        if (!u || !u.username) {
+            const overlay = document.getElementById('loginOverlay');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.style.removeProperty('display');
+                overlay.style.display = 'flex';
+            }
+            document.documentElement.classList.remove('direct-profile-view');
+            document.body.classList.add('app-hidden');
+        }
+    }
 }
 
 // ======================== GEOGRAPHIC SELECTORS ========================
@@ -4775,37 +4917,199 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function optimizeImage(file, maxWidth, maxHeight, quality, callback) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            let width = img.width;
-            let height = img.height;
-            if (width > maxWidth || height > maxHeight) {
-                if (width / height > maxWidth / maxHeight) {
-                    height = Math.round((height * maxWidth) / width);
-                    width = maxWidth;
-                } else {
-                    width = Math.round((width * maxHeight) / height);
-                    height = maxHeight;
-                }
+// Student Profile Photo: Camera state & Client-side compression
+let studentPhotoCameraStream = null;
+let studentPhotoCameraFacing = 'user'; // 'user' (front/webcam) or 'environment' (rear camera)
+
+function compressAndResizeImage(source, maxWidth, maxHeight, quality, callback) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const q = quality || 0.80;
+    const maxW = maxWidth || 500;
+    const maxH = maxHeight || 500;
+
+    function processImg(img) {
+        let width = img.naturalWidth || img.videoWidth || img.width;
+        let height = img.naturalHeight || img.videoHeight || img.height;
+        if (!width || !height) {
+            callback(null, new Error('Invalid image dimensions'));
+            return;
+        }
+
+        let targetWidth = width;
+        let targetHeight = height;
+        if (targetWidth > maxW || targetHeight > maxH) {
+            if (targetWidth / targetHeight > maxW / maxH) {
+                targetHeight = Math.round((targetHeight * maxW) / targetWidth);
+                targetWidth = maxW;
+            } else {
+                targetWidth = Math.round((targetWidth * maxH) / targetHeight);
+                targetHeight = maxH;
             }
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            const mime = (file.type === 'image/png') ? 'image/png' : 'image/jpeg';
-            const dataUrl = canvas.toDataURL(mime, quality || 0.85);
-            callback(dataUrl);
+        }
+
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        // Ensure white background so transparency in PNG doesn't turn black in JPEG
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        // Convert to JPEG at ~80% quality for optimal size & sharpness
+        const dataUrl = canvas.toDataURL('image/jpeg', q);
+        callback(dataUrl);
+    }
+
+    if (source instanceof HTMLVideoElement) {
+        let vWidth = source.videoWidth || 640;
+        let vHeight = source.videoHeight || 480;
+        let cropSize = Math.min(vWidth, vHeight);
+        let startX = (vWidth - cropSize) / 2;
+        let startY = (vHeight - cropSize) / 2;
+
+        let outDim = Math.min(maxW, cropSize);
+        canvas.width = outDim;
+        canvas.height = outDim;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outDim, outDim);
+        ctx.drawImage(source, startX, startY, cropSize, cropSize, 0, 0, outDim, outDim);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', q);
+        callback(dataUrl);
+    } else if (source instanceof File || source instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = () => processImg(img);
+            img.onerror = () => callback(e.target.result);
+            img.src = e.target.result;
         };
-        img.onerror = function() {
-            callback(e.target.result);
+        reader.onerror = () => callback(null, new Error('Failed to read file'));
+        reader.readAsDataURL(source);
+    } else if (typeof source === 'string') {
+        const img = new Image();
+        img.onload = () => processImg(img);
+        img.onerror = () => callback(source);
+        img.src = source;
+    } else {
+        processImg(source);
+    }
+}
+
+function optimizeImage(file, maxWidth, maxHeight, quality, callback) {
+    compressAndResizeImage(file, maxWidth || 500, maxHeight || 500, quality || 0.80, callback);
+}
+
+async function startStudentPhotoCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Camera is not supported on this browser or device.', 'error');
+        return;
+    }
+
+    const container = document.getElementById('photoCameraContainer');
+    const video = document.getElementById('photoCameraVideo');
+    const placeholder = document.getElementById('photoPlaceholder');
+    const previewImg = document.getElementById('photoPreviewImg');
+
+    stopStudentPhotoCamera();
+
+    if (placeholder) placeholder.style.display = 'none';
+    if (previewImg) previewImg.style.display = 'none';
+    if (container) container.style.display = 'block';
+
+    try {
+        const constraints = {
+            video: {
+                facingMode: studentPhotoCameraFacing,
+                width: { ideal: 720 },
+                height: { ideal: 720 }
+            },
+            audio: false
         };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch(fallbackErr) {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        studentPhotoCameraStream = stream;
+        if (video) {
+            video.srcObject = stream;
+            video.play().catch(e => console.warn('Video play interrupted:', e));
+        }
+    } catch(err) {
+        console.error('Camera access error:', err);
+        stopStudentPhotoCamera();
+        showToast('Unable to access camera: ' + (err.message || 'Permission denied or device not found.'), 'error');
+    }
+}
+
+function stopStudentPhotoCamera() {
+    if (studentPhotoCameraStream) {
+        try {
+            studentPhotoCameraStream.getTracks().forEach(track => track.stop());
+        } catch(e) {}
+        studentPhotoCameraStream = null;
+    }
+
+    const video = document.getElementById('photoCameraVideo');
+    if (video) video.srcObject = null;
+
+    const container = document.getElementById('photoCameraContainer');
+    if (container) container.style.display = 'none';
+
+    const hidden = document.getElementById('studentPhoto');
+    const previewImg = document.getElementById('photoPreviewImg');
+    const placeholder = document.getElementById('photoPlaceholder');
+
+    if (hidden && hidden.value) {
+        if (previewImg) previewImg.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+    } else {
+        if (previewImg) previewImg.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+    }
+}
+
+function switchStudentCameraFacing() {
+    studentPhotoCameraFacing = (studentPhotoCameraFacing === 'user') ? 'environment' : 'user';
+    startStudentPhotoCamera();
+}
+
+function captureStudentPhoto() {
+    const video = document.getElementById('photoCameraVideo');
+    if (!video || !studentPhotoCameraStream) {
+        showToast('Camera is not active.', 'warning');
+        return;
+    }
+
+    const spinner = document.getElementById('photoLoadingSpinner');
+    const indicator = document.getElementById('photoUploadingIndicator');
+    const progressFill = document.getElementById('photoProgressFill');
+
+    if (spinner) spinner.style.display = 'flex';
+    if (indicator) indicator.style.display = 'block';
+    if (progressFill) progressFill.style.width = '50%';
+
+    compressAndResizeImage(video, 500, 500, 0.80, function(dataUrl) {
+        stopStudentPhotoCamera();
+        if (progressFill) progressFill.style.width = '100%';
+        setTimeout(() => {
+            if (spinner) spinner.style.display = 'none';
+            if (indicator) indicator.style.display = 'none';
+            if (progressFill) progressFill.style.width = '0%';
+            setPhotoPreview(dataUrl);
+            showToast('Instant photo captured & optimized successfully!', 'success');
+        }, 200);
+    });
+}
+
+function retakeStudentPhoto() {
+    startStudentPhotoCamera();
 }
 
 function setPhotoPreview(dataUrl) {
@@ -4816,6 +5120,7 @@ function setPhotoPreview(dataUrl) {
     const placeholder = document.getElementById('photoPlaceholder');
     const badge = document.getElementById('photoUploadedBadge');
     const viewBtn = document.getElementById('btnPreviewPhoto');
+    const retakeBtn = document.getElementById('btnRetakePhoto');
     const removeBtn = document.getElementById('btnRemovePhoto');
     const spinner = document.getElementById('photoLoadingSpinner');
     const indicator = document.getElementById('photoUploadingIndicator');
@@ -4830,16 +5135,20 @@ function setPhotoPreview(dataUrl) {
     if (placeholder) placeholder.style.display = 'none';
     if (badge) badge.style.display = 'flex';
     if (viewBtn) viewBtn.style.display = 'inline-flex';
+    if (retakeBtn) retakeBtn.style.display = 'inline-flex';
     if (removeBtn) removeBtn.style.display = 'inline-flex';
 }
 
 function removeCurrentPhoto(showFeedback = true) {
+    if (typeof stopStudentPhotoCamera === 'function') stopStudentPhotoCamera();
+
     const hidden = document.getElementById('studentPhoto');
     const input = document.getElementById('studentPhotoInput');
     const img = document.getElementById('photoPreviewImg');
     const placeholder = document.getElementById('photoPlaceholder');
     const badge = document.getElementById('photoUploadedBadge');
     const viewBtn = document.getElementById('btnPreviewPhoto');
+    const retakeBtn = document.getElementById('btnRetakePhoto');
     const removeBtn = document.getElementById('btnRemovePhoto');
     const spinner = document.getElementById('photoLoadingSpinner');
     const indicator = document.getElementById('photoUploadingIndicator');
@@ -4853,6 +5162,7 @@ function removeCurrentPhoto(showFeedback = true) {
     if (placeholder) placeholder.style.display = 'flex';
     if (badge) badge.style.display = 'none';
     if (viewBtn) viewBtn.style.display = 'none';
+    if (retakeBtn) retakeBtn.style.display = 'none';
     if (removeBtn) removeBtn.style.display = 'none';
     if (spinner) spinner.style.display = 'none';
     if (indicator) indicator.style.display = 'none';
@@ -4868,8 +5178,8 @@ function previewCurrentPhoto() {
     }
     viewDocumentInModal('Student Profile Photo', 'Official Identification Picture', {
         data: photo,
-        name: 'student_photo.png',
-        type: 'image/png'
+        name: 'student_photo.jpg',
+        type: 'image/jpeg'
     });
 }
 
@@ -4892,14 +5202,14 @@ function initPhotoUpload() {
         if (indicator) indicator.style.display = 'block';
         if (progressFill) progressFill.style.width = '35%';
 
-        optimizeImage(file, 600, 600, 0.85, function(dataUrl) {
+        optimizeImage(file, 500, 500, 0.80, function(dataUrl) {
             if (progressFill) progressFill.style.width = '100%';
             setTimeout(() => {
                 if (spinner) spinner.style.display = 'none';
                 if (indicator) indicator.style.display = 'none';
                 if (progressFill) progressFill.style.width = '0%';
                 setPhotoPreview(dataUrl);
-                showToast('Student photo uploaded successfully!', 'success');
+                showToast('Student photo uploaded & compressed successfully!', 'success');
             }, 250);
         });
     }
@@ -5288,9 +5598,16 @@ function initSignaturePad() {
 
 // ======================== AUTOMATIC EMAIL ALERTS (NODEMAILER / GMAIL SMTP) ========================
 
+let _lastAlertEmailTimestamp = 0;
+let _lastAlertEmailKey = '';
+
 async function sendNewDataEmailAlert(payload) {
     if (!payload) return;
     try {
+        _lastAlertEmailTimestamp = Date.now();
+        if (payload.title) {
+            _lastAlertEmailKey = `${payload.category || ''}|${payload.title}|${payload.action || ''}`;
+        }
         const currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
         let submittedBy = 'Authorized User';
         if (currentUser) {
@@ -5975,6 +6292,31 @@ function logActivity(category, actionDesc, student = null) {
     const actPage = document.getElementById('page-activities');
     if (actPage && actPage.classList.contains('active')) {
         refreshActivitiesPage();
+    }
+
+    // Automatic email alert notification for any encoded data across all records
+    try {
+        const actKey = `${category || ''}|${actionDesc || ''}`;
+        const timeDiff = Date.now() - _lastAlertEmailTimestamp;
+        if (timeDiff > 2000 || !_lastAlertEmailKey.includes(actionDesc || '')) {
+            _lastAlertEmailTimestamp = Date.now();
+            _lastAlertEmailKey = actKey;
+            sendNewDataEmailAlert({
+                category: category || 'General Activity',
+                action: 'Data Saved / Updated',
+                title: `${category || 'Record'}: ${actionDesc || 'Data Encoding'}`,
+                details: {
+                    activityCategory: category,
+                    actionDescription: actionDesc,
+                    targetStudent: student ? `${student.lastName}, ${student.firstName} (LRN: ${student.lrn || '—'})` : 'General System / Account',
+                    gradeLevel: student ? (student.gradeLevel || '—') : '—',
+                    section: student ? (student.section || '—') : '—',
+                    encodedBy: (user.username || 'admin') + ' (' + (user.role || 'Staff') + ')'
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('[Activity Alert] Error dispatching auto alert:', e);
     }
 }
 window.logActivity = logActivity;
@@ -7141,7 +7483,12 @@ function openNewCashFlowModal(editId = null) {
         const cfMethod = document.getElementById('cfMethod');
         if (cfMethod) cfMethod.value = target.method || 'Cash';
         const cfReceivedBy = document.getElementById('cfReceivedBy');
-        if (cfReceivedBy) cfReceivedBy.value = target.receivedBy || '2. Registrar/Accounting';
+        const cfReceivedByText = document.getElementById('cfReceivedByText');
+        if (target.type === 'OUT') {
+            if (cfReceivedByText) cfReceivedByText.value = (target.receivedBy && target.receivedBy !== '—') ? target.receivedBy : '';
+        } else {
+            if (cfReceivedBy) cfReceivedBy.value = target.receivedBy || '2. Registrar/Accounting';
+        }
         const cfEncodedBy = document.getElementById('cfEncodedBy');
         if (cfEncodedBy) cfEncodedBy.value = target.encodedBy || '2. Registrar/Accounting';
         const cfRemarks = document.getElementById('cfRemarks');
@@ -7170,6 +7517,9 @@ function openNewCashFlowModal(editId = null) {
             cfType.value = 'IN';
             onCashFlowTypeSelectChange('IN');
         }
+
+        const cfReceivedByText = document.getElementById('cfReceivedByText');
+        if (cfReceivedByText) cfReceivedByText.value = '';
 
         const curU = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
         const isPres = curU && (curU.username === 'admin' || (curU.role && curU.role.includes('President')));
@@ -7276,17 +7626,23 @@ function onCashFlowTypeSelectChange(type) {
     const entityInput = document.getElementById('cfEntity');
     const receivedByGroup = document.getElementById('cfReceivedByGroup');
     const receivedBySelect = document.getElementById('cfReceivedBy');
+    const receivedByText = document.getElementById('cfReceivedByText');
     const encodedByGroup = document.getElementById('cfEncodedByGroup');
 
     if (type === 'IN') {
         if (entityLabel) entityLabel.innerHTML = 'Received From (Payer / Student Name) <span class="required" style="color:#ef4444;">*</span>';
         if (entityInput) entityInput.placeholder = 'e.g. Juan Dela Cruz / Maria Santos';
 
-        // Show "Received By" selection for Cash In
+        // Show "Received By" dropdown selection for Cash In
         if (receivedByGroup) receivedByGroup.style.display = '';
         if (receivedBySelect) {
+            receivedBySelect.style.display = '';
             receivedBySelect.required = true;
             if (!receivedBySelect.value) receivedBySelect.value = '2. Registrar/Accounting';
+        }
+        if (receivedByText) {
+            receivedByText.style.display = 'none';
+            receivedByText.required = false;
         }
         if (encodedByGroup) encodedByGroup.style.gridColumn = '';
 
@@ -7305,13 +7661,18 @@ function onCashFlowTypeSelectChange(type) {
         if (entityLabel) entityLabel.innerHTML = 'Paid To (Payee / Vendor / Supplier) <span class="required" style="color:#ef4444;">*</span>';
         if (entityInput) entityInput.placeholder = 'e.g. Pandayan Bookshop / PLDT Enterprise';
 
-        // Remove / hide "Received By" selection for Cash Out (disbursements/expenses)
-        if (receivedByGroup) receivedByGroup.style.display = 'none';
+        // Automatically open new field for "Received by" without dropdown just for encode
+        if (receivedByGroup) receivedByGroup.style.display = '';
         if (receivedBySelect) {
+            receivedBySelect.style.display = 'none';
             receivedBySelect.required = false;
-            receivedBySelect.value = '';
         }
-        if (encodedByGroup) encodedByGroup.style.gridColumn = '1 / -1';
+        if (receivedByText) {
+            receivedByText.style.display = '';
+            receivedByText.required = true;
+            receivedByText.placeholder = 'e.g. Recipient Name / Payee Representative';
+        }
+        if (encodedByGroup) encodedByGroup.style.gridColumn = '';
 
         if (catSelect) {
             catSelect.innerHTML = `
@@ -7345,7 +7706,9 @@ function handleSaveCashFlow(e) {
     const method = document.getElementById('cfMethod')?.value || 'Cash';
     const remarks = (document.getElementById('cfRemarks')?.value || '').trim();
     const schoolYear = document.getElementById('cfSchoolYear')?.value || currentSchoolYear || '2026-2027';
-    const receivedBy = (type === 'OUT') ? '—' : (document.getElementById('cfReceivedBy')?.value || '2. Registrar/Accounting');
+    const receivedBy = (type === 'OUT') 
+        ? ((document.getElementById('cfReceivedByText')?.value || '').trim() || '—') 
+        : (document.getElementById('cfReceivedBy')?.value || '2. Registrar/Accounting');
     const encodedBy = document.getElementById('cfEncodedBy')?.value || '2. Registrar/Accounting';
     const payerType = document.getElementById('cfPayerType')?.value || 'enrolled';
     const selectedStudentId = document.getElementById('cfStudentSelect')?.value || '';
@@ -7994,6 +8357,12 @@ window.deleteCashFlowEntry = deleteCashFlowEntry;
 window.exportCashFlowCSV = exportCashFlowCSV;
 window.printCashFlowReport = printCashFlowReport;
 window.printCashFlowVoucher = printCashFlowVoucher;
+window.startStudentPhotoCamera = startStudentPhotoCamera;
+window.stopStudentPhotoCamera = stopStudentPhotoCamera;
+window.switchStudentCameraFacing = switchStudentCameraFacing;
+window.captureStudentPhoto = captureStudentPhoto;
+window.retakeStudentPhoto = retakeStudentPhoto;
+window.compressAndResizeImage = compressAndResizeImage;
 
 // ======================== EXAMINATION CLEARANCE ENGINE & OVERRIDES ========================
 
@@ -14200,6 +14569,7 @@ document.addEventListener('click', function(e) {
 
     e.preventDefault();
     if (action === 'view') viewStudent(id);
+    else if (action === 'qr') openLearnerMobilePass(id);
     else if (action === 'soa') openSOAModal(id);
     else if (action === 'edit') editStudent(id);
     else if (action === 'delete') confirmDelete(id);
