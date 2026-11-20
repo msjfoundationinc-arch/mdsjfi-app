@@ -77,7 +77,7 @@ img, canvas, svg, video, picture {
     justify-content: center;
     z-index: 5000;
     transition: opacity 0.5s ease, visibility 0.5s ease;
-    padding: 10px 14px;
+    padding: clamp(6px, 1.5vh, 16px) 14px clamp(4px, 1vh, 12px);
     box-sizing: border-box;
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -101,12 +101,14 @@ img, canvas, svg, video, picture {
 .login-container {
     width: 100%;
     max-width: 420px;
-    padding: 12px 14px;
+    height: 100%;
+    max-height: calc(100dvh - clamp(12px, 2.5vh, 24px));
+    padding: 0;
     margin: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     box-sizing: border-box;
     position: relative;
     z-index: 10;
@@ -115,22 +117,28 @@ img, canvas, svg, video, picture {
 .login-card,
 .auth-box {
     width: 100%;
+    max-width: 420px;
+    flex: 1 1 auto;
+    max-height: calc(100% - clamp(20px, 3vh, 28px));
+    min-height: 0;
     background: rgba(255, 255, 255, 0.70) !important;
     backdrop-filter: blur(24px) saturate(190%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
     border: 1.5px solid rgba(255, 255, 255, 0.65) !important;
-    border-radius: 18px !important;
+    border-radius: 20px !important;
     box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
     overflow: hidden;
     animation: loginSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     box-sizing: border-box;
 }
 
 .login-copyright-notice {
-    margin-top: 10px;
-    font-size: 0.76rem;
+    margin-top: clamp(4px, 0.8vh, 8px);
+    margin-bottom: 2px;
+    font-size: clamp(0.72rem, 1vh, 0.76rem);
     font-weight: 500;
     color: rgba(255, 255, 255, 0.95);
     text-align: center;
@@ -139,6 +147,7 @@ img, canvas, svg, video, picture {
     user-select: none;
     animation: fadeIn 0.6s ease;
     flex-shrink: 0;
+    line-height: 1.2;
 }
 
 @keyframes loginSlideUp {
@@ -152,7 +161,7 @@ img, canvas, svg, video, picture {
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.22) !important;
-    padding: 20px 24px 14px !important;
+    padding: clamp(12px, 2.2vh, 22px) 24px clamp(8px, 1.4vh, 14px) !important;
     text-align: center !important;
     display: flex !important;
     flex-direction: column !important;
@@ -160,7 +169,7 @@ img, canvas, svg, video, picture {
     justify-content: center !important;
     color: white !important;
     overflow: hidden !important;
-    border-radius: 18px 18px 0 0 !important;
+    border-radius: 20px 20px 0 0 !important;
     flex-shrink: 0;
 }
 
@@ -180,15 +189,15 @@ img, canvas, svg, video, picture {
 .login-logo {
     position: relative;
     z-index: 2;
-    width: 82px !important;
-    height: 82px !important;
+    width: clamp(66px, 10.5vh, 92px) !important;
+    height: clamp(66px, 10.5vh, 92px) !important;
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin: 0 auto 8px !important;
+    margin: 0 auto clamp(4px, 0.8vh, 8px) !important;
     padding: 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
@@ -386,20 +395,24 @@ img, canvas, svg, video, picture {
 }
 
 .login-form {
-    padding: 18px 24px 12px;
+    padding: clamp(14px, 2.5vh, 24px) clamp(18px, 3.5vw, 26px) clamp(10px, 1.8vh, 16px);
     background: transparent !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    flex: 1 1 auto !important;
 }
 
 .login-field {
-    margin-bottom: 12px;
+    margin-bottom: clamp(10px, 1.8vh, 16px);
 }
 
 .login-field label {
     display: block;
-    font-size: 0.76rem;
+    font-size: clamp(0.74rem, 1vh, 0.80rem);
     font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: clamp(3px, 0.6vh, 6px);
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
@@ -411,10 +424,10 @@ img, canvas, svg, video, picture {
 
 .login-field input {
     width: 100%;
-    padding: 10px 13px;
+    padding: clamp(10px, 1.5vh, 13px) 14px;
     border: 1.5px solid rgba(148, 163, 184, 0.45) !important;
-    border-radius: 8px;
-    font-size: 0.92rem;
+    border-radius: 9px;
+    font-size: clamp(0.92rem, 1.3vh, 0.98rem);
     font-family: inherit;
     transition: all var(--transition);
     background: rgba(255, 255, 255, 0.75) !important;
@@ -477,7 +490,7 @@ img, canvas, svg, video, picture {
     justify-content: space-between;
     gap: 8px;
     margin-top: -2px;
-    margin-bottom: 12px;
+    margin-bottom: clamp(10px, 1.8vh, 16px);
     flex-wrap: wrap;
 }
 
@@ -597,13 +610,13 @@ img, canvas, svg, video, picture {
 
 .login-btn {
     width: 100%;
-    padding: 12px 18px;
+    padding: clamp(11px, 1.8vh, 15px) 18px;
     background: var(--primary);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 0.96rem;
-    font-weight: 600;
+    border-radius: 9px;
+    font-size: clamp(0.95rem, 1.3vh, 1.02rem);
+    font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: all var(--transition);
@@ -630,12 +643,13 @@ img, canvas, svg, video, picture {
 }
 
 .login-footer {
-    padding: 8px 16px;
+    padding: clamp(8px, 1.3vh, 12px) 16px;
     text-align: center;
     background: rgba(255, 255, 255, 0.25) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.35) !important;
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
+    flex-shrink: 0;
 }
 
 .login-footer p {
@@ -657,8 +671,9 @@ img, canvas, svg, video, picture {
         scrollbar-width: none !important;
     }
     .login-container {
-        max-width: 370px !important;
-        padding: 6px 8px !important;
+        max-width: 420px !important;
+        width: 100% !important;
+        padding: 4px 6px !important;
     }
     .login-header {
         padding: 10px 12px 5px !important;

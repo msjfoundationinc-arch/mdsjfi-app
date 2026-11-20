@@ -866,6 +866,8 @@ function initApp() {
     if (u && u.username) {
         showApp(u);
         if (directStudentTarget) {
+            document.documentElement.classList.add('direct-profile-view', 'guest-qr-view');
+            window.isQrScanSession = true;
             // Automatically push through directly to the specific student's profile
             setTimeout(() => {
                 viewStudent(directStudentTarget.id);
@@ -5106,7 +5108,24 @@ function executeConfirmDelete() {
 
 function initModals() {
     const closeV = document.getElementById('closeViewModal');
-    if (closeV) closeV.onclick = () => closeModal('viewModal');
+    if (closeV) {
+        closeV.onclick = (e) => {
+            if (e) {
+                try {
+                    e.preventDefault();
+                    e.stopPropagation();
+                } catch(err) {}
+            }
+            const isQrView = document.documentElement.classList.contains('direct-profile-view') || 
+                             document.documentElement.classList.contains('guest-qr-view') ||
+                             (typeof getStudentIdFromUrl === 'function' && Boolean(getStudentIdFromUrl()));
+            if (isQrView) {
+                handleQrProfileClose();
+            } else {
+                closeModal('viewModal');
+            }
+        };
+    }
 
     const closeD = document.getElementById('closeDeleteModal');
     if (closeD) closeD.onclick = () => { deleteTargetId = null;
@@ -5183,8 +5202,18 @@ function initModals() {
     document.querySelectorAll('.modal-overlay').forEach(modal => {
         modal.onclick = (e) => {
             if (e.target === modal) {
-                if (modal.id === 'deleteModal') deleteTargetId = null;
-    window.deleteTargetId = null;
+                const isQrView = (modal.id === 'viewModal' || modal.id === 'learnerMobileModal') &&
+                                 (document.documentElement.classList.contains('direct-profile-view') || 
+                                  document.documentElement.classList.contains('guest-qr-view') ||
+                                  (typeof getStudentIdFromUrl === 'function' && Boolean(getStudentIdFromUrl())));
+                if (isQrView) {
+                    handleQrProfileClose();
+                    return;
+                }
+                if (modal.id === 'deleteModal') {
+                    deleteTargetId = null;
+                    window.deleteTargetId = null;
+                }
                 closeModal(modal.id);
             }
         };
@@ -5192,8 +5221,15 @@ function initModals() {
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
+            const isQrView = document.documentElement.classList.contains('direct-profile-view') || 
+                             document.documentElement.classList.contains('guest-qr-view') ||
+                             (typeof getStudentIdFromUrl === 'function' && Boolean(getStudentIdFromUrl()));
+            if (isQrView) {
+                handleQrProfileClose();
+                return;
+            }
             deleteTargetId = null;
-    window.deleteTargetId = null;
+            window.deleteTargetId = null;
             document.querySelectorAll('.modal-overlay.show, .modal-overlay.active').forEach(m => closeModal(m.id));
         }
     });
@@ -5207,49 +5243,74 @@ function openModal(id) {
 }
 
 function handleQrProfileClose() {
+    // 1. Immediately attempt to close the window or tab
     try {
         window.close();
     } catch(e) {}
-    setTimeout(() => {
-        // If the browser blocks window.close() when tab was not opened by window.open
-        const closeOverlay = document.getElementById('qrProfileClosedBanner');
-        if (!closeOverlay) {
-            const div = document.createElement('div');
-            div.id = 'qrProfileClosedBanner';
-            div.style.cssText = 'position:fixed; inset:0; z-index:999999; display:flex; align-items:center; justify-content:center; background:#0f172a; color:#f8fafc; font-family:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif; padding:20px; text-align:center;';
-            div.innerHTML = `
-                <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:36px 28px; max-width:420px; width:92%; box-shadow:0 20px 40px rgba(0,0,0,0.5); backdrop-filter:blur(12px);">
-                    <div style="width:64px; height:64px; border-radius:50%; background:rgba(16,185,129,0.15); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:32px; margin:0 auto 16px;">
-                        ✓
-                    </div>
-                    <h2 style="font-size:20px; font-weight:700; margin-bottom:8px; color:#ffffff;">Verification Session Closed</h2>
-                    <p style="font-size:14px; color:#94a3b8; line-height:1.5; margin-bottom:24px;">
-                        You have exited the Learner Profile view. You may now safely close this browser window or tab.
-                    </p>
-                    <button onclick="window.close()" style="background:#059669; color:#fff; border:none; padding:10px 26px; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer;">
-                        Close Tab
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(div);
+    try {
+        window.open('', '_self').close();
+    } catch(e) {}
+
+    // 2. Hide modals and lock down any login overlay so NOTHING redirects to login
+    try {
+        const viewModal = document.getElementById('viewModal');
+        if (viewModal) {
+            viewModal.classList.remove('show', 'active');
+            viewModal.style.setProperty('display', 'none', 'important');
         }
-    }, 150);
+        const mobileModal = document.getElementById('learnerMobileModal');
+        if (mobileModal) {
+            mobileModal.classList.remove('show', 'active');
+            mobileModal.style.setProperty('display', 'none', 'important');
+        }
+        const loginOverlay = document.getElementById('loginOverlay');
+        if (loginOverlay) {
+            loginOverlay.classList.add('hidden');
+            loginOverlay.style.setProperty('display', 'none', 'important');
+        }
+    } catch(e) {}
+
+    // 3. Immediately render clean fallback state if browser security prevents closing
+    let closeOverlay = document.getElementById('qrProfileClosedBanner');
+    if (!closeOverlay) {
+        closeOverlay = document.createElement('div');
+        closeOverlay.id = 'qrProfileClosedBanner';
+        closeOverlay.style.cssText = 'position:fixed; inset:0; z-index:99999999; display:flex; align-items:center; justify-content:center; background:#0b192c; color:#f8fafc; font-family:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif; padding:20px; text-align:center;';
+        closeOverlay.innerHTML = `
+            <div style="background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.18); border-radius:20px; padding:36px 28px; max-width:400px; width:92%; box-shadow:0 24px 50px rgba(0,0,0,0.6); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); animation:fadeIn 0.3s ease;">
+                <div style="width:68px; height:68px; border-radius:50%; background:rgba(16,185,129,0.18); border:2px solid #10b981; color:#10b981; display:flex; align-items:center; justify-content:center; font-size:32px; margin:0 auto 18px; box-shadow:0 0 20px rgba(16,185,129,0.3);">
+                    <i class="fas fa-check" style="font-size:28px;"></i>
+                </div>
+                <h2 style="font-size:1.25rem; font-weight:800; margin:0 0 8px; color:#ffffff; letter-spacing:-0.01em;">Profile Session Ended</h2>
+                <p style="font-size:0.88rem; color:#94a3b8; line-height:1.55; margin:0 0 24px;">
+                    You have finished viewing this learner's verified academic profile.<br><strong style="color:#e2e8f0;">You may now safely close this browser window or tab.</strong>
+                </p>
+                <button type="button" onclick="try{window.close();}catch(e){} setTimeout(function(){try{window.open('','_self').close();}catch(e){}},50);" style="background:linear-gradient(135deg, #10b981, #059669); color:#ffffff; border:none; padding:12px 28px; border-radius:10px; font-weight:700; font-size:0.95rem; cursor:pointer; box-shadow:0 4px 14px rgba(16,185,129,0.4); display:inline-flex; align-items:center; gap:8px;">
+                    <i class="fas fa-times-circle"></i> Close Tab
+                </button>
+            </div>
+        `;
+        document.body.appendChild(closeOverlay);
+    } else {
+        closeOverlay.style.display = 'flex';
+    }
 }
 window.handleQrProfileClose = handleQrProfileClose;
 
 function closeModal(id) {
+    const isQrView = (id === 'viewModal' || id === 'learnerMobileModal') && 
+                     (document.documentElement.classList.contains('direct-profile-view') || 
+                      document.documentElement.classList.contains('guest-qr-view') ||
+                      (typeof getStudentIdFromUrl === 'function' && Boolean(getStudentIdFromUrl())));
+    if (isQrView) {
+        handleQrProfileClose();
+        return;
+    }
     const m = document.getElementById(id);
     if (!m) return;
     m.classList.remove('show', 'active');
     if (!document.querySelector('.modal-overlay.show, .modal-overlay.active')) {
         document.body.style.overflow = '';
-    }
-    if ((id === 'viewModal' || id === 'learnerMobileModal') && (document.documentElement.classList.contains('direct-profile-view') || document.documentElement.classList.contains('guest-qr-view'))) {
-        const u = getCurrentUser();
-        if (!u || !u.username) {
-            handleQrProfileClose();
-            return;
-        }
     }
 }
 
