@@ -634,17 +634,39 @@ function updateLoginGreeting() {
         const titleEl = document.getElementById('loginGreetingText');
         const iconEl = document.getElementById('loginGreetingIcon');
         if (!titleEl) return;
-        const h = new Date().getHours();
-        let greeting = "Welcome back, Personnel!";
-        let iconHtml = '<i class="fas fa-user-circle"></i>';
 
-        if (h >= 5 && h < 12) {
+        // Strictly evaluate Philippine Standard Time (Asia/Manila, UTC+8) using Intl.DateTimeFormat
+        let phtHour;
+        try {
+            const phtFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila',
+                hour: 'numeric',
+                hourCycle: 'h23'
+            });
+            phtHour = parseInt(phtFormatter.format(new Date()), 10);
+        } catch(e) {
+            const now = new Date();
+            phtHour = (now.getUTCHours() + 8) % 24;
+        }
+
+        if (isNaN(phtHour)) {
+            const now = new Date();
+            phtHour = (now.getUTCHours() + 8) % 24;
+        }
+
+        let greeting = "Good evening, Personnel!";
+        let iconHtml = '<i class="fas fa-moon" style="color: #93c5fd;"></i>';
+
+        if (phtHour >= 5 && phtHour < 12) {
+            // 5:00 AM – 11:59 AM (PHT): "Good morning, Personnel!" (subtle sun/sunrise icon)
             greeting = "Good morning, Personnel!";
             iconHtml = '<i class="fas fa-sun" style="color: #fde047;"></i>';
-        } else if (h >= 12 && h < 18) {
+        } else if (phtHour >= 12 && phtHour < 18) {
+            // 12:00 PM – 5:59 PM (PHT): "Good afternoon, Personnel!" (bright sun icon)
             greeting = "Good afternoon, Personnel!";
             iconHtml = '<i class="fas fa-sun" style="color: #facc15;"></i>';
         } else {
+            // 6:00 PM – 4:59 AM (PHT): "Good evening, Personnel!" (crescent moon icon)
             greeting = "Good evening, Personnel!";
             iconHtml = '<i class="fas fa-moon" style="color: #93c5fd;"></i>';
         }
@@ -653,6 +675,8 @@ function updateLoginGreeting() {
         if (iconEl) iconEl.innerHTML = iconHtml;
     } catch(e) {}
 }
+window.updateLoginGreeting = updateLoginGreeting;
+window.updatePhilippineTimeGreeting = updateLoginGreeting;
 window.updateLoginGreeting = updateLoginGreeting;
 
 function initApp() {
@@ -689,7 +713,12 @@ function initApp() {
     try { initDashboardQuickSearch(); } catch(e) {}
     try { applySidebarCollapseState(); } catch(e) {}
     try { if (typeof window.initThemeMode === 'function') window.initThemeMode(); } catch(e) {}
-    try { updateLoginGreeting(); } catch(e) {}
+    try { 
+        updateLoginGreeting(); 
+        if (!window._phtGreetingInterval) {
+            window._phtGreetingInterval = setInterval(updateLoginGreeting, 60000);
+        }
+    } catch(e) {}
 
     // Check for direct mobile / online QR scan or URL route (/profile/[student_id], ?profile=..., ?lrn=...)
     let directStudentTarget = null;
@@ -2752,7 +2781,7 @@ function viewStudent(id) {
                                (typeof getCurrentUser === 'function' && !getCurrentUser());
 
     if (avatar) {
-        let photoSrc = s.photo || '';
+        let photoSrc = (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) ? s.photo.trim() : '';
         // If profile photo is missing, fall back to Face Biometrics enrollment photo
         if (!photoSrc && window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
             try {
@@ -2763,20 +2792,13 @@ function viewStudent(id) {
             } catch(e) {}
         }
 
-        if (photoSrc) {
-            avatar.innerHTML = `<img src="${photoSrc}" alt="Student Photo" class="student-avatar-img">`;
-            if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
-            if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
-        } else {
-            // Render crisp institutional initials badge so profile avatar is always attractive and never blank
-            const nameParts = (s.fullName || `${s.firstName || ''} ${s.lastName || ''}`).trim().split(/\s+/);
-            const initials = nameParts.length >= 2 
-                ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-                : ((nameParts[0] ? nameParts[0][0] : 'S')).toUpperCase();
-            avatar.innerHTML = `<span class="student-avatar-initials">${escHtml(initials)}</span>`;
-            if (photoDelBtn) photoDelBtn.style.display = 'none';
-            if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'none';
-        }
+        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+        const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
+        const displayPhoto = photoSrc || defaultAvatar;
+
+        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';">`;
+        if (photoDelBtn) photoDelBtn.style.display = (isGuestProfileView || !photoSrc) ? 'none' : 'inline-block';
+        if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
     }
 
     // Documents
@@ -2941,12 +2963,18 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
 
     const avatarEl = document.getElementById('mobilePassAvatar');
     if (avatarEl) {
-        if (s.photo) {
-            avatarEl.innerHTML = `<img src="${s.photo}" alt="${escHtml(s.lastName)}" style="width:100%; height:100%; object-fit:cover;">`;
-        } else {
-            const initials = `${s.firstName ? s.firstName.charAt(0) : ''}${s.lastName ? s.lastName.charAt(0) : ''}`.toUpperCase();
-            avatarEl.textContent = initials || 'SJ';
+        let photoSrc = (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) ? s.photo.trim() : '';
+        if (!photoSrc && window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
+            try {
+                const faceRec = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id);
+                if (faceRec && faceRec.facePhoto) photoSrc = faceRec.facePhoto;
+            } catch(e) {}
         }
+        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+        const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
+        const displayPhoto = photoSrc || defaultAvatar;
+
+        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.onerror=null; this.src='${defaultAvatar}';">`;
     }
 
     openModal('learnerMobileModal');

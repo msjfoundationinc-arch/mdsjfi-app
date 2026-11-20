@@ -16,14 +16,14 @@
     }
     </script>
     <!-- Crisp High-Definition Favicon Architecture (Zero Tab Bleed / Overlap, 100% Transparent Background) -->
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=20261121_01">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=20261121_01">
-    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=20261121_01">
-    <link rel="shortcut icon" href="favicon.ico?v=20261121_01">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_01">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=20261121_02">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=20261121_02">
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=20261121_02">
+    <link rel="shortcut icon" href="favicon.ico?v=20261121_02">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_02">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261121_01">
+    <link rel="stylesheet" href="styles.css?v=20261121_02">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -169,24 +169,49 @@
                     </div>
                 </div>
                 <script>
-                (function() {
+                function updatePhilippineTimeGreeting() {
                     try {
                         var titleEl = document.getElementById('loginGreetingText');
                         var iconEl = document.getElementById('loginGreetingIcon');
                         if (!titleEl) return;
-                        var h = new Date().getHours();
-                        if (h >= 5 && h < 12) {
+
+                        // Strictly evaluate Philippine Standard Time (Asia/Manila, UTC+8) using Intl.DateTimeFormat
+                        var phtHour;
+                        try {
+                            var phtFormatter = new Intl.DateTimeFormat('en-US', {
+                                timeZone: 'Asia/Manila',
+                                hour: 'numeric',
+                                hourCycle: 'h23'
+                            });
+                            phtHour = parseInt(phtFormatter.format(new Date()), 10);
+                        } catch(e) {
+                            var now = new Date();
+                            phtHour = (now.getUTCHours() + 8) % 24;
+                        }
+
+                        if (isNaN(phtHour)) {
+                            var now = new Date();
+                            phtHour = (now.getUTCHours() + 8) % 24;
+                        }
+
+                        if (phtHour >= 5 && phtHour < 12) {
+                            // 5:00 AM – 11:59 AM (PHT): "Good morning, Personnel!" (subtle sun/sunrise icon)
                             titleEl.textContent = "Good morning, Personnel!";
                             if (iconEl) iconEl.innerHTML = '<i class="fas fa-sun" style="color: #fde047;"></i>';
-                        } else if (h >= 12 && h < 18) {
+                        } else if (phtHour >= 12 && phtHour < 18) {
+                            // 12:00 PM – 5:59 PM (PHT): "Good afternoon, Personnel!" (bright sun icon)
                             titleEl.textContent = "Good afternoon, Personnel!";
                             if (iconEl) iconEl.innerHTML = '<i class="fas fa-sun" style="color: #facc15;"></i>';
                         } else {
+                            // 6:00 PM – 4:59 AM (PHT): "Good evening, Personnel!" (crescent moon icon)
                             titleEl.textContent = "Good evening, Personnel!";
                             if (iconEl) iconEl.innerHTML = '<i class="fas fa-moon" style="color: #93c5fd;"></i>';
                         }
-                    } catch(e) {}
-                })();
+                    } catch(err) {
+                        console.warn('PHT greeting update error:', err);
+                    }
+                }
+                updatePhilippineTimeGreeting();
                 </script>
                 <form id="loginForm" class="login-form" novalidate onsubmit="handleLoginSubmit(event); return false;">
                     <div class="login-field">
@@ -223,6 +248,9 @@
                 <div class="login-footer">
                     <p><i class="fas fa-shield-alt"></i> Authorized personnel only</p>
                 </div>
+            </div>
+            <div class="login-copyright-notice" id="loginCopyrightNotice">
+                &copy; 2026 MDSJFI - All rights reserve
             </div>
         </div>
 
@@ -8821,7 +8849,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_01"></script>
+    <script src="app.js?v=20261121_02"></script>
 </body>
 </html>
 

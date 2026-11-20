@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <linearGradient id="bgGradMale" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0b2545"/>
+    </linearGradient>
+    <linearGradient id="skinGradMale" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="100%" stop-color="#fcd34d"/>
+    </linearGradient>
+    <linearGradient id="uniformGradMale" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f1f5f9"/>
+    </linearGradient>
+    <linearGradient id="tieGradMale" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#052e16"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="80" cy="80" r="78" fill="url(#bgGradMale)" stroke="#38bdf8" stroke-width="3"/>
+  <!-- Uniform Shoulders -->
+  <path d="M26 156 C30 120, 52 108, 80 108 C108 108, 130 120, 134 156 Z" fill="url(#uniformGradMale)"/>
+  <!-- Uniform Blazer / Trim -->
+  <path d="M26 156 C32 128, 48 116, 62 114 L54 156 Z" fill="#0b2545"/>
+  <path d="M134 156 C128 128, 112 116, 98 114 L106 156 Z" fill="#0b2545"/>
+  <!-- Neck -->
+  <rect x="70" y="86" width="20" height="22" rx="4" fill="url(#skinGradMale)"/>
+  <!-- Shirt Collar -->
+  <polygon points="62,106 80,118 74,96" fill="#e2e8f0"/>
+  <polygon points="98,106 80,118 86,96" fill="#e2e8f0"/>
+  <polygon points="64,106 80,116 76,96" fill="#ffffff"/>
+  <polygon points="96,106 80,116 84,96" fill="#ffffff"/>
+  <!-- School Necktie -->
+  <polygon points="77,108 83,108 85,116 80,118 75,116" fill="#15803d"/>
+  <polygon points="76,116 84,116 86,148 80,154 74,148" fill="url(#tieGradMale)"/>
+  <circle cx="80" cy="122" r="2" fill="#fbbf24"/>
+  <!-- Head -->
+  <ellipse cx="80" cy="68" rx="27" ry="32" fill="url(#skinGradMale)"/>
+  <!-- Ears -->
+  <circle cx="53" cy="70" r="6" fill="#fed7aa"/>
+  <circle cx="107" cy="70" r="6" fill="#fed7aa"/>
+  <!-- Face Features: Eyes -->
+  <ellipse cx="70" cy="68" rx="3" ry="3.5" fill="#1e293b"/>
+  <ellipse cx="90" cy="68" rx="3" ry="3.5" fill="#1e293b"/>
+  <circle cx="71" cy="67" r="1" fill="#ffffff"/>
+  <circle cx="91" cy="67" r="1" fill="#ffffff"/>
+  <!-- Eyebrows -->
+  <path d="M64 61 Q70 59 76 62" stroke="#334155" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M84 62 Q90 59 96 61" stroke="#334155" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Nose -->
+  <path d="M79 72 Q80 77 82 77" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  <!-- Smile -->
+  <path d="M73 83 Q80 89 87 83" stroke="#b45309" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Hair: Neat male parted student haircut -->
+  <path d="M51 64 C50 36, 68 28, 80 28 C94 28, 110 36, 109 64 C104 52, 98 46, 88 46 C76 46, 64 54, 51 64 Z" fill="#1e293b"/>
+  <path d="M52 64 C56 50, 68 44, 82 44 C90 44, 98 48, 106 58 C96 52, 88 50, 78 52 C68 54, 58 60, 52 64 Z" fill="#334155"/>
+</svg>
