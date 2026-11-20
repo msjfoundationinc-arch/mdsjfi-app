@@ -77,7 +77,7 @@ img, canvas, svg, video, picture {
     justify-content: center;
     z-index: 5000;
     transition: opacity 0.4s ease, visibility 0.4s ease;
-    padding: 16px;
+    padding: clamp(8px, 1.5vh, 16px) 14px clamp(6px, 1.2vh, 14px);
     box-sizing: border-box;
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -103,12 +103,14 @@ img, canvas, svg, video, picture {
 
 .login-container {
     width: 100%;
-    max-width: 410px;
+    max-width: 420px;
+    height: calc(100dvh - clamp(16px, 3vh, 32px));
+    max-height: 840px;
     margin: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     box-sizing: border-box;
     position: relative;
     z-index: 10;
@@ -119,23 +121,29 @@ img, canvas, svg, video, picture {
 .login-card,
 .auth-box {
     width: 100%;
+    max-width: 420px;
+    height: calc(100% - clamp(20px, 3vh, 28px));
+    flex: 1 1 auto;
+    min-height: 0;
     background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.85) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.88) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.44), 0 0 0 1px rgba(255, 255, 255, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
     overflow: hidden;
     animation: loginSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     box-sizing: border-box;
 }
 
 .login-copyright-notice {
-    margin-top: 14px;
+    margin-top: clamp(4px, 0.8vh, 8px);
+    margin-bottom: 2px;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 0.74rem;
+    font-size: clamp(0.74rem, 1.1vh, 0.80rem);
     font-weight: 500;
     color: rgba(255, 255, 255, 0.90);
     text-align: center;
@@ -156,7 +164,7 @@ img, canvas, svg, video, picture {
     position: relative;
     background: linear-gradient(145deg, #062817 0%, #0d4a2b 50%, #15693c 100%) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
-    padding: 16px 20px 12px !important;
+    padding: clamp(14px, 2.2vh, 22px) 24px clamp(8px, 1.4vh, 14px) !important;
     text-align: center !important;
     display: flex !important;
     flex-direction: column !important;
@@ -164,36 +172,36 @@ img, canvas, svg, video, picture {
     justify-content: center !important;
     color: white !important;
     overflow: hidden !important;
-    border-radius: 16px 16px 0 0 !important;
+    border-radius: 22px 22px 0 0 !important;
     flex-shrink: 0;
 }
 
 /* Ambient Radial Light Accent Behind Logo */
 .login-header-glow {
     position: absolute;
-    top: -24px;
+    top: -40px;
     left: 50%;
     transform: translateX(-50%);
-    width: 200px;
-    height: 200px;
-    background: radial-gradient(circle, rgba(52, 211, 153, 0.28) 0%, rgba(16, 185, 129, 0.10) 45%, transparent 75%);
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.36) 0%, rgba(16, 185, 129, 0.14) 45%, transparent 75%);
     pointer-events: none;
     z-index: 1;
 }
 
-/* 3. Animated / Pulsing MDSJFI Logo Seal */
+/* 3. Animated / Pulsing MDSJFI Logo Seal (Prominently Enlarged) */
 .login-logo {
     position: relative;
     z-index: 2;
-    width: 66px !important;
-    height: 66px !important;
+    width: clamp(96px, 14vh, 124px) !important;
+    height: clamp(96px, 14vh, 124px) !important;
     background: transparent !important;
     border: none !important;
     border-radius: 50% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin: 0 auto 6px !important;
+    margin: 0 auto clamp(6px, 1vh, 10px) !important;
     padding: 0 !important;
     box-shadow: none !important;
     cursor: pointer;
@@ -205,10 +213,10 @@ img, canvas, svg, video, picture {
 .login-logo::after {
     content: '';
     position: absolute;
-    inset: -3px;
+    inset: -6px;
     border-radius: 50%;
-    border: 1.5px solid rgba(52, 211, 153, 0.50);
-    background: radial-gradient(circle, rgba(52, 211, 153, 0.18) 0%, rgba(255, 255, 255, 0.06) 55%, transparent 75%);
+    border: 2px solid rgba(52, 211, 153, 0.65);
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, rgba(255, 255, 255, 0.08) 55%, transparent 75%);
     pointer-events: none;
     z-index: 1;
     opacity: 0;
@@ -218,8 +226,8 @@ img, canvas, svg, video, picture {
 
 .login-logo::after {
     animation-delay: 1.8s;
-    border-color: rgba(255, 255, 255, 0.40);
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(52, 211, 153, 0.08) 55%, transparent 75%);
+    border-color: rgba(255, 255, 255, 0.50);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.20) 0%, rgba(52, 211, 153, 0.12) 55%, transparent 75%);
 }
 
 .login-logo img {
@@ -231,7 +239,7 @@ img, canvas, svg, video, picture {
     border-radius: 50% !important;
     display: block !important;
     background: transparent !important;
-    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)) !important;
+    filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.42)) !important;
     animation: logoBreathe 3.6s ease-in-out infinite;
     transition: filter 0.3s ease;
 }
@@ -241,7 +249,7 @@ img, canvas, svg, video, picture {
 }
 
 .login-logo:hover img {
-    filter: drop-shadow(0 0 14px rgba(52, 211, 153, 0.70)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45)) !important;
+    filter: drop-shadow(0 0 18px rgba(52, 211, 153, 0.80)) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.50)) !important;
 }
 
 @keyframes logoBreathe {
@@ -288,12 +296,12 @@ img, canvas, svg, video, picture {
     z-index: 2;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
     text-transform: uppercase !important;
-    margin: 0 auto 5px !important;
+    margin: 0 auto clamp(3px, 0.6vh, 6px) !important;
     color: #ffffff !important;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35) !important;
     text-align: center !important;
     width: 100% !important;
-    max-width: 390px !important;
+    max-width: 410px !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -306,7 +314,7 @@ img, canvas, svg, video, picture {
 
 .school-title-primary {
     display: block !important;
-    font-size: 0.98rem !important;
+    font-size: clamp(1.05rem, 1.7vh, 1.20rem) !important;
     font-weight: 800 !important;
     letter-spacing: 0.05em !important;
     line-height: 1.2 !important;
@@ -315,7 +323,7 @@ img, canvas, svg, video, picture {
 
 .school-title-secondary {
     display: block !important;
-    font-size: 0.82rem !important;
+    font-size: clamp(0.88rem, 1.4vh, 0.98rem) !important;
     font-weight: 700 !important;
     letter-spacing: 0.08em !important;
     line-height: 1.2 !important;
@@ -337,8 +345,8 @@ img, canvas, svg, video, picture {
     -webkit-backdrop-filter: blur(8px) !important;
     border: 1px solid rgba(255, 255, 255, 0.30) !important;
     border-radius: 9999px !important;
-    padding: 2px 10px !important;
-    margin-bottom: 6px !important;
+    padding: clamp(3px, 0.6vh, 5px) 14px !important;
+    margin-bottom: clamp(6px, 1vh, 10px) !important;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
     animation: loginHeaderSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: 0.14s;
@@ -346,7 +354,7 @@ img, canvas, svg, video, picture {
 
 .login-system-text {
     font-family: 'Inter', -apple-system, sans-serif !important;
-    font-size: 0.70rem !important;
+    font-size: clamp(0.72rem, 1.2vh, 0.78rem) !important;
     font-weight: 600 !important;
     color: #ffffff !important;
     letter-spacing: 0.03em !important;
@@ -393,7 +401,7 @@ img, canvas, svg, video, picture {
     position: relative;
     z-index: 2;
     margin-top: 0 !important;
-    padding-top: 5px !important;
+    padding-top: clamp(4px, 0.8vh, 8px) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.16) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -406,7 +414,7 @@ img, canvas, svg, video, picture {
 
 .login-welcome-title {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    font-size: 0.88rem !important;
+    font-size: clamp(0.92rem, 1.5vh, 1.04rem) !important;
     font-weight: 700 !important;
     color: #ffffff !important;
     font-style: normal !important;
@@ -421,13 +429,13 @@ img, canvas, svg, video, picture {
 .login-greeting-icon {
     display: inline-flex;
     align-items: center;
-    font-size: 0.88rem;
+    font-size: clamp(0.92rem, 1.5vh, 1.04rem);
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
 }
 
 .login-welcome-sub {
     font-family: 'Inter', -apple-system, sans-serif !important;
-    font-size: 0.72rem !important;
+    font-size: clamp(0.74rem, 1.2vh, 0.82rem) !important;
     color: #d1fae5 !important;
     font-style: normal !important;
     opacity: 0.95 !important;
@@ -446,25 +454,27 @@ img, canvas, svg, video, picture {
     }
 }
 
-/* Tightened Form Body with High-Contrast Crisp Controls */
+/* Expanded Form Body Fitting Height Elegantly with High-Contrast Controls */
 .login-form {
-    padding: 16px 22px 14px;
+    padding: clamp(16px, 2.6vh, 26px) clamp(22px, 4vw, 30px) clamp(12px, 2vh, 18px);
     background: transparent !important;
     display: flex !important;
     flex-direction: column !important;
+    justify-content: space-evenly !important;
+    flex: 1 1 auto !important;
 }
 
 .login-field {
-    margin-bottom: 11px;
+    margin-bottom: clamp(12px, 2vh, 18px);
 }
 
 .login-field label {
     display: block;
     font-family: 'Inter', -apple-system, sans-serif;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #475569;
-    margin-bottom: 4px;
+    font-size: clamp(0.76rem, 1.3vh, 0.86rem);
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: clamp(4px, 0.8vh, 7px);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -476,10 +486,10 @@ img, canvas, svg, video, picture {
 
 .login-field input {
     width: 100%;
-    padding: 9px 12px;
+    padding: clamp(11px, 1.8vh, 15px) 15px;
     border: 1.5px solid #cbd5e1 !important;
-    border-radius: 8px;
-    font-size: 0.90rem;
+    border-radius: 10px;
+    font-size: clamp(0.94rem, 1.5vh, 1.02rem);
     font-family: 'Inter', -apple-system, sans-serif;
     color: #0f172a;
     transition: all 0.2s ease;
@@ -489,7 +499,7 @@ img, canvas, svg, video, picture {
 
 .login-field input::placeholder {
     color: #94a3b8;
-    font-size: 0.88rem;
+    font-size: clamp(0.90rem, 1.4vh, 0.96rem);
 }
 
 .login-field input:focus {
@@ -514,16 +524,16 @@ img, canvas, svg, video, picture {
 }
 
 .password-wrapper input {
-    padding-right: 40px;
+    padding-right: 44px;
 }
 
 .toggle-password {
     position: absolute;
-    right: 3px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border: none;
     background: none;
     color: #64748b;
@@ -546,7 +556,7 @@ img, canvas, svg, video, picture {
     justify-content: space-between;
     gap: 8px;
     margin-top: 1px;
-    margin-bottom: 13px;
+    margin-bottom: clamp(12px, 2vh, 18px);
     flex-wrap: wrap;
 }
 
@@ -570,11 +580,11 @@ img, canvas, svg, video, picture {
 .toggle-slider {
     position: relative;
     display: inline-block;
-    width: 34px;
-    height: 18px;
+    width: 38px;
+    height: 21px;
     background-color: #94a3b8;
-    border: 1px solid #64748b;
-    border-radius: 18px;
+    border: 1.5px solid #64748b;
+    border-radius: 20px;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.20);
     flex-shrink: 0;
@@ -584,8 +594,8 @@ img, canvas, svg, video, picture {
 .toggle-slider::before {
     position: absolute;
     content: "";
-    height: 12px;
-    width: 12px;
+    height: 14px;
+    width: 14px;
     left: 2px;
     bottom: 2px;
     background-color: #ffffff;
@@ -600,7 +610,7 @@ img, canvas, svg, video, picture {
 }
 
 .remember-me-toggle input:checked + .toggle-slider::before {
-    transform: translateX(16px);
+    transform: translateX(17px);
 }
 
 .remember-me-toggle input:focus-visible + .toggle-slider {
@@ -610,7 +620,7 @@ img, canvas, svg, video, picture {
 .remember-me-toggle .remember-label {
     font-family: 'Inter', -apple-system, sans-serif;
     color: #475569;
-    font-size: 0.76rem;
+    font-size: clamp(0.80rem, 1.3vh, 0.86rem);
     font-weight: 600;
     transition: color 0.2s;
 }
@@ -625,7 +635,7 @@ img, canvas, svg, video, picture {
     padding: 2px 4px;
     color: #0d4a2b;
     font-family: 'Inter', -apple-system, sans-serif;
-    font-size: 0.76rem;
+    font-size: clamp(0.80rem, 1.3vh, 0.86rem);
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
@@ -671,12 +681,12 @@ img, canvas, svg, video, picture {
 
 .login-btn {
     width: 100%;
-    padding: 10px 16px;
+    padding: clamp(12px, 2vh, 16px) 20px;
     background: linear-gradient(135deg, #0d4a2b 0%, #15693c 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 0.92rem;
+    border-radius: 10px;
+    font-size: clamp(0.98rem, 1.5vh, 1.08rem);
     font-weight: 700;
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
     letter-spacing: 0.02em;
@@ -686,7 +696,7 @@ img, canvas, svg, video, picture {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 12px rgba(13, 74, 43, 0.35);
+    box-shadow: 0 4px 14px rgba(13, 74, 43, 0.38);
 }
 
 .login-btn:hover {
@@ -706,18 +716,18 @@ img, canvas, svg, video, picture {
 }
 
 .login-footer {
-    padding: 8px 16px;
+    padding: clamp(10px, 1.5vh, 14px) 20px;
     text-align: center;
     background: rgba(248, 250, 252, 0.94) !important;
     border-top: 1px solid #e2e8f0 !important;
     flex-shrink: 0;
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 22px 22px;
 }
 
 .login-footer p {
     font-family: 'Inter', -apple-system, sans-serif;
-    font-size: 0.72rem;
-    font-weight: 500;
+    font-size: clamp(0.74rem, 1.2vh, 0.80rem);
+    font-weight: 600;
     color: #64748b;
     margin: 0;
 }
@@ -727,22 +737,56 @@ img, canvas, svg, video, picture {
     color: #0d4a2b;
 }
 
+/* Medium & Compact Screens: smooth scale without overflow */
+@media (max-height: 720px) {
+    .login-container {
+        height: calc(100dvh - 14px) !important;
+    }
+    .login-header {
+        padding: 10px 18px 8px !important;
+    }
+    .login-logo {
+        width: 74px !important;
+        height: 74px !important;
+        margin: 0 auto 4px !important;
+    }
+    .login-form {
+        padding: 12px 18px 10px !important;
+    }
+    .login-field {
+        margin-bottom: 8px !important;
+    }
+    .login-field input {
+        padding: 8px 12px !important;
+    }
+    .login-btn {
+        padding: 9px 16px !important;
+    }
+}
+
 /* Mobile & Low-Height Screens: compact fit, zero vertical scrollbar */
-@media (max-height: 560px), (max-width: 380px) {
+@media (max-height: 580px), (max-width: 380px) {
     .login-overlay {
-        padding: 6px 10px !important;
+        padding: 4px 8px !important;
     }
     .login-container {
         max-width: 400px !important;
         width: 100% !important;
+        height: calc(100dvh - 8px) !important;
+    }
+    .login-card,
+    .auth-box {
+        border-radius: 16px !important;
+        height: calc(100% - 18px) !important;
     }
     .login-header {
-        padding: 10px 14px 6px !important;
+        padding: 8px 12px 5px !important;
+        border-radius: 16px 16px 0 0 !important;
     }
     .login-logo {
-        width: 48px !important;
-        height: 48px !important;
-        margin: 0 auto 3px !important;
+        width: 52px !important;
+        height: 52px !important;
+        margin: 0 auto 2px !important;
     }
     .school-title-primary {
         font-size: 0.88rem !important;
@@ -752,17 +796,17 @@ img, canvas, svg, video, picture {
     }
     .login-school-title,
     .login-header h1 {
-        margin: 0 auto 3px !important;
+        margin: 0 auto 2px !important;
     }
     .login-system-badge {
         padding: 1px 7px !important;
-        margin-bottom: 3px !important;
+        margin-bottom: 2px !important;
     }
     .login-system-text {
         font-size: 0.62rem !important;
     }
     .login-welcome-banner {
-        padding-top: 3px !important;
+        padding-top: 2px !important;
         gap: 1px !important;
     }
     .login-welcome-title {
@@ -772,10 +816,10 @@ img, canvas, svg, video, picture {
         font-size: 0.64rem !important;
     }
     .login-form {
-        padding: 10px 14px 8px !important;
+        padding: 8px 14px 6px !important;
     }
     .login-field {
-        margin-bottom: 6px !important;
+        margin-bottom: 5px !important;
     }
     .login-field label {
         font-size: 0.66rem !important;
@@ -786,7 +830,7 @@ img, canvas, svg, video, picture {
         font-size: 0.82rem !important;
     }
     .login-options-row {
-        margin-bottom: 8px !important;
+        margin-bottom: 6px !important;
     }
     .remember-me-toggle .remember-label,
     .forgot-password-btn {
@@ -798,13 +842,14 @@ img, canvas, svg, video, picture {
     }
     .login-footer {
         padding: 5px 8px !important;
+        border-radius: 0 0 16px 16px !important;
     }
     .login-footer p {
         font-size: 0.64rem !important;
     }
     .login-copyright-notice {
-        margin-top: 6px !important;
-        font-size: 0.68rem !important;
+        margin-top: 4px !important;
+        font-size: 0.66rem !important;
     }
 }
 
