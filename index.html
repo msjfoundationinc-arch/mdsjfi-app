@@ -7,12 +7,13 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Montessori de San Jose Foundation Inc. — Student Database</title>
+    <base href="/">
     <script>
     // Ensure relative assets resolve to root if loaded via /student/ or /profile/ subpath
     if (window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/profile/') !== -1) {
-        var baseTag = document.createElement('base');
+        var baseTag = document.querySelector('base') || document.createElement('base');
         baseTag.href = window.location.origin + '/';
-        document.head.appendChild(baseTag);
+        if (!baseTag.parentNode) document.head.appendChild(baseTag);
     }
     </script>
     <!-- Crisp High-Definition Favicon Architecture (Zero Tab Bleed / Overlap, 100% Transparent Background) -->
@@ -23,7 +24,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_02">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261121_04">
+    <link rel="stylesheet" href="styles.css?v=20261121_06">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -103,25 +104,40 @@
         if (matrix && Array.isArray(matrix) && matrix.length > 0) {
             var existingStus = null;
             try { existingStus = JSON.parse(localStorage.getItem('mdsj_students') || 'null'); } catch(e){}
-            if (!existingStus || !Array.isArray(existingStus)) {
-                localStorage.setItem('mdsj_students', JSON.stringify(matrix));
-            } else if (existingStus.length < matrix.length) {
-                var existMap = {};
+            var storedPhotos = {};
+            try { storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}'); } catch(e){}
+
+            var existMap = {};
+            if (existingStus && Array.isArray(existingStus)) {
                 existingStus.forEach(function(es){
                     if (es && es.id) existMap[es.id] = es;
                     if (es && es.lrn) existMap[String(es.lrn).trim()] = es;
+                    if (es && es.studentNumber) existMap[String(es.studentNumber).trim()] = es;
                 });
-                var merged = JSON.parse(JSON.stringify(matrix));
-                merged.forEach(function(m){
-                    var ex = existMap[m.id] || (m.lrn ? existMap[String(m.lrn).trim()] : null);
-                    if (ex) {
-                        if (ex.photo) m.photo = ex.photo;
-                        if (ex.signature) m.signature = ex.signature;
-                        if (ex.birthCertDoc) m.birthCertDoc = ex.birthCertDoc;
-                        if (ex.torDoc) m.torDoc = ex.torDoc;
-                        if (ex.studentCardDoc) m.studentCardDoc = ex.studentCardDoc;
-                    }
-                });
+            }
+
+            var merged = JSON.parse(JSON.stringify(matrix));
+            merged.forEach(function(m){
+                var sId = m.id || '';
+                var sIdRaw = sId.replace(/^STU-/, '');
+                var sLrn = m.lrn ? String(m.lrn).trim() : '';
+                var sNum = m.studentNumber ? String(m.studentNumber).trim() : '';
+
+                var ex = existMap[sId] || (sIdRaw ? existMap[sIdRaw] : null) || (sLrn ? existMap[sLrn] : null) || (sNum ? existMap[sNum] : null);
+                if (ex) {
+                    if (ex.photo) m.photo = ex.photo;
+                    if (ex.signature) m.signature = ex.signature;
+                    if (ex.birthCertDoc) m.birthCertDoc = ex.birthCertDoc;
+                    if (ex.torDoc) m.torDoc = ex.torDoc;
+                    if (ex.studentCardDoc) m.studentCardDoc = ex.studentCardDoc;
+                }
+                var pPhoto = (sId && storedPhotos[sId]) || (sIdRaw && storedPhotos[sIdRaw]) || (sLrn && storedPhotos[sLrn]) || (sNum && storedPhotos[sNum]);
+                if (pPhoto && (!m.photo || m.photo.length < 10)) {
+                    m.photo = pPhoto;
+                }
+            });
+
+            if (!existingStus || !Array.isArray(existingStus) || existingStus.length < matrix.length) {
                 localStorage.setItem('mdsj_students', JSON.stringify(merged));
             }
         }
@@ -160,7 +176,7 @@
     <!-- ==================== LOGIN SCREEN ==================== -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-container">
-            <div class="login-card">
+            <div class="login-card auth-box">
                 <div class="login-header" id="loginHeader">
                     <div class="login-header-glow" aria-hidden="true"></div>
                     <div class="login-logo">
@@ -179,56 +195,77 @@
                     </div>
                     <div class="login-welcome-banner" id="loginWelcomeBanner">
                         <div class="login-welcome-title" id="loginWelcomeTitle">
-                            <span class="login-greeting-icon" id="loginGreetingIcon"><i class="fas fa-moon" style="color: #93c5fd;"></i></span>
-                            <span class="login-greeting-text" id="loginGreetingText">Welcome back, Personnel!</span>
+                            <span class="login-greeting-icon" id="loginGreetingIcon"></span>
+                            <span class="login-greeting-text" id="loginGreetingText"></span>
                         </div>
                         <div class="login-welcome-sub">Sign in to start your session</div>
                     </div>
                 </div>
                 <script>
-                function updatePhilippineTimeGreeting() {
-                    try {
-                        var titleEl = document.getElementById('loginGreetingText');
-                        var iconEl = document.getElementById('loginGreetingIcon');
-                        if (!titleEl) return;
-
-                        // Strictly evaluate Philippine Standard Time (Asia/Manila, UTC+8) using Intl.DateTimeFormat
-                        var phtHour;
+                (function() {
+                    function getPhilippineTimeGreeting() {
+                        var phtHour = NaN;
                         try {
                             var phtFormatter = new Intl.DateTimeFormat('en-US', {
                                 timeZone: 'Asia/Manila',
                                 hour: 'numeric',
-                                hourCycle: 'h23'
+                                hour12: false
                             });
-                            phtHour = parseInt(phtFormatter.format(new Date()), 10);
+                            var parts = phtFormatter.formatToParts ? phtFormatter.formatToParts(new Date()) : null;
+                            var hourPart = parts ? parts.find(function(p) { return p.type === 'hour'; }) : null;
+                            if (hourPart) {
+                                phtHour = parseInt(hourPart.value, 10);
+                            } else {
+                                phtHour = parseInt(phtFormatter.format(new Date()), 10);
+                            }
+                            if (phtHour === 24) phtHour = 0;
                         } catch(e) {
-                            var now = new Date();
-                            phtHour = (now.getUTCHours() + 8) % 24;
+                            phtHour = NaN;
                         }
 
-                        if (isNaN(phtHour)) {
+                        if (isNaN(phtHour) || phtHour < 0 || phtHour > 23) {
                             var now = new Date();
                             phtHour = (now.getUTCHours() + 8) % 24;
                         }
 
                         if (phtHour >= 5 && phtHour < 12) {
                             // 5:00 AM – 11:59 AM (PHT): "Good morning, Personnel!" (subtle sun/sunrise icon)
-                            titleEl.textContent = "Good morning, Personnel!";
-                            if (iconEl) iconEl.innerHTML = '<i class="fas fa-sun" style="color: #fde047;"></i>';
+                            return {
+                                text: "Good morning, Personnel!",
+                                icon: '<i class="fas fa-sun" style="color: #fde047;"></i>'
+                            };
                         } else if (phtHour >= 12 && phtHour < 18) {
                             // 12:00 PM – 5:59 PM (PHT): "Good afternoon, Personnel!" (bright sun icon)
-                            titleEl.textContent = "Good afternoon, Personnel!";
-                            if (iconEl) iconEl.innerHTML = '<i class="fas fa-sun" style="color: #facc15;"></i>';
+                            return {
+                                text: "Good afternoon, Personnel!",
+                                icon: '<i class="fas fa-sun" style="color: #facc15;"></i>'
+                            };
                         } else {
                             // 6:00 PM – 4:59 AM (PHT): "Good evening, Personnel!" (crescent moon icon)
-                            titleEl.textContent = "Good evening, Personnel!";
-                            if (iconEl) iconEl.innerHTML = '<i class="fas fa-moon" style="color: #93c5fd;"></i>';
+                            return {
+                                text: "Good evening, Personnel!",
+                                icon: '<i class="fas fa-moon" style="color: #93c5fd;"></i>'
+                            };
                         }
-                    } catch(err) {
-                        console.warn('PHT greeting update error:', err);
                     }
-                }
-                updatePhilippineTimeGreeting();
+
+                    window.getPhilippineTimeGreeting = getPhilippineTimeGreeting;
+                    window.updatePhilippineTimeGreeting = function() {
+                        try {
+                            var titleEl = document.getElementById('loginGreetingText');
+                            var iconEl = document.getElementById('loginGreetingIcon');
+                            if (!titleEl) return;
+                            var g = getPhilippineTimeGreeting();
+                            titleEl.textContent = g.text;
+                            if (iconEl) iconEl.innerHTML = g.icon;
+                        } catch(err) {
+                            console.warn('PHT greeting update error:', err);
+                        }
+                    };
+
+                    // Run immediately to populate dynamically on first paint
+                    window.updatePhilippineTimeGreeting();
+                })();
                 </script>
                 <form id="loginForm" class="login-form" novalidate onsubmit="handleLoginSubmit(event); return false;">
                     <div class="login-field">
@@ -7617,9 +7654,6 @@
                     <i class="fas fa-shield-alt" style="color:#60a5fa; font-size:1.1rem;"></i>
                     <span><strong>MDSJFI Official Learner Profile Verification</strong> &bull; Authenticated DepEd Student Record</span>
                 </div>
-                <button type="button" class="btn btn-sm" onclick="showLoginFromGuest()" style="background:#2563eb; color:#fff; border:none; padding:5px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.80rem; display:inline-flex; align-items:center; gap:6px;">
-                    <i class="fas fa-sign-in-alt"></i> Personnel Sign In
-                </button>
             </div>
             <button class="modal-close" id="closeViewModal" onclick="if (document.documentElement.classList.contains('direct-profile-view') || document.documentElement.classList.contains('guest-qr-view')) { if (typeof handleQrProfileClose === 'function') { handleQrProfileClose(); } else { try{window.close();}catch(e){} } } else { closeModal('viewModal'); }">&times;</button>
             <div class="modal-header">
@@ -7903,7 +7937,7 @@
                     <div id="learnerMobileQrLarge" style="width:200px; height:200px; margin:0 auto; display:flex; align-items:center; justify-content:center; overflow:hidden;"></div>
                 </div>
                 <!-- Direct Online Profile Target URL -->
-                <div id="mobilePassUrlText" style="font-size:0.72rem; color:#0369a1; word-break:break-all; font-family:monospace; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:6px 10px; margin:0 auto 14px; max-width:360px; user-select:all;" title="Learner Direct Profile URL">https://mdsjfi-app-l2es.vercel.app/</div>
+                <div id="mobilePassUrlText" style="font-size:0.72rem; color:#0369a1; word-break:break-all; font-family:monospace; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:6px 10px; margin:0 auto 14px; max-width:360px; user-select:all;" title="Learner Direct Profile URL">https://mdsjfi.vercel.app/</div>
 
                 <!-- Student Information Card -->
                 <div style="background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:14px; text-align:left; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
@@ -8881,7 +8915,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_04"></script>
+    <script src="app.js?v=20261121_06"></script>
 </body>
 </html>
 

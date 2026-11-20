@@ -532,14 +532,57 @@ function getStudentPhoto(s) {
     if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) return s.photo.trim();
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
-        const photo = (s.id && storedPhotos[s.id]) || 
-                      (s.lrn && storedPhotos[String(s.lrn).trim()]) || 
-                      (s.studentNumber && storedPhotos[String(s.studentNumber).trim()]);
+        const sId = s.id ? String(s.id).trim() : '';
+        const sIdRaw = sId.replace(/^STU-/, '');
+        const sLrn = s.lrn ? String(s.lrn).trim() : '';
+        const sNum = s.studentNumber ? String(s.studentNumber).trim() : '';
+
+        let photo = (sId && storedPhotos[sId]) || 
+                    (sIdRaw && storedPhotos[sIdRaw]) || 
+                    (sIdRaw && storedPhotos['STU-' + sIdRaw]) ||
+                    (sLrn && storedPhotos[sLrn]) || 
+                    (sNum && storedPhotos[sNum]);
+
+        if (!photo && typeof storedPhotos === 'object') {
+            const keys = Object.keys(storedPhotos);
+            for (const k of keys) {
+                const kClean = String(k).trim().toLowerCase();
+                if ((sId && kClean === sId.toLowerCase()) || 
+                    (sIdRaw && kClean === sIdRaw.toLowerCase()) || 
+                    (sLrn && kClean === sLrn.toLowerCase()) || 
+                    (sNum && kClean === sNum.toLowerCase())) {
+                    photo = storedPhotos[k];
+                    break;
+                }
+            }
+        }
+
         if (photo && typeof photo === 'string' && photo.trim().length > 10) {
             s.photo = photo.trim();
             return photo.trim();
         }
     } catch(e) {}
+
+    // Check localStorage mdsj_students
+    try {
+        const raw = localStorage.getItem('mdsj_students');
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+                const match = list.find(x => 
+                    (x.id && s.id && (String(x.id) === String(s.id) || String(x.id).replace(/^STU-/, '') === String(s.id).replace(/^STU-/, ''))) ||
+                    (x.lrn && s.lrn && String(x.lrn).trim() === String(s.lrn).trim()) ||
+                    (x.studentNumber && s.studentNumber && String(x.studentNumber).trim() === String(s.studentNumber).trim())
+                );
+                if (match && match.photo && typeof match.photo === 'string' && match.photo.trim().length > 10) {
+                    s.photo = match.photo.trim();
+                    persistStudentPhoto(s, s.photo);
+                    return s.photo;
+                }
+            }
+        }
+    } catch(e) {}
+
     try {
         if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
             const enroll = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id) ||
@@ -560,14 +603,27 @@ function persistStudentPhoto(student, dataUrl) {
     if (!student) return;
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
+        const sId = student.id ? String(student.id).trim() : '';
+        const sIdRaw = sId.replace(/^STU-/, '');
+        const sLrn = student.lrn ? String(student.lrn).trim() : '';
+        const sNum = student.studentNumber ? String(student.studentNumber).trim() : '';
+
         if (dataUrl) {
-            if (student.id) storedPhotos[student.id] = dataUrl;
-            if (student.lrn) storedPhotos[String(student.lrn).trim()] = dataUrl;
-            if (student.studentNumber) storedPhotos[String(student.studentNumber).trim()] = dataUrl;
+            if (sId) storedPhotos[sId] = dataUrl;
+            if (sIdRaw) {
+                storedPhotos[sIdRaw] = dataUrl;
+                storedPhotos['STU-' + sIdRaw] = dataUrl;
+            }
+            if (sLrn) storedPhotos[sLrn] = dataUrl;
+            if (sNum) storedPhotos[sNum] = dataUrl;
         } else {
-            if (student.id) delete storedPhotos[student.id];
-            if (student.lrn) delete storedPhotos[String(student.lrn).trim()];
-            if (student.studentNumber) delete storedPhotos[String(student.studentNumber).trim()];
+            if (sId) delete storedPhotos[sId];
+            if (sIdRaw) {
+                delete storedPhotos[sIdRaw];
+                delete storedPhotos['STU-' + sIdRaw];
+            }
+            if (sLrn) delete storedPhotos[sLrn];
+            if (sNum) delete storedPhotos[sNum];
         }
         localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
     } catch(e) {}
@@ -706,20 +762,26 @@ function updateLoginGreeting() {
         if (!titleEl) return;
 
         // Strictly evaluate Philippine Standard Time (Asia/Manila, UTC+8) using Intl.DateTimeFormat
-        let phtHour;
+        let phtHour = NaN;
         try {
             const phtFormatter = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Manila',
                 hour: 'numeric',
-                hourCycle: 'h23'
+                hour12: false
             });
-            phtHour = parseInt(phtFormatter.format(new Date()), 10);
+            const parts = phtFormatter.formatToParts ? phtFormatter.formatToParts(new Date()) : null;
+            const hourPart = parts ? parts.find(p => p.type === 'hour') : null;
+            if (hourPart) {
+                phtHour = parseInt(hourPart.value, 10);
+            } else {
+                phtHour = parseInt(phtFormatter.format(new Date()), 10);
+            }
+            if (phtHour === 24) phtHour = 0;
         } catch(e) {
-            const now = new Date();
-            phtHour = (now.getUTCHours() + 8) % 24;
+            phtHour = NaN;
         }
 
-        if (isNaN(phtHour)) {
+        if (isNaN(phtHour) || phtHour < 0 || phtHour > 23) {
             const now = new Date();
             phtHour = (now.getUTCHours() + 8) % 24;
         }
@@ -2896,7 +2958,7 @@ function viewStudent(id) {
 
 // ======================== LEARNER UNIQUE QR CODE & DIRECT PROFILE URL ========================
 
-const OFFICIAL_APP_URL = 'https://mdsjfi-app-l2es.vercel.app';
+const OFFICIAL_APP_URL = 'https://mdsjfi.vercel.app';
 
 function getStudentProfileUrl(s) {
     if (!s) return '';
@@ -2907,12 +2969,9 @@ function getStudentProfileUrl(s) {
     // Official production domain for all learner QR codes and direct online access
     let origin = OFFICIAL_APP_URL;
 
-    // If currently running in a production browser environment on a live non-localhost domain
-    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null') {
-        const curOrigin = window.location.origin;
-        if (!curOrigin.includes('localhost') && !curOrigin.includes('127.0.0.1') && window.location.protocol.startsWith('http')) {
-            origin = curOrigin.replace(/^http:\/\//i, 'https://').replace(/\/+$/, '');
-        }
+    // Use current browser origin if loaded over HTTP/HTTPS
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && window.location.protocol.startsWith('http')) {
+        origin = window.location.origin.replace(/\/+$/, '');
     }
 
     // Direct absolute URL uniquely locating the specific learner
@@ -3770,15 +3829,26 @@ function previewDocData(prefix) {
 
 function enlargeStudentProfilePhoto() {
     const s = (typeof currentViewId !== 'undefined' && currentViewId) ? findStudent(currentViewId) : null;
-    if (!s || !s.photo) {
-        showToast('No profile photo uploaded for this student.', 'info');
+    let photo = (s ? getStudentPhoto(s) : null) || (s && s.photo);
+    if (!photo) {
+        const img = document.querySelector('#viewAvatar img');
+        if (img && img.src && img.src.length > 20) {
+            photo = img.src;
+        }
+    }
+    if (!photo && s) {
+        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+        photo = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
+    }
+    if (!photo) {
+        showToast('No profile photo available for this learner.', 'info');
         return;
     }
-    const fullName = `${s.lastName}, ${s.firstName} ${s.middleName || ''}${s.suffix ? ' ' + s.suffix : ''}`.trim();
+    const fullName = s ? `${s.lastName}, ${s.firstName} ${s.middleName || ''}${s.suffix ? ' ' + s.suffix : ''}`.trim() : 'Learner';
     viewDocumentInModal(
         `${fullName} — Profile Photo`,
-        `LRN: ${s.lrn || '—'} | Grade ${s.gradeLevel} - ${s.section}`,
-        { data: s.photo, name: `${s.lastName}_${s.firstName}_photo.jpg`, type: 'image/jpeg' }
+        s ? `LRN: ${s.lrn || '—'} | Grade ${s.gradeLevel} - ${s.section}` : 'Official Academic Record',
+        { data: photo, name: `${s ? (s.lastName + '_' + s.firstName) : 'student'}_photo.jpg`, type: 'image/jpeg' }
     );
 }
 window.enlargeStudentProfilePhoto = enlargeStudentProfilePhoto;
@@ -4917,8 +4987,10 @@ function proceedEditStudent(s) {
     if (discGroup) discGroup.style.display = (s.isDiscounted === 'YES') ? 'block' : 'none';
 
     // Restore Student Photo
-    if (s.photo) {
-        setPhotoPreview(s.photo);
+    const photoToRestore = (s.photo && s.photo.length > 10) ? s.photo : getStudentPhoto(s);
+    if (photoToRestore) {
+        s.photo = photoToRestore;
+        setPhotoPreview(photoToRestore);
     } else {
         removeCurrentPhoto(false);
     }
@@ -6401,7 +6473,14 @@ function collectFormData() {
     const discAmt = isDisc === 'YES' ? (Number(getV('discountAmount')) || 0) : 0;
     const net = Math.max(0, tuition - discAmt);
 
-    const photo = document.getElementById('studentPhoto')?.value || '';
+    let photo = document.getElementById('studentPhoto')?.value || '';
+    const editId = document.getElementById('editStudentId')?.value;
+    if (!photo && editId) {
+        const existingStudent = findStudent(editId);
+        if (existingStudent) {
+            photo = existingStudent.photo || getStudentPhoto(existingStudent) || '';
+        }
+    }
     const signature = document.getElementById('studentSignature')?.value || '';
 
     const bcData = document.getElementById('birthCertDocData')?.value;
