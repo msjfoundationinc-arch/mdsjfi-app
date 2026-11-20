@@ -29,6 +29,7 @@ const USERS = [
     {
         id: "admin",
         username: "admin",
+        email: "president@mdsjfi.edu.ph",
         password: "admin123",
         displayName: "NI\u00D1O ALOYSIUS B. COLEGADO",
         role: "School President",
@@ -38,6 +39,7 @@ const USERS = [
     {
         id: "registrar",
         username: "registrar",
+        email: "registrar@mdsjfi.edu.ph",
         password: "mdsjfiregistrar",
         displayName: "CARRELLE B. COLEGADO",
         role: "Registrar / In-Charge, Accounting",
@@ -49,7 +51,8 @@ const USERS = [
         empId: "EMP-T001",
         employeeNo: "T001",
         username: "resteban",
-        aliases: ["t001", "emp-t001"],
+        email: "r.esteban@mdsjfi.edu.ph",
+        aliases: ["t001", "emp-t001", "EMP-T001", "T001"],
         password: "mdsjfi_t001",
         displayName: "ROSABELYN R. ESTEBAN",
         role: "Faculty / Class Adviser",
@@ -62,7 +65,8 @@ const USERS = [
         empId: "EMP-T002",
         employeeNo: "T002",
         username: "mbarel",
-        aliases: ["t002", "emp-t002"],
+        email: "m.barel@mdsjfi.edu.ph",
+        aliases: ["t002", "emp-t002", "EMP-T002", "T002"],
         password: "mdsjfi_t002",
         displayName: "MICA MAE B. BAREL",
         role: "Faculty / Class Adviser",
@@ -75,7 +79,8 @@ const USERS = [
         empId: "EMP-T004",
         employeeNo: "T004",
         username: "lbartolo",
-        aliases: ["t004", "emp-t004"],
+        email: "l.bartolo@mdsjfi.edu.ph",
+        aliases: ["t004", "emp-t004", "EMP-T004", "T004"],
         password: "mdsjfi_t004",
         displayName: "LUCKY IRICH M. BARTOLO",
         role: "Faculty / Class Adviser",
@@ -88,7 +93,8 @@ const USERS = [
         empId: "EMP-T005",
         employeeNo: "T005",
         username: "gaguilana",
-        aliases: ["t005", "emp-t005"],
+        email: "g.aguilana@mdsjfi.edu.ph",
+        aliases: ["t005", "emp-t005", "EMP-T005", "T005"],
         password: "mdsjfi_t005",
         displayName: "GENELYN P. AGUILANA",
         role: "Faculty / Class Adviser",
@@ -101,7 +107,8 @@ const USERS = [
         empId: "EMP-T006",
         employeeNo: "T006",
         username: "rasong",
-        aliases: ["t006", "emp-t006"],
+        email: "r.asong@mdsjfi.edu.ph",
+        aliases: ["t006", "emp-t006", "EMP-T006", "T006"],
         password: "mdsjfi_t006",
         displayName: "REA MEA M. ASONG",
         role: "Faculty / Class Adviser",
@@ -114,7 +121,8 @@ const USERS = [
         empId: "EMP-T007",
         employeeNo: "T007",
         username: "mfabrigas",
-        aliases: ["t007", "emp-t007"],
+        email: "m.fabrigas@mdsjfi.edu.ph",
+        aliases: ["t007", "emp-t007", "EMP-T007", "T007"],
         password: "mdsjfi_t007",
         displayName: "MARA LYKKA G. FABRIGAS",
         role: "Faculty / Class Adviser",
@@ -127,7 +135,8 @@ const USERS = [
         empId: "EMP-T008",
         employeeNo: "T008",
         username: "gcansuncad",
-        aliases: ["t008", "emp-t008", "principal"],
+        email: "principal@mdsjfi.edu.ph",
+        aliases: ["t008", "emp-t008", "EMP-T008", "T008", "principal"],
         password: "mdsjfi_t008",
         displayName: "GANITO P. CANSUNCAD",
         role: "School Principal / Academic Head",
@@ -687,6 +696,7 @@ function initApp() {
     try {
         const studentKey = getStudentIdFromUrl();
         if (studentKey) {
+            if (typeof loadStudents === 'function') loadStudents();
             directStudentTarget = findStudent(studentKey);
         }
     } catch(e) {}
@@ -715,7 +725,8 @@ function initApp() {
                 overlay.style.removeProperty('display');
                 overlay.style.display = 'none';
             }
-            document.documentElement.classList.add('direct-profile-view');
+            document.documentElement.classList.add('direct-profile-view', 'guest-qr-view');
+            document.documentElement.classList.remove('user-logged-in');
             document.body.classList.remove('app-hidden');
             setTimeout(() => {
                 viewStudent(directStudentTarget.id);
@@ -733,7 +744,7 @@ function initApp() {
                 overlay.style.removeProperty('display');
                 overlay.style.display = 'flex';
             }
-            document.documentElement.classList.remove('user-logged-in');
+            document.documentElement.classList.remove('user-logged-in', 'direct-profile-view', 'guest-qr-view');
             document.body.classList.add('app-hidden');
         }
     }
@@ -771,6 +782,7 @@ function showApp(user) {
         overlay.style.display = 'none';
     }
     document.body.classList.remove('app-hidden');
+    document.documentElement.classList.remove('guest-qr-view', 'direct-profile-view');
     document.documentElement.classList.add('user-logged-in');
 
     if (isTeacher()) {
@@ -3990,31 +4002,174 @@ function openSOAModal(id) {
 
 function printSOAModal() {
     const activeId = currentSOAStudentId || window.currentSOAStudentId;
-    if (activeId) {
-        currentSOAStudentId = activeId;
-        window.currentSOAStudentId = activeId;
-    }
-
-    const modal = document.getElementById('soaModal');
-    if (!modal) {
-        window.print();
+    const s = findStudent(activeId);
+    if (!s) {
+        showToast('Please select a student Statement of Account first.', 'warning');
         return;
     }
 
-    document.body.classList.remove('printing-profile', 'printing-financial-summary');
-    document.body.classList.add('printing-soa');
+    const tuition = Number(s.tuitionFee) || DEFAULT_BASE_TUITION;
+    const isEsc = (s.escGrantee === 'YES');
+    const isDisc = (isEsc || s.isDiscounted === 'YES');
+    const discount = (s.isDiscounted === 'YES' && Number(s.discountAmount) > 0)
+        ? Number(s.discountAmount)
+        : (isEsc ? 9000 : 0);
+    const net = Math.max(0, tuition - discount);
+    const payments = Array.isArray(s.payments) ? s.payments : [];
+    const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    const remainingBalance = Math.max(0, net - totalPaid);
+    const sy = s.schoolYear || currentSchoolYear || '2026-2027';
+    const nowStr = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const cleanup = () => {
-        document.body.classList.remove('printing-soa');
-        window.removeEventListener('afterprint', cleanup);
-    };
+    const printWin = window.open('', '_blank', 'width=980,height=850');
+    if (!printWin) {
+        showToast('Please allow popup windows to print Statement of Account.', 'warning');
+        return;
+    }
 
-    window.addEventListener('afterprint', cleanup);
+    const rowsHtml = payments.length > 0 ? payments.map((p, idx) => `
+        <tr>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${idx + 1}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${p.date || '—'}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; font-family:monospace; font-weight:bold; text-align:center;">${escapeHtml(p.refNo || '—')}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:left;">${escapeHtml(p.particulars || 'Tuition Fee Installment')}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${escapeHtml(p.method || 'Cash')}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:right; font-weight:bold; color:#0369a1;">&#8369;${formatNumber(p.amount)}</td>
+        </tr>
+    `).join('') : `
+        <tr>
+            <td colspan="6" style="padding:22px; text-align:center; color:#64748b; font-size:12px; border:1px solid #cbd5e1;">
+                No payment installments recorded yet for this school year.
+            </td>
+        </tr>
+    `;
 
-    setTimeout(() => {
-        window.print();
-        setTimeout(cleanup, 1200);
-    }, 80);
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>MDSJFI - Official Statement of Account - ${escapeHtml(s.lastName)}, ${escapeHtml(s.firstName)}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 24px; color: #1e293b; background: #fff; }
+                .header { display: flex; align-items: center; justify-content: center; gap: 16px; border-bottom: 2px solid #0b2545; padding-bottom: 12px; margin-bottom: 16px; }
+                .header h2 { margin: 0; color: #0b2545; font-size: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+                .header p { margin: 3px 0 0 0; font-size: 12px; color: #64748b; }
+                .meta-bar { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0; }
+                .student-card { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: grid; grid-template-columns: 2fr 1fr; gap: 10px; font-size: 12.5px; }
+                .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+                .stat-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; text-align: center; background: #fafafa; }
+                .stat-box.highlight { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
+                .stat-box.settled { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+                .stat-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+                .stat-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+                .stat-box.highlight .stat-val { color: #dc2626; }
+                .stat-box.settled .stat-val { color: #16a34a; }
+                table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; font-size: 12px; }
+                th { background: #0b2545 !important; color: #fff !important; padding: 8px 10px !important; font-size: 11px !important; text-transform: uppercase !important; border: 1px solid #0b2545 !important; vertical-align: middle !important; }
+                td { padding: 7px 10px !important; border: 1px solid #cbd5e1 !important; vertical-align: middle !important; }
+                .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                .sig-box { text-align: center; width: 44%; }
+                .sig-label { font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left; }
+                .sig-line { border-top: 1.5px solid #000; margin-bottom: 4px; }
+                .sig-name { font-weight: bold; font-size: 13px; }
+                .sig-title { font-size: 11px; color: #475569; }
+                @media print {
+                    @page { size: portrait; margin: 12mm; }
+                    body { margin: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="school-logo.png" alt="MDSJFI Official Logo" style="height:65px; width:65px; object-fit:contain;" onerror="this.src='logo.jpg'; this.onerror=null;">
+                <div style="text-align:center;">
+                    <h2>MONTESSORI DE SAN JOSE FOUNDATION INC.</h2>
+                    <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">0696 P. Burgos St., Brgy. Pag-asa, San Jose, Occidental Mindoro</p>
+                    <p style="margin: 3px 0 0 0; font-size: 12px; font-weight: bold; color: #0b2545;">School Year ${sy}</p>
+                    <h3 style="margin: 6px 0 0 0; color: #1e293b; font-size: 15px; letter-spacing: 0.5px; text-transform:uppercase;">OFFICIAL STATEMENT OF ACCOUNT (SOA)</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; color: #0b2545; font-weight: bold;">Learner Permanent Financial Record &bull; Printed: ${nowStr}</p>
+                </div>
+            </div>
+
+            <div class="student-card">
+                <div>
+                    <div><strong>Learner Name:</strong> <span style="font-size:14px; font-weight:700; color:#0f172a;">${escapeHtml(s.lastName)}, ${escapeHtml(s.firstName)} ${escapeHtml(s.middleName || '')}</span></div>
+                    <div style="margin-top:4px;"><strong>Grade Level &amp; Section:</strong> Grade ${s.gradeLevel} - ${escapeHtml(s.section)}</div>
+                </div>
+                <div>
+                    <div><strong>LRN:</strong> <span style="font-family:monospace; font-weight:700;">${escapeHtml(s.lrn)}</span></div>
+                    <div style="margin-top:4px;"><strong>ESC Grantee Status:</strong> <span style="font-weight:700; color:${isEsc ? '#15803d' : '#64748b'};">${isEsc ? 'YES (ESC PEAC Subsidy Grantee)' : 'NO (Regular)'}</span></div>
+                </div>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Base Tuition Fee</div>
+                    <div class="stat-val">&#8369;${formatNumber(tuition)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Discount / ESC Subsidy</div>
+                    <div class="stat-val" style="color:#059669;">-&#8369;${formatNumber(discount)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Net Payable Fee</div>
+                    <div class="stat-val" style="color:#0284c7;">&#8369;${formatNumber(net)}</div>
+                </div>
+                <div class="stat-box ${remainingBalance === 0 ? 'settled' : 'highlight'}">
+                    <div class="stat-label">Remaining Balance</div>
+                    <div class="stat-val">&#8369;${formatNumber(remainingBalance)}</div>
+                </div>
+            </div>
+
+            <h4 style="margin:16px 0 6px 0; font-size:13px; text-transform:uppercase; color:#0b2545; letter-spacing:0.4px;">Itemized Installment Payment History</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:6%; text-align:center;">#</th>
+                        <th style="width:16%; text-align:center;">Payment Date</th>
+                        <th style="width:20%; text-align:center;">OR / Ref. No.</th>
+                        <th style="width:28%; text-align:left;">Particulars / Description</th>
+                        <th style="width:14%; text-align:center;">Method</th>
+                        <th style="width:16%; text-align:right;">Amount (PHP)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f1f5f9; font-weight:bold;">
+                        <td colspan="5" style="text-align:right; font-size:12px; padding:8px 10px;">TOTAL PAYMENTS RECORDED:</td>
+                        <td style="text-align:right; font-size:13px; color:#0369a1; padding:8px 10px;">&#8369;${formatNumber(totalPaid)}</td>
+                    </tr>
+                    <tr style="background:${remainingBalance === 0 ? '#dcfce7' : '#fee2e2'}; font-weight:bold;">
+                        <td colspan="5" style="text-align:right; font-size:12px; padding:8px 10px;">NET OUTSTANDING BALANCE:</td>
+                        <td style="text-align:right; font-size:13px; color:${remainingBalance === 0 ? '#15803d' : '#dc2626'}; padding:8px 10px;">&#8369;${formatNumber(remainingBalance)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="signatures">
+                <div class="sig-box">
+                    <div class="sig-label">Prepared &amp; Certified By:</div>
+                    <div class="sig-line"></div>
+                    <div class="sig-name">CARRELLE B. COLEGADO</div>
+                    <div class="sig-title">Registrar / In-Charge, Accounting Office</div>
+                </div>
+                <div class="sig-box">
+                    <div class="sig-label">Approved &amp; Verified By:</div>
+                    <div class="sig-line"></div>
+                    <div class="sig-name">NI&Ntilde;O ALOYSIUS B. COLEGADO</div>
+                    <div class="sig-title">School President</div>
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() { window.print(); };
+            </script>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
 }
 
 function toggleSOAEditMode() {
@@ -4399,10 +4554,10 @@ function executeAdminAuth() {
     const errEl = document.getElementById('adminAuthError');
     const errMsg = document.getElementById('adminAuthErrorMsg');
 
-    const u = (userInput ? userInput.value : '').trim().toLowerCase();
+    const u = (userInput ? userInput.value : '').trim();
     const p = (passInput ? passInput.value : '').trim();
 
-    // Verify against School President / Admin credentials
+    // Verify against School President / Admin credentials (strict case match)
     if (u === 'admin' && p === 'admin123') {
         closeModal('adminAuthModal');
         showToast('Administrator authorization granted.', 'success');
@@ -4772,7 +4927,7 @@ function closeModal(id) {
     if (!document.querySelector('.modal-overlay.show, .modal-overlay.active')) {
         document.body.style.overflow = '';
     }
-    if ((id === 'viewModal' || id === 'learnerMobileModal') && document.documentElement.classList.contains('direct-profile-view')) {
+    if ((id === 'viewModal' || id === 'learnerMobileModal') && (document.documentElement.classList.contains('direct-profile-view') || document.documentElement.classList.contains('guest-qr-view'))) {
         const u = getCurrentUser();
         if (!u || !u.username) {
             const overlay = document.getElementById('loginOverlay');
@@ -4781,7 +4936,7 @@ function closeModal(id) {
                 overlay.style.removeProperty('display');
                 overlay.style.display = 'flex';
             }
-            document.documentElement.classList.remove('direct-profile-view');
+            document.documentElement.classList.remove('direct-profile-view', 'guest-qr-view');
             document.body.classList.add('app-hidden');
         }
     }
@@ -7526,8 +7681,8 @@ function renderCashFlowTable(list) {
             : '<span class="status-badge" style="background:#f1f5f9; color:#334155; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="2. Registrar / Accounting"><i class="fas fa-user-edit"></i> Reg.</span>';
 
         let actionBtns = `
-            <button type="button" class="btn-icon view" title="Print Transaction Voucher / Receipt" onclick="printCashFlowVoucher('${item.id}')" style="background:#e0f2fe; color:#0284c7; width:23px; height:23px; border-radius:3px; font-size:0.70rem; margin:0 1.5px;">
-                <i class="fas fa-receipt"></i>
+            <button type="button" class="btn-icon view" title="View Transaction" onclick="viewCashFlowTransaction('${item.id}')" style="background:#e0f2fe; color:#0284c7; width:24px; height:24px; border-radius:3px; font-size:0.72rem; margin:0 1.5px;">
+                <i class="fas fa-eye"></i>
             </button>
         `;
         if (typeof isTeacher !== 'function' || !isTeacher()) {
@@ -8241,60 +8396,168 @@ function printCashFlowReport() {
     printWin.document.close();
 }
 
+function viewCashFlowTransaction(id) {
+    const entries = getCashFlowEntries();
+    const item = entries.find(e => e.id === id);
+    if (!item) {
+        showToast('Cash flow transaction record not found.', 'warning');
+        return;
+    }
+
+    const isIn = item.type === 'IN';
+    const typeBadge = document.getElementById('vcfTypeBadge');
+    if (typeBadge) {
+        typeBadge.innerHTML = isIn 
+            ? '<span class="status-badge" style="background:#dcfce7; color:#15803d; font-weight:700; padding:4px 10px; border-radius:12px; font-size:0.78rem;"><i class="fas fa-arrow-down"></i> Cash In (Collection)</span>'
+            : '<span class="status-badge" style="background:#fee2e2; color:#b91c1c; font-weight:700; padding:4px 10px; border-radius:12px; font-size:0.78rem;"><i class="fas fa-arrow-up"></i> Cash Out (Disbursement)</span>';
+    }
+
+    const iconWrap = document.getElementById('vcfIconWrap');
+    if (iconWrap) {
+        iconWrap.style.background = isIn ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)';
+        iconWrap.innerHTML = isIn ? '<i class="fas fa-hand-holding-usd" style="color:#86efac;"></i>' : '<i class="fas fa-money-bill-wave" style="color:#fca5a5;"></i>';
+    }
+
+    const titleEl = document.getElementById('vcfTitle');
+    if (titleEl) {
+        titleEl.textContent = isIn ? 'Cash In (Collection) Details' : 'Cash Out (Disbursement) Details';
+    }
+
+    const refEl = document.getElementById('vcfRefNo');
+    if (refEl) refEl.textContent = item.refNo || '—';
+
+    const amtEl = document.getElementById('vcfAmount');
+    if (amtEl) {
+        amtEl.textContent = `${isIn ? '+' : '-'}₱${formatNumber(item.amount)}`;
+        amtEl.style.color = isIn ? '#15803d' : '#dc2626';
+    }
+
+    const methodEl = document.getElementById('vcfMethod');
+    if (methodEl) methodEl.innerHTML = `<i class="fas fa-wallet"></i> Payment Method: <strong>${escapeHtml(item.method || 'Cash')}</strong>`;
+
+    const dtEl = document.getElementById('vcfDateTime');
+    if (dtEl) dtEl.textContent = `${item.date || '—'} ${item.time ? 'at ' + item.time : ''}`;
+
+    const syEl = document.getElementById('vcfSchoolYear');
+    if (syEl) syEl.textContent = item.schoolYear || currentSchoolYear || '2026-2027';
+
+    const entLabel = document.getElementById('vcfEntityLabel');
+    if (entLabel) entLabel.textContent = isIn ? 'Received From (Payer / Student Name)' : 'Paid To (Payee / Vendor / Supplier)';
+
+    const entEl = document.getElementById('vcfEntity');
+    if (entEl) entEl.textContent = item.entity || '—';
+
+    const catEl = document.getElementById('vcfCategory');
+    if (catEl) catEl.textContent = item.category || '—';
+
+    const rawRec = (item.receivedBy && item.receivedBy !== '—') 
+        ? item.receivedBy 
+        : (isIn ? (item.encoder && item.encoder.includes('Niño') ? '1. School President (Niño Aloysius B. Colegado)' : '2. Registrar/Accounting (Carrelle B. Colegado)') : '—');
+    const recEl = document.getElementById('vcfReceivedBy');
+    if (recEl) recEl.textContent = rawRec;
+
+    const rawEnc = item.encodedBy || (item.encoder && item.encoder.includes('Niño') ? '1. School President (Niño Aloysius B. Colegado)' : '2. Registrar/Accounting (Carrelle B. Colegado)');
+    const encEl = document.getElementById('vcfEncodedBy');
+    if (encEl) encEl.textContent = rawEnc;
+
+    const remEl = document.getElementById('vcfRemarks');
+    if (remEl) remEl.textContent = item.remarks || 'None';
+
+    const printBtn = document.getElementById('btnVcfPrint');
+    if (printBtn) {
+        printBtn.onclick = function() {
+            printCashFlowVoucher(item.id);
+        };
+    }
+
+    openModal('viewCashFlowModal');
+}
+window.viewCashFlowTransaction = viewCashFlowTransaction;
+
 function printCashFlowVoucher(id) {
     const entries = getCashFlowEntries();
     const item = entries.find(e => e.id === id);
-    if (!item) return;
+    if (!item) {
+        showToast('Transaction record not found.', 'warning');
+        return;
+    }
 
-    const printWin = window.open('', '_blank', 'width=750,height=550');
-    if (!printWin) return;
+    const printWin = window.open('', '_blank', 'width=880,height=750');
+    if (!printWin) {
+        showToast('Please allow popup windows to print transaction voucher.', 'warning');
+        return;
+    }
 
     const isIn = item.type === 'IN';
-    const docTitle = isIn ? 'OFFICIAL CASH RECEIPT VOUCHER' : 'CASH DISBURSEMENT VOUCHER';
+    const docTitle = isIn ? 'OFFICIAL CASH RECEIPT VOUCHER' : 'OFFICIAL CASH DISBURSEMENT VOUCHER';
     const badgeColor = isIn ? '#16a34a' : '#dc2626';
+    const sy = item.schoolYear || currentSchoolYear || '2026-2027';
+    const nowStr = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const rawRec = (item.receivedBy && item.receivedBy !== '—') 
+        ? item.receivedBy 
+        : (isIn ? (item.encoder && item.encoder.includes('Niño') ? 'Niño Aloysius B. Colegado' : 'Carrelle B. Colegado') : 'Official Signatory');
+
+    const rawEnc = (item.encoder && item.encoder.includes('Niño')) 
+        ? 'Niño Aloysius B. Colegado' 
+        : (item.encodedBy && item.encodedBy.includes('President') ? 'Niño Aloysius B. Colegado' : (item.encoder || 'Carrelle B. Colegado'));
 
     printWin.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>${docTitle} - ${escapeHtml(item.refNo)}</title>
+            <title>MDSJFI - ${docTitle} (${escapeHtml(item.refNo)})</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 30px; color: #1e293b; }
-                .voucher-card { border: 2px solid #cbd5e1; border-radius: 10px; padding: 24px; position: relative; }
-                .header { text-align: center; border-bottom: 1.5px solid #0b2545; padding-bottom: 12px; margin-bottom: 16px; }
-                .header h3 { margin: 0; color: #0b2545; font-size: 18px; }
-                .header p { margin: 4px 0 0 0; font-size: 12px; color: #64748b; }
-                .doc-badge { display: inline-block; background: ${badgeColor}; color: #fff; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; margin-top: 8px; }
-                .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px; }
-                .row .label { color: #64748b; font-weight: 600; width: 180px; }
+                body { font-family: Arial, sans-serif; margin: 24px; color: #1e293b; background: #fff; }
+                .header { display: flex; align-items: center; justify-content: center; gap: 16px; border-bottom: 2px solid #0b2545; padding-bottom: 12px; margin-bottom: 16px; }
+                .header h2 { margin: 0; color: #0b2545; font-size: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+                .header p { margin: 3px 0 0 0; font-size: 12px; color: #64748b; }
+                .meta-bar { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0; }
+                .voucher-card { border: 2px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 16px; background: #fff; }
+                .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px; }
+                .row .label { color: #64748b; font-weight: 600; width: 220px; }
                 .row .val { color: #0f172a; font-weight: bold; flex: 1; }
-                .amount-highlight { font-size: 18px; color: ${badgeColor}; }
-                .footer { display: flex; justify-content: space-between; margin-top: 45px; font-size: 12px; }
-                .sig-box { text-align: center; width: 200px; border-top: 1px solid #000; padding-top: 4px; }
+                .amount-highlight { font-size: 20px; color: ${badgeColor}; }
+                .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+                .sig-box { text-align: center; width: 44%; }
+                .sig-label { font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left; }
+                .sig-line { border-top: 1.5px solid #000; margin-bottom: 4px; }
+                .sig-name { font-weight: bold; font-size: 13px; }
+                .sig-title { font-size: 11px; color: #475569; }
+                @media print {
+                    @page { size: portrait; margin: 12mm; }
+                    body { margin: 0; }
+                }
             </style>
         </head>
         <body>
-            <div class="voucher-card">
-                <div class="header">
-                    <h3>MONTESSORI DE SAN JOSE FOUNDATION INC.</h3>
-                    <p>0696 P. Burgos St., Brgy. Pag-asa, San Jose, Occidental Mindoro &bull; DepEd Recognized Official Transaction Voucher</p>
-                    <div class="doc-badge">${docTitle}</div>
+            <div class="header">
+                <img src="school-logo.png" alt="MDSJFI Official Logo" style="height:65px; width:65px; object-fit:contain;" onerror="this.src='logo.jpg'; this.onerror=null;">
+                <div style="text-align:center;">
+                    <h2>MONTESSORI DE SAN JOSE FOUNDATION INC.</h2>
+                    <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">0696 P. Burgos St., Brgy. Pag-asa, San Jose, Occidental Mindoro</p>
+                    <p style="margin: 3px 0 0 0; font-size: 12px; font-weight: bold; color: #0b2545;">School Year ${sy}</p>
+                    <h3 style="margin: 6px 0 0 0; color: #1e293b; font-size: 15px; letter-spacing: 0.5px; text-transform:uppercase;">${docTitle}</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; color: #0b2545; font-weight: bold;">Daily Cash In &amp; Out Journal &bull; Printed: ${nowStr}</p>
                 </div>
+            </div>
 
+            <div class="meta-bar">
+                <div><strong>Flow Type:</strong> <span style="color:${badgeColor}; font-weight:bold;">${isIn ? 'Cash In (Collection / Income)' : 'Cash Out (Disbursement / Expense)'}</span></div>
+                <div><strong>Ref / OR No.:</strong> <span style="font-family:monospace; font-weight:bold;">${escapeHtml(item.refNo)}</span></div>
+            </div>
+
+            <div class="voucher-card">
                 <div class="row">
-                    <span class="label">Reference / OR No.:</span>
-                    <span class="val" style="font-family: monospace;">${escapeHtml(item.refNo)}</span>
+                    <span class="label">Date &amp; Time Recorded:</span>
+                    <span class="val">${item.date} ${item.time ? 'at ' + item.time : ''}</span>
                 </div>
                 <div class="row">
-                    <span class="label">Date &amp; Time:</span>
-                    <span class="val">${item.date} at ${item.time || ''}</span>
+                    <span class="label">${isIn ? 'Received From (Payer):' : 'Paid To (Payee / Vendor):'}</span>
+                    <span class="val" style="font-size:14px;">${escapeHtml(item.entity)}</span>
                 </div>
                 <div class="row">
-                    <span class="label">${isIn ? 'Received From:' : 'Paid To:'}</span>
-                    <span class="val">${escapeHtml(item.entity)}</span>
-                </div>
-                <div class="row">
-                    <span class="label">Particulars / Category:</span>
+                    <span class="label">Category / Particulars:</span>
                     <span class="val">${escapeHtml(item.category)}</span>
                 </div>
                 <div class="row">
@@ -8303,24 +8566,29 @@ function printCashFlowVoucher(id) {
                 </div>
                 <div class="row">
                     <span class="label">Remarks / Description:</span>
-                    <span class="val">${escapeHtml(item.remarks || 'None')}</span>
+                    <span class="val" style="font-weight:normal; color:#334155;">${escapeHtml(item.remarks || 'None')}</span>
                 </div>
-                <div class="row" style="border-bottom: 2px solid #0f172a; padding: 12px 0;">
-                    <span class="label" style="font-size: 15px;">TOTAL AMOUNT:</span>
+                <div class="row" style="border-bottom: 2px solid #0b2545; padding: 14px 0;">
+                    <span class="label" style="font-size: 15px;">TOTAL AMOUNT TRANSACTED:</span>
                     <span class="val amount-highlight">&#8369;${formatNumber(item.amount)}</span>
                 </div>
+            </div>
 
-                <div class="footer">
-                    <div class="sig-box">
-                        <strong>Encoded By:</strong><br><br>
-                        <span>${escapeHtml(item.encoder || 'Registrar Staff')}</span>
-                    </div>
-                    <div class="sig-box">
-                        <strong>Approved / Received By:</strong><br><br>
-                        <span>${escapeHtml((item.receivedBy && item.receivedBy !== '—') ? item.receivedBy : (isIn ? (item.encoder && item.encoder.includes('Niño') ? 'Niño Aloysius B. Colegado' : 'Carrelle B. Colegado') : 'Official Signatory'))}</span>
-                    </div>
+            <div class="signatures">
+                <div class="sig-box">
+                    <div class="sig-label">Encoded By:</div>
+                    <div class="sig-line"></div>
+                    <div class="sig-name">${escapeHtml(rawEnc)}</div>
+                    <div class="sig-title">Official Encoder / Accounting Staff</div>
+                </div>
+                <div class="sig-box">
+                    <div class="sig-label">Approved / Received By:</div>
+                    <div class="sig-line"></div>
+                    <div class="sig-name">${escapeHtml(rawRec)}</div>
+                    <div class="sig-title">Authorized Signatory / Recipient</div>
                 </div>
             </div>
+
             <script>
                 window.onload = function() { window.print(); };
             </script>

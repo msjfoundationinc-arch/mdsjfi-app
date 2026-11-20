@@ -11862,6 +11862,73 @@ html.dark-theme .face-mode-btn.active {
     }
 }
 
+/* ==================== DIRECT LEARNER PROFILE QR VIEW (UNAUTHENTICATED) ==================== */
+html.direct-profile-view:not(.user-logged-in) body,
+html.guest-qr-view:not(.user-logged-in) body {
+    overflow: auto !important;
+    background: #f1f5f9 !important;
+}
+
+html.direct-profile-view:not(.user-logged-in) #sidebar,
+html.guest-qr-view:not(.user-logged-in) #sidebar,
+html.direct-profile-view:not(.user-logged-in) .sidebar,
+html.guest-qr-view:not(.user-logged-in) .sidebar,
+html.direct-profile-view:not(.user-logged-in) .mobile-header,
+html.guest-qr-view:not(.user-logged-in) .mobile-header,
+html.direct-profile-view:not(.user-logged-in) .top-header,
+html.guest-qr-view:not(.user-logged-in) .top-header,
+html.direct-profile-view:not(.user-logged-in) .main-content > section,
+html.guest-qr-view:not(.user-logged-in) .main-content > section,
+html.direct-profile-view:not(.user-logged-in) #btnDeleteFromView,
+html.guest-qr-view:not(.user-logged-in) #btnDeleteFromView,
+html.direct-profile-view:not(.user-logged-in) #btnArchiveFromView,
+html.guest-qr-view:not(.user-logged-in) #btnArchiveFromView,
+html.direct-profile-view:not(.user-logged-in) #btnEditFromView,
+html.guest-qr-view:not(.user-logged-in) #btnEditFromView,
+html.direct-profile-view:not(.user-logged-in) .avatar-action-btns,
+html.guest-qr-view:not(.user-logged-in) .avatar-action-btns,
+html.direct-profile-view:not(.user-logged-in) .view-header-right-actions > .btn-primary,
+html.guest-qr-view:not(.user-logged-in) .view-header-right-actions > .btn-primary {
+    display: none !important;
+}
+
+html.direct-profile-view:not(.user-logged-in) #viewModal,
+html.guest-qr-view:not(.user-logged-in) #viewModal {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    z-index: 5000 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+}
+
+html.direct-profile-view:not(.user-logged-in) #viewModal .modal-content,
+html.guest-qr-view:not(.user-logged-in) #viewModal .modal-content {
+    max-height: 94vh !important;
+    overflow-y: auto !important;
+    margin: auto !important;
+}
+
+.guest-profile-auth-bar {
+    display: none;
+    background: #0b2545;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+html.direct-profile-view:not(.user-logged-in) .guest-profile-auth-bar,
+html.guest-qr-view:not(.user-logged-in) .guest-profile-auth-bar {
+    display: flex !important;
+}
+
+
 
 
 

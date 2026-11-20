@@ -23,7 +23,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261120_06">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261120_11">
+    <link rel="stylesheet" href="styles.css?v=20261120_12">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -456,6 +456,7 @@
             {
                 id: "admin",
                 username: "admin",
+                email: "president@mdsjfi.edu.ph",
                 password: "admin123",
                 displayName: "NI\u00D1O ALOYSIUS B. COLEGADO",
                 role: "School President",
@@ -465,6 +466,7 @@
             {
                 id: "registrar",
                 username: "registrar",
+                email: "registrar@mdsjfi.edu.ph",
                 password: "mdsjfiregistrar",
                 displayName: "CARRELLE B. COLEGADO",
                 role: "Registrar / In-Charge, Accounting",
@@ -476,7 +478,8 @@
                 empId: "EMP-T001",
                 employeeNo: "T001",
                 username: "resteban",
-                aliases: ["t001", "emp-t001"],
+                email: "r.esteban@mdsjfi.edu.ph",
+                aliases: ["t001", "emp-t001", "EMP-T001", "T001"],
                 password: "mdsjfi_t001",
                 displayName: "ROSABELYN R. ESTEBAN",
                 role: "Faculty / Class Adviser",
@@ -489,7 +492,8 @@
                 empId: "EMP-T002",
                 employeeNo: "T002",
                 username: "mbarel",
-                aliases: ["t002", "emp-t002"],
+                email: "m.barel@mdsjfi.edu.ph",
+                aliases: ["t002", "emp-t002", "EMP-T002", "T002"],
                 password: "mdsjfi_t002",
                 displayName: "MICA MAE B. BAREL",
                 role: "Faculty / Class Adviser",
@@ -502,7 +506,8 @@
                 empId: "EMP-T004",
                 employeeNo: "T004",
                 username: "lbartolo",
-                aliases: ["t004", "emp-t004"],
+                email: "l.bartolo@mdsjfi.edu.ph",
+                aliases: ["t004", "emp-t004", "EMP-T004", "T004"],
                 password: "mdsjfi_t004",
                 displayName: "LUCKY IRICH M. BARTOLO",
                 role: "Faculty / Class Adviser",
@@ -515,7 +520,8 @@
                 empId: "EMP-T005",
                 employeeNo: "T005",
                 username: "gaguilana",
-                aliases: ["t005", "emp-t005"],
+                email: "g.aguilana@mdsjfi.edu.ph",
+                aliases: ["t005", "emp-t005", "EMP-T005", "T005"],
                 password: "mdsjfi_t005",
                 displayName: "GENELYN P. AGUILANA",
                 role: "Faculty / Class Adviser",
@@ -528,7 +534,8 @@
                 empId: "EMP-T006",
                 employeeNo: "T006",
                 username: "rasong",
-                aliases: ["t006", "emp-t006"],
+                email: "r.asong@mdsjfi.edu.ph",
+                aliases: ["t006", "emp-t006", "EMP-T006", "T006"],
                 password: "mdsjfi_t006",
                 displayName: "REA MEA M. ASONG",
                 role: "Faculty / Class Adviser",
@@ -541,7 +548,8 @@
                 empId: "EMP-T007",
                 employeeNo: "T007",
                 username: "mfabrigas",
-                aliases: ["t007", "emp-t007"],
+                email: "m.fabrigas@mdsjfi.edu.ph",
+                aliases: ["t007", "emp-t007", "EMP-T007", "T007"],
                 password: "mdsjfi_t007",
                 displayName: "MARA LYKKA G. FABRIGAS",
                 role: "Faculty / Class Adviser",
@@ -554,7 +562,8 @@
                 empId: "EMP-T008",
                 employeeNo: "T008",
                 username: "gcansuncad",
-                aliases: ["t008", "emp-t008", "principal"],
+                email: "principal@mdsjfi.edu.ph",
+                aliases: ["t008", "emp-t008", "EMP-T008", "T008", "principal"],
                 password: "mdsjfi_t008",
                 displayName: "GANITO P. CANSUNCAD",
                 role: "School Principal / Academic Head",
@@ -566,8 +575,9 @@
 
         function findAuth(inputUser, inputPass) {
             if (!inputUser || !inputPass) return null;
-            var u = inputUser.trim().toLowerCase();
-            var p = inputPass.trim();
+            // Strict case preservation - username/email and password match exact stored casing
+            var u = String(inputUser).trim();
+            var p = String(inputPass).trim();
 
             var customPasswords = {};
             try {
@@ -576,16 +586,18 @@
 
             for (var i = 0; i < AUTH_ACCOUNTS.length; i++) {
                 var acc = AUTH_ACCOUNTS[i];
-                var accU = (acc.username || '').toLowerCase();
-                var accEmp = (acc.employeeNo || '').toLowerCase();
-                var accId = (acc.id || '').toLowerCase();
-                var accEmpId = (acc.empId || '').toLowerCase();
+                var accU = acc.username || '';
+                var accEmail = acc.email || '';
+                var accEmp = acc.employeeNo || '';
+                var accId = acc.id || '';
+                var accEmpId = acc.empId || '';
                 var aliases = acc.aliases || [];
 
-                var userMatches = (accU === u) || (accEmp && accEmp === u) || (accId && accId === u) || (accEmpId && accEmpId === u);
+                // Strict case-sensitive comparison (no toLowerCase)
+                var userMatches = (accU === u) || (accEmail && accEmail === u) || (accEmp && accEmp === u) || (accId && accId === u) || (accEmpId && accEmpId === u);
                 if (!userMatches && aliases && aliases.length) {
                     for (var a = 0; a < aliases.length; a++) {
-                        if (aliases[a].toLowerCase() === u) {
+                        if (aliases[a] === u) {
                             userMatches = true;
                             break;
                         }
@@ -594,31 +606,33 @@
 
                 if (userMatches) {
                     var validPass = customPasswords[acc.username] || acc.password;
-                    if (validPass === p || validPass.toLowerCase() === p.toLowerCase() || p === acc.password) {
+                    // Strict case-sensitive match for password
+                    if (validPass === p) {
                         return acc;
                     }
                 }
             }
 
-            // Also check dynamically against saved payroll faculty roster
+            // Also check dynamically against saved payroll faculty roster with strict casing
             if (typeof getPayrollEmployees === 'function') {
                 try {
                     var pList = getPayrollEmployees();
                     var pEmp = pList.find(function(e) {
-                        var empNo = (e.employeeNo || '').toLowerCase();
-                        var empId = (e.id || '').toLowerCase();
-                        var emailPrefix = (e.email || '').split('@')[0].toLowerCase();
-                        return empNo === u || empId === u || emailPrefix === u;
+                        var empNo = e.employeeNo || '';
+                        var empId = e.id || '';
+                        var email = e.email || '';
+                        var emailPrefix = (e.email || '').split('@')[0];
+                        return empNo === u || empId === u || email === u || emailPrefix === u;
                     });
                     if (pEmp) {
-                        var expectedPass = 'mdsjfi_' + (pEmp.employeeNo || '').toLowerCase();
-                        var custPass = customPasswords[pEmp.employeeNo.toLowerCase()] || '';
+                        var expectedPass = 'mdsjfi_' + (pEmp.employeeNo ? pEmp.employeeNo.toLowerCase() : '');
+                        var custPass = customPasswords[pEmp.employeeNo] || customPasswords[pEmp.employeeNo ? pEmp.employeeNo.toLowerCase() : ''] || '';
                         if (p === expectedPass || (custPass && p === custPass) || (pEmp.password && p === pEmp.password)) {
                             return {
-                                id: (pEmp.id || ('emp-' + pEmp.employeeNo)).toLowerCase(),
+                                id: (pEmp.id || ('emp-' + pEmp.employeeNo)),
                                 empId: pEmp.id || ('EMP-' + pEmp.employeeNo),
                                 employeeNo: pEmp.employeeNo,
-                                username: pEmp.employeeNo.toLowerCase(),
+                                username: pEmp.employeeNo,
                                 displayName: (pEmp.name || '').toUpperCase(),
                                 role: (pEmp.position && pEmp.position.toLowerCase().includes('principal')) ? 'School Principal / Academic Head' : 'Faculty / Class Adviser',
                                 department: pEmp.department || 'Junior High School Faculty',
@@ -1139,10 +1153,25 @@
         window.navigateTo = function(pageId) {
             if (!pageId) return;
 
-            // Restrict Teacher from navigating to Statement of Account or Cash In & Out Flow
+            // Protect all administrative and application tabs behind authentication
             var currentUserStr = sessionStorage.getItem('currentUser') || sessionStorage.getItem('mdsj_session') || sessionStorage.getItem('mdsj_user');
             var curUser = null;
             try { curUser = JSON.parse(currentUserStr); } catch(e){}
+            if (!curUser && window.currentUser && window.currentUser.username) curUser = window.currentUser;
+
+            if (!curUser || !curUser.username) {
+                var overlay = document.getElementById("loginOverlay");
+                if (overlay) {
+                    overlay.classList.remove("hidden");
+                    overlay.style.removeProperty("display");
+                    overlay.style.display = "flex";
+                }
+                document.documentElement.classList.remove("user-logged-in");
+                document.body.classList.add("app-hidden");
+                return;
+            }
+
+            // Restrict Teacher from navigating to Statement of Account or Cash In & Out Flow
             if ((pageId === 'soa' || pageId === 'cash-flow') && curUser && (curUser.role === 'Faculty / Class Adviser' || curUser.username === 'teacher')) {
                 alert('Access Restricted: Teacher accounts cannot view ' + (pageId === 'soa' ? 'Statement of Account' : 'Cash In & Out Flow') + '.');
                 return;
@@ -1322,6 +1351,24 @@
             }
         } catch(e) {}
 
+        // Check for direct mobile QR scan or student profile URL route
+        var directStudentParam = null;
+        try {
+            var pathname = window.location.pathname || '';
+            var sMatch = pathname.match(/\/student\/([^\/\?#]+)/i) || pathname.match(/\/profile\/([^\/\?#]+)/i);
+            if (sMatch && sMatch[1]) directStudentParam = decodeURIComponent(sMatch[1]).trim();
+            if (!directStudentParam) {
+                var hash = window.location.hash || '';
+                var hMatch = hash.match(/#\/?(?:student|profile)(?:\/|=|-)([^\/\?#]+)/i);
+                if (hMatch && hMatch[1]) directStudentParam = decodeURIComponent(hMatch[1]).trim();
+            }
+            if (!directStudentParam) {
+                var sp = new URLSearchParams(window.location.search);
+                var val = sp.get('student') || sp.get('profile') || sp.get('id') || sp.get('student_id') || sp.get('lrn');
+                if (val) directStudentParam = decodeURIComponent(val).trim();
+            }
+        } catch(e) {}
+
         if (activeSession && activeSession.username) {
             document.documentElement.classList.add("user-logged-in");
             unlockDashboardUI(activeSession);
@@ -1339,6 +1386,34 @@
                 }
             }
             triggerShowAppOnRestore();
+        } else if (directStudentParam) {
+            // Direct QR Code Scan: Open learner's full profile page directly without login credentials
+            document.documentElement.classList.remove("user-logged-in");
+            document.documentElement.classList.add("direct-profile-view", "guest-qr-view");
+            document.body.classList.remove("app-hidden");
+
+            var overlay = document.getElementById("loginOverlay");
+            if (overlay) {
+                overlay.classList.add("hidden");
+                overlay.style.removeProperty("display");
+                overlay.style.display = "none";
+            }
+
+            function triggerOpenGuestStudent() {
+                if (typeof window.viewStudent === "function" && typeof window.findStudent === "function") {
+                    var s = window.findStudent(directStudentParam);
+                    if (s) {
+                        window.viewStudent(s.id);
+                    } else if (typeof window.loadStudents === 'function') {
+                        window.loadStudents();
+                        var s2 = window.findStudent(directStudentParam);
+                        if (s2) window.viewStudent(s2.id);
+                    }
+                } else {
+                    setTimeout(triggerOpenGuestStudent, 40);
+                }
+            }
+            triggerOpenGuestStudent();
         } else {
             // Not authenticated: keep on login screen
             document.documentElement.classList.remove("user-logged-in");
@@ -1352,6 +1427,19 @@
             var uInput = document.getElementById("loginUsername");
             if (uInput) setTimeout(function() { uInput.focus(); }, 100);
         }
+
+        window.showLoginFromGuest = function() {
+            var overlay = document.getElementById("loginOverlay");
+            if (overlay) {
+                overlay.classList.remove("hidden");
+                overlay.style.removeProperty("display");
+                overlay.style.display = "flex";
+            }
+            document.documentElement.classList.remove("guest-qr-view");
+            document.body.classList.add("app-hidden");
+            var uInput = document.getElementById("loginUsername");
+            if (uInput) setTimeout(function() { uInput.focus(); }, 100);
+        };
 
         window.instantLoginAs = function() {};
 
@@ -7471,6 +7559,16 @@
     <!-- ==================== VIEW STUDENT MODAL ==================== -->
     <div class="modal-overlay" id="viewModal">
         <div class="modal-content modal-lg">
+            <!-- Guest QR Verification Top Banner -->
+            <div class="guest-profile-auth-bar" id="guestProfileAuthBar">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-shield-alt" style="color:#60a5fa; font-size:1.1rem;"></i>
+                    <span><strong>MDSJFI Official Learner Profile Verification</strong> &bull; Authenticated DepEd Student Record</span>
+                </div>
+                <button type="button" class="btn btn-sm" onclick="showLoginFromGuest()" style="background:#2563eb; color:#fff; border:none; padding:5px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.80rem; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-sign-in-alt"></i> Personnel Sign In
+                </button>
+            </div>
             <button class="modal-close" id="closeViewModal" onclick="closeModal('viewModal')">&times;</button>
             <div class="modal-header">
                 <div class="modal-brand-badge print-only">
@@ -8567,6 +8665,82 @@
         </div>
     </div>
 
+    <!-- ==================== VIEW CASH FLOW TRANSACTION MODAL ==================== -->
+    <div class="modal-overlay" id="viewCashFlowModal" style="display:none; z-index: 5500; align-items: center; justify-content: center;">
+        <div class="modal-content modal-md" style="max-width: 580px; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3); background:#fff;">
+            <button type="button" class="modal-close" onclick="closeModal('viewCashFlowModal')" aria-label="Close">&times;</button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%); color: #fff; padding: 18px 24px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div id="vcfIconWrap" style="width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#fff;">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#fff;" id="vcfTitle">Transaction Details</h3>
+                        <p style="margin:2px 0 0 0; font-size:0.78rem; color:#93c5fd;" id="vcfSubtitle">MDSJFI Daily Cash In &amp; Out Flow Record</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 22px 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #e2e8f0;">
+                    <div>
+                        <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.5px;">Reference / OR No.</span>
+                        <div id="vcfRefNo" style="font-family:monospace; font-size:1.15rem; font-weight:800; color:#0f172a;">—</div>
+                    </div>
+                    <div id="vcfTypeBadge">
+                        <span class="status-badge active">Cash In</span>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px 18px; margin-bottom:18px; text-align:center;">
+                    <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase; color:#64748b; margin-bottom:4px;">Transaction Amount</div>
+                    <div id="vcfAmount" style="font-size:1.95rem; font-weight:900; color:#059669;">₱0.00</div>
+                    <div id="vcfMethod" style="font-size:0.82rem; color:#475569; margin-top:3px; font-weight:600;"><i class="fas fa-money-bill-wave"></i> Payment Method: Cash</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:0.86rem; margin-bottom:16px;">
+                    <div>
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Date &amp; Time</span>
+                        <strong id="vcfDateTime" style="color:#0f172a;">—</strong>
+                    </div>
+                    <div>
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">School Year</span>
+                        <strong id="vcfSchoolYear" style="color:#0f172a;">2026-2027</strong>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <span id="vcfEntityLabel" style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Received From (Payer)</span>
+                        <strong id="vcfEntity" style="color:#0f172a; font-size:0.95rem;">—</strong>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Particulars / Category</span>
+                        <strong id="vcfCategory" style="color:#0f172a;">—</strong>
+                    </div>
+                    <div>
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Received By</span>
+                        <strong id="vcfReceivedBy" style="color:#0f172a;">—</strong>
+                    </div>
+                    <div>
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Encoded By</span>
+                        <strong id="vcfEncodedBy" style="color:#0f172a;">—</strong>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <span style="font-size:0.74rem; color:#64748b; display:block; font-weight:600;">Remarks / Description</span>
+                        <div id="vcfRemarks" style="color:#334155; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; margin-top:3px; min-height:36px; font-size:0.83rem;">None</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('viewCashFlowModal')" style="padding: 8px 16px; font-weight: 600; font-size: 0.85rem;">
+                    Close
+                </button>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn btn-primary" id="btnVcfPrint" style="padding: 8px 18px; font-weight: 600; font-size: 0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fas fa-print"></i> Print Transaction Voucher / Receipt
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== PRINTABLE FINANCIAL SUMMARY CONTAINER ==================== -->
     <div id="printableFinancialSummaryContainer" class="printable-financial-summary-wrap" style="display:none;"></div>
     <!-- ==================== PRINTABLE STUDENT PROFILE CONTAINER (STRICT 1 PAGE) ==================== -->
@@ -8630,7 +8804,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261120_11"></script>
+    <script src="app.js?v=20261120_12"></script>
 </body>
 </html>
 
