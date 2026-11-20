@@ -7506,11 +7506,18 @@ function renderCashFlowTable(list) {
 
         // Official Receiver & Encoder formatting
         let recBadge = '<span style="color:#94a3b8; font-size:0.75rem;">—</span>';
-        if (isIn) {
-            const rawRec = item.receivedBy || (item.encoder && item.encoder.includes('Niño') ? '1. School President' : '2. Registrar/Accounting');
-            recBadge = rawRec.includes('President')
-                ? '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="1. School President"><i class="fas fa-user-tie"></i> Pres.</span>'
-                : '<span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="2. Registrar / Accounting"><i class="fas fa-cash-register"></i> Reg.</span>';
+        const rawRec = (item.receivedBy && item.receivedBy !== '—') 
+            ? item.receivedBy 
+            : (isIn ? (item.encoder && item.encoder.includes('Niño') ? '1. School President' : '2. Registrar/Accounting') : '');
+
+        if (rawRec && rawRec !== '—') {
+            if (rawRec.includes('President')) {
+                recBadge = '<span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="1. School President"><i class="fas fa-user-tie"></i> Pres.</span>';
+            } else if (rawRec.includes('Registrar') || rawRec.includes('Accounting')) {
+                recBadge = '<span class="status-badge" style="background:#fef3c7; color:#92400e; font-weight:700; font-size:0.71rem; padding:2px 6px;" title="2. Registrar / Accounting"><i class="fas fa-cash-register"></i> Reg.</span>';
+            } else {
+                recBadge = `<span class="status-badge" style="background:#f8fafc; color:#0f172a; font-weight:600; font-size:0.73rem; padding:2px 8px; border-radius:6px; display:inline-block; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; border:1px solid #cbd5e1;" title="${escapeHtml(rawRec)}"><i class="fas fa-user-check" style="color:#059669; margin-right:4px; font-size:0.7rem;"></i>${escapeHtml(rawRec)}</span>`;
+            }
         }
         const rawEnc = item.encodedBy || (item.encoder && item.encoder.includes('Niño') ? '1. School President' : '2. Registrar/Accounting');
 
@@ -7861,8 +7868,8 @@ function handleSaveCashFlow(e) {
     const remarks = (document.getElementById('cfRemarks')?.value || '').trim();
     const schoolYear = document.getElementById('cfSchoolYear')?.value || currentSchoolYear || '2026-2027';
     const receivedBy = (type === 'OUT') 
-        ? ((document.getElementById('cfReceivedByText')?.value || '').trim() || '—') 
-        : (document.getElementById('cfReceivedBy')?.value || '2. Registrar/Accounting');
+        ? ((document.getElementById('cfReceivedByText')?.value || document.getElementById('cfReceivedBy')?.value || '').trim() || '—') 
+        : ((document.getElementById('cfReceivedBy')?.value || document.getElementById('cfReceivedByText')?.value || '2. Registrar/Accounting').trim());
     const encodedBy = document.getElementById('cfEncodedBy')?.value || '2. Registrar/Accounting';
     const payerType = document.getElementById('cfPayerType')?.value || 'enrolled';
     const selectedStudentId = document.getElementById('cfStudentSelect')?.value || '';
@@ -8083,7 +8090,7 @@ function exportCashFlowCSV() {
         return;
     }
 
-    const headers = ['Transaction ID', 'Date', 'Time', 'Flow Type', 'Ref / OR No.', 'Category / Particulars', 'Payer / Payee', 'Payment Method', 'Amount (PHP)', 'Encoder', 'Remarks'];
+    const headers = ['Transaction ID', 'Date', 'Time', 'Flow Type', 'Ref / OR No.', 'Category / Particulars', 'Payer / Payee', 'Payment Method', 'Amount (PHP)', 'Received By', 'Encoded By', 'Remarks'];
     const rows = entries.map(e => [
         `"${e.id || ''}"`,
         `"${e.date || ''}"`,
@@ -8094,7 +8101,8 @@ function exportCashFlowCSV() {
         `"${(e.entity || '').replace(/"/g, '""')}"`,
         `"${e.method || 'Cash'}"`,
         e.amount ? Number(e.amount).toFixed(2) : '0.00',
-        `"${(e.encoder || '').replace(/"/g, '""')}"`,
+        `"${(e.receivedBy || '').replace(/"/g, '""')}"`,
+        `"${(e.encodedBy || e.encoder || '').replace(/"/g, '""')}"`,
         `"${(e.remarks || '').replace(/"/g, '""')}"`
     ]);
 
@@ -8309,7 +8317,7 @@ function printCashFlowVoucher(id) {
                     </div>
                     <div class="sig-box">
                         <strong>Approved / Received By:</strong><br><br>
-                        <span>Official Signatory</span>
+                        <span>${escapeHtml((item.receivedBy && item.receivedBy !== '—') ? item.receivedBy : (isIn ? (item.encoder && item.encoder.includes('Niño') ? 'Niño Aloysius B. Colegado' : 'Carrelle B. Colegado') : 'Official Signatory'))}</span>
                     </div>
                 </div>
             </div>
