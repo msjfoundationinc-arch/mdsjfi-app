@@ -138,6 +138,22 @@
 
             if (!existingStus || !Array.isArray(existingStus) || existingStus.length < matrix.length) {
                 localStorage.setItem('mdsj_students', JSON.stringify(merged));
+            } else {
+                var updated = false;
+                existingStus.forEach(function(es) {
+                    var sId = es.id || '';
+                    var sIdRaw = sId.replace(/^STU-/, '');
+                    var sLrn = es.lrn ? String(es.lrn).trim() : '';
+                    var sNum = es.studentNumber ? String(es.studentNumber).trim() : '';
+                    var pPhoto = (sId && storedPhotos[sId]) || (sIdRaw && storedPhotos[sIdRaw]) || (sIdRaw && storedPhotos['STU-' + sIdRaw]) || (sLrn && storedPhotos[sLrn]) || (sNum && storedPhotos[sNum]);
+                    if (pPhoto && (!es.photo || es.photo.length < 10)) {
+                        es.photo = pPhoto;
+                        updated = true;
+                    }
+                });
+                if (updated) {
+                    localStorage.setItem('mdsj_students', JSON.stringify(existingStus));
+                }
             }
         }
     } catch(err) { console.error("Students early sync error:", err); }

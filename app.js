@@ -2920,7 +2920,7 @@ function viewStudent(id) {
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
         const displayPhoto = photoSrc || defaultAvatar;
 
-        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';">`;
+        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         if (photoDelBtn) photoDelBtn.style.display = (isGuestProfileView || !photoSrc) ? 'none' : 'inline-block';
         if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
     }
@@ -2965,6 +2965,12 @@ function getStudentProfileUrl(s) {
     const studentId = s.id || s.lrn || '';
     if (!studentId) return '';
     const encodedId = encodeURIComponent(studentId);
+
+    // Support local file browsing mode (file:///...)
+    if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+        const fileUrl = window.location.href.split('?')[0].split('#')[0];
+        return `${fileUrl}?student=${encodedId}`;
+    }
 
     // Official production domain for all learner QR codes and direct online access
     let origin = OFFICIAL_APP_URL;
@@ -3090,7 +3096,7 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
         const displayPhoto = photoSrc || defaultAvatar;
 
-        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.onerror=null; this.src='${defaultAvatar}';">`;
+        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="this.onerror=null; this.src='${defaultAvatar}';" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
     }
 
     openModal('learnerMobileModal');
@@ -3827,11 +3833,17 @@ function previewDocData(prefix) {
     viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
 }
 
-function enlargeStudentProfilePhoto() {
+function enlargeStudentProfilePhoto(event) {
+    if (event) {
+        try {
+            if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            if (typeof event.preventDefault === 'function') event.preventDefault();
+        } catch(e) {}
+    }
     const s = (typeof currentViewId !== 'undefined' && currentViewId) ? findStudent(currentViewId) : null;
     let photo = (s ? getStudentPhoto(s) : null) || (s && s.photo);
     if (!photo) {
-        const img = document.querySelector('#viewAvatar img');
+        const img = document.querySelector('#viewAvatar img') || document.querySelector('#mobilePassAvatar img');
         if (img && img.src && img.src.length > 20) {
             photo = img.src;
         }
