@@ -7,12 +7,11 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Montessori de San Jose Foundation Inc. — Student Database</title>
-    <base href="/">
     <script>
-    // Ensure relative assets resolve to root if loaded via /student/ or /profile/ subpath
-    if (window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/profile/') !== -1) {
+    // Ensure relative assets resolve to root only if loaded via /student/ or /profile/ subpath on http/https
+    if (window.location.protocol !== 'file:' && (window.location.pathname.indexOf('/student/') !== -1 || window.location.pathname.indexOf('/profile/') !== -1)) {
         var baseTag = document.querySelector('base') || document.createElement('base');
-        baseTag.href = window.location.origin + '/';
+        baseTag.href = (window.location.origin || '') + '/';
         if (!baseTag.parentNode) document.head.appendChild(baseTag);
     }
     </script>
@@ -195,8 +194,8 @@
                     </div>
                     <div class="login-welcome-banner" id="loginWelcomeBanner">
                         <div class="login-welcome-title" id="loginWelcomeTitle">
-                            <span class="login-greeting-icon" id="loginGreetingIcon"></span>
-                            <span class="login-greeting-text" id="loginGreetingText"></span>
+                            <span class="login-greeting-icon" id="loginGreetingIcon"><i class="fas fa-moon" style="color: #93c5fd;"></i></span>
+                            <span class="login-greeting-text" id="loginGreetingText">Good evening, Personnel!</span>
                         </div>
                         <div class="login-welcome-sub">Sign in to start your session</div>
                     </div>
