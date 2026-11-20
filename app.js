@@ -4130,7 +4130,7 @@ function printSOAModal() {
     const sigHtml = isSameSigner ? `
         <div class="signatures" style="margin-top: 20px; display: flex; justify-content: flex-start; page-break-inside: avoid; break-inside: avoid;">
             <div class="sig-box" style="text-align: center; width: 44%;">
-                <div class="sig-label" style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 24px; text-align: left;">Encoded &amp; Approved / Received By:</div>
+                <div class="sig-label" style="font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 24px; text-align: left;">Encoded &amp; Received By:</div>
                 <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
                 <div class="sig-name" style="font-weight: bold; font-size: 12px;">${escapeHtml(rawEnc)}</div>
                 <div class="sig-title" style="font-size: 10px; color: #475569;">Official Encoder / Authorized Signatory / Recipient</div>
@@ -8652,8 +8652,8 @@ function printCashFlowVoucher(id) {
 
     function isSameSignatory(enc, rec) {
         if (!enc || !rec) return false;
-        const e = enc.trim().toLowerCase();
-        const r = rec.trim().toLowerCase();
+        const e = enc.toString().trim().toLowerCase();
+        const r = rec.toString().trim().toLowerCase();
         if (e === r) return true;
         if ((e.includes('president') || e.includes('niño') || e.includes('nino') || e.includes('colegado, niño') || e.includes('colegado, nino')) && 
             (r.includes('president') || r.includes('niño') || r.includes('nino') || r.includes('colegado, niño') || r.includes('colegado, nino'))) return true;
@@ -8663,11 +8663,11 @@ function printCashFlowVoucher(id) {
     }
 
     const isSame = isSameSignatory(rawEnc, rawRec);
-    const isOut = item.type === 'OUT';
+    const isOut = (item.type || '').toUpperCase() === 'OUT';
 
     let sigHtml = '';
     if (isSame) {
-        const singleLabel = isOut ? 'Encoded &amp; Approved By:' : 'Encoded &amp; Approved / Received By:';
+        const singleLabel = isOut ? 'Encoded &amp; Approved By:' : 'Encoded &amp; Received By:';
         const singleSubtitle = isOut ? 'Official Encoder / Authorized Signatory' : 'Official Encoder / Authorized Signatory / Recipient';
         sigHtml = `
             <div class="signatures" style="margin-top: 35px; display: flex; justify-content: flex-start; page-break-inside: avoid;">
@@ -8680,6 +8680,8 @@ function printCashFlowVoucher(id) {
             </div>
         `;
     } else {
+        const rightLabel = isOut ? 'Approved By:' : 'Received By:';
+        const rightSubtitle = isOut ? 'Authorized Signatory / School Approver' : 'Authorized Signatory / Recipient';
         sigHtml = `
             <div class="signatures" style="margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid;">
                 <div class="sig-box" style="text-align: center; width: 44%;">
@@ -8689,10 +8691,10 @@ function printCashFlowVoucher(id) {
                     <div class="sig-title">Official Encoder / Accounting Staff</div>
                 </div>
                 <div class="sig-box" style="text-align: center; width: 44%;">
-                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left;">Approved / Received By:</div>
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 28px; text-align: left;">${rightLabel}</div>
                     <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
                     <div class="sig-name">${escapeHtml(rawRec)}</div>
-                    <div class="sig-title">Authorized Signatory / Recipient</div>
+                    <div class="sig-title">${rightSubtitle}</div>
                 </div>
             </div>
         `;
