@@ -3431,6 +3431,108 @@ window.handleDirectPhotoUpload = function(event) {
     });
 };
 
+let directProfileCameraStream = null;
+let directProfileCameraFacing = 'user';
+
+window.takePhotoFromProfile = function() {
+    const s = findStudent(currentViewId);
+    if (!s) {
+        showToast('Please select a student profile first.', 'warning');
+        return;
+    }
+    openProfilePhotoCamera();
+};
+
+window.openProfilePhotoCamera = async function() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Camera is not supported on this browser or device.', 'error');
+        return;
+    }
+    openModal('directProfilePhotoCameraModal');
+    const video = document.getElementById('profileCameraVideo');
+    stopProfileCameraStream();
+
+    try {
+        const constraints = {
+            video: {
+                facingMode: directProfileCameraFacing,
+                width: { ideal: 720 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        };
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch(fallbackErr) {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+        directProfileCameraStream = stream;
+        if (video) {
+            video.srcObject = stream;
+            video.play().catch(e => console.warn('Video play interrupted:', e));
+        }
+    } catch(err) {
+        console.error('Profile camera error:', err);
+        closeProfilePhotoCamera();
+        showToast('Unable to access camera: ' + (err.message || 'Permission denied or device not found.'), 'error');
+    }
+};
+
+window.switchProfileCameraFacing = function() {
+    directProfileCameraFacing = (directProfileCameraFacing === 'user') ? 'environment' : 'user';
+    openProfilePhotoCamera();
+};
+
+function stopProfileCameraStream() {
+    if (directProfileCameraStream) {
+        try {
+            directProfileCameraStream.getTracks().forEach(track => track.stop());
+        } catch(e) {}
+        directProfileCameraStream = null;
+    }
+    const video = document.getElementById('profileCameraVideo');
+    if (video) video.srcObject = null;
+}
+
+window.closeProfilePhotoCamera = function() {
+    stopProfileCameraStream();
+    closeModal('directProfilePhotoCameraModal');
+};
+
+window.captureProfileDirectPhoto = function() {
+    const s = findStudent(currentViewId);
+    if (!s) {
+        closeProfilePhotoCamera();
+        return;
+    }
+    const video = document.getElementById('profileCameraVideo');
+    if (!video || !directProfileCameraStream) {
+        showToast('Camera stream is not active.', 'warning');
+        return;
+    }
+
+    compressAndResizeImage(video, 500, 500, 0.80, function(dataUrl) {
+        s.photo = dataUrl;
+        saveStudents();
+        closeProfilePhotoCamera();
+
+        const avatar = document.getElementById('viewAvatar');
+        if (avatar) {
+            avatar.innerHTML = `<img src="${dataUrl}" alt="Student Photo" class="student-avatar-img">`;
+        }
+        const delBtn = document.getElementById('btnDeletePhotoFromProfile');
+        if (delBtn) delBtn.style.display = 'inline-block';
+        const enlBtn = document.getElementById('btnEnlargeProfilePhoto');
+        if (enlBtn) enlBtn.style.display = 'inline-block';
+
+        renderPrintableStudentProfile(s);
+        try { refreshStudentsTable(); } catch(e){}
+        try { refreshGradeTable(s.gradeLevel); } catch(e){}
+        showToast('Student photo captured and updated successfully!', 'success');
+    });
+};
+
 window.deletePhotoFromProfile = function() {
     const s = findStudent(currentViewId);
     if (!s) return;
