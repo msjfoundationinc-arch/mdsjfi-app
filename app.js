@@ -3997,11 +3997,22 @@ function openSOAModal(id) {
     setT('soaFootTotalPaid', '\u20B1' + totalPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 }));
     setT('soaFootRemainingBalance', '\u20B1' + remainingBalance.toLocaleString('en-PH', { minimumFractionDigits: 2 }));
 
+    const btnPrint = document.getElementById('btnPrintSOA');
+    if (btnPrint) {
+        btnPrint.onclick = function(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            printSOAModal();
+        };
+    }
+
     openModal('soaModal');
 }
 
 function printSOAModal() {
-    const activeId = currentSOAStudentId || window.currentSOAStudentId;
+    const activeId = currentSOAStudentId || window.currentSOAStudentId || window.currentViewId;
     const s = findStudent(activeId);
     if (!s) {
         showToast('Please select a student Statement of Account first.', 'warning');
@@ -4030,9 +4041,9 @@ function printSOAModal() {
     const rowsHtml = payments.length > 0 ? payments.map((p, idx) => `
         <tr>
             <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${idx + 1}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${p.date || '—'}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; font-family:monospace; font-weight:bold; text-align:center;">${escapeHtml(p.refNo || '—')}</td>
-            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:left;">${escapeHtml(p.particulars || 'Tuition Fee Installment')}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${p.date ? (typeof formatDate === 'function' ? formatDate(p.date) : p.date) : (p.date || '—')}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; font-family:monospace; font-weight:bold; text-align:center;">${escapeHtml(p.orNumber || p.refNo || '—')}</td>
+            <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:left;">${escapeHtml(p.term || p.particulars || 'Tuition Fee Installment')}</td>
             <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:center;">${escapeHtml(p.method || 'Cash')}</td>
             <td style="padding:7px 10px; border:1px solid #cbd5e1; font-size:12px; text-align:right; font-weight:bold; color:#0369a1;">&#8369;${formatNumber(p.amount)}</td>
         </tr>
@@ -4171,6 +4182,9 @@ function printSOAModal() {
     `);
     printWin.document.close();
 }
+window.printSOAModal = printSOAModal;
+window.realPrintSOAModal = printSOAModal;
+window.fullPrintSOAModal = printSOAModal;
 
 function toggleSOAEditMode() {
     const s = findStudent(currentSOAStudentId);
@@ -8502,6 +8516,45 @@ function printCashFlowVoucher(id) {
         ? 'Niño Aloysius B. Colegado' 
         : (item.encodedBy && item.encodedBy.includes('President') ? 'Niño Aloysius B. Colegado' : (item.encoder || 'Carrelle B. Colegado'));
 
+    function isSameSignatory(enc, rec) {
+        if (!enc || !rec) return false;
+        const e = enc.trim().toLowerCase();
+        const r = rec.trim().toLowerCase();
+        if (e === r) return true;
+        if ((e.includes('president') || e.includes('niño') || e.includes('nino') || e.includes('colegado, niño') || e.includes('colegado, nino')) && 
+            (r.includes('president') || r.includes('niño') || r.includes('nino') || r.includes('colegado, niño') || r.includes('colegado, nino'))) return true;
+        if ((e.includes('registrar') || e.includes('carrelle') || e.includes('accounting')) && 
+            (r.includes('registrar') || r.includes('carrelle') || r.includes('accounting'))) return true;
+        return false;
+    }
+
+    const isSame = isSameSignatory(rawEnc, rawRec);
+    const sigHtml = isSame ? `
+            <div class="signatures" style="margin-top: 40px; display: flex; justify-content: center; page-break-inside: avoid;">
+                <div class="sig-box" style="text-align: center; width: 340px;">
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: center;">Encoded &amp; Received / Approved By:</div>
+                    <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
+                    <div class="sig-name" style="font-weight: bold; font-size: 13px;">${escapeHtml(rawEnc)}</div>
+                    <div class="sig-title" style="font-size: 11px; color: #475569;">${(rawEnc.includes('President') || rawEnc.includes('Niño') || rawEnc.includes('Ni\u00D1o')) ? 'School President' : ((rawEnc.includes('Registrar') || rawEnc.includes('Carrelle')) ? 'Registrar / In-Charge, Accounting Office' : 'Authorized Signatory &amp; Encoder')}</div>
+                </div>
+            </div>
+    ` : `
+            <div class="signatures" style="margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid;">
+                <div class="sig-box" style="text-align: center; width: 44%;">
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left;">Encoded By:</div>
+                    <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
+                    <div class="sig-name">${escapeHtml(rawEnc)}</div>
+                    <div class="sig-title">Official Encoder / Accounting Staff</div>
+                </div>
+                <div class="sig-box" style="text-align: center; width: 44%;">
+                    <div class="sig-label" style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 30px; text-align: left;">Approved / Received By:</div>
+                    <div class="sig-line" style="border-top: 1.5px solid #000; margin-bottom: 4px;"></div>
+                    <div class="sig-name">${escapeHtml(rawRec)}</div>
+                    <div class="sig-title">Authorized Signatory / Recipient</div>
+                </div>
+            </div>
+    `;
+
     printWin.document.write(`
         <!DOCTYPE html>
         <html>
@@ -8574,20 +8627,7 @@ function printCashFlowVoucher(id) {
                 </div>
             </div>
 
-            <div class="signatures">
-                <div class="sig-box">
-                    <div class="sig-label">Encoded By:</div>
-                    <div class="sig-line"></div>
-                    <div class="sig-name">${escapeHtml(rawEnc)}</div>
-                    <div class="sig-title">Official Encoder / Accounting Staff</div>
-                </div>
-                <div class="sig-box">
-                    <div class="sig-label">Approved / Received By:</div>
-                    <div class="sig-line"></div>
-                    <div class="sig-name">${escapeHtml(rawRec)}</div>
-                    <div class="sig-title">Authorized Signatory / Recipient</div>
-                </div>
-            </div>
+            ${sigHtml}
 
             <script>
                 window.onload = function() { window.print(); };

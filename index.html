@@ -23,7 +23,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261120_06">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261120_12">
+    <link rel="stylesheet" href="styles.css?v=20261120_13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -307,7 +307,11 @@
         window.print();
         setTimeout(function() { document.body.classList.remove('printing-profile'); }, 1200);
     };
-    window.printSOAModal = function() { if (typeof window.realPrintSOAModal === 'function') return window.realPrintSOAModal(); document.body.classList.remove('printing-profile', 'printing-financial-summary'); document.body.classList.add('printing-soa'); window.print(); setTimeout(function() { document.body.classList.remove('printing-soa'); }, 1200); };
+    window.printSOAModal = function() {
+        if (typeof window.realPrintSOAModal === 'function') return window.realPrintSOAModal();
+        if (typeof window.fullPrintSOAModal === 'function') return window.fullPrintSOAModal();
+        if (typeof printSOAModal === 'function' && printSOAModal !== window.printSOAModal) return printSOAModal();
+    };
     window.toggleSOAEditMode = function() { if (typeof window.realToggleSOAEditMode === 'function') return window.realToggleSOAEditMode(); };
 
     window.openExportOptionsModal = function(defaultScope) {
@@ -8804,7 +8808,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261120_12"></script>
+    <script src="app.js?v=20261120_13"></script>
 </body>
 </html>
 
