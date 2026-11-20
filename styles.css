@@ -160,26 +160,42 @@ img, canvas, svg, video, picture {
     position: relative;
     z-index: 2;
     font-family: 'Plus Jakarta Sans', 'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-    font-size: clamp(0.82rem, 2.3vw, 1.05rem) !important;
-    font-weight: 800 !important;
     text-transform: uppercase !important;
-    white-space: normal !important;
-    text-wrap: balance !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    letter-spacing: 0.035em !important;
-    margin: 0 auto 10px !important;
+    margin: 0 auto 12px !important;
     color: #ffffff !important;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.28) !important;
-    line-height: 1.35 !important;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.32) !important;
     text-align: center !important;
     width: 100% !important;
-    max-width: 440px !important;
-    display: block !important;
-    padding: 0 6px !important;
+    max-width: 480px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 8px !important;
     box-sizing: border-box !important;
     animation: loginHeaderSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: 0.08s;
+}
+
+.school-title-primary {
+    display: block !important;
+    font-size: clamp(1.15rem, 3.2vw, 1.35rem) !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+}
+
+.school-title-secondary {
+    display: block !important;
+    font-size: clamp(0.95rem, 2.6vw, 1.12rem) !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.075em !important;
+    line-height: 1.25 !important;
+    margin-top: 3px !important;
+    color: #f0fdf4 !important;
+    opacity: 0.96 !important;
+    white-space: nowrap !important;
 }
 
 .login-header h2 {
@@ -9438,20 +9454,28 @@ td.actions-cell > .btn-sm,
 
     .login-school-title,
     .login-header h1 {
-        font-size: clamp(0.76rem, 2.7vw, 0.95rem) !important;
-        white-space: normal !important;
-        text-wrap: balance !important;
-        word-break: normal !important;
-        overflow-wrap: break-word !important;
-        letter-spacing: 0.025em !important;
-        text-align: center !important;
         width: 100% !important;
-        max-width: 380px !important;
-        margin: 0 auto 8px !important;
-        display: block !important;
-        padding: 0 4px !important;
-        line-height: 1.35 !important;
+        max-width: 420px !important;
+        margin: 0 auto 10px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 6px !important;
         box-sizing: border-box !important;
+    }
+
+    .school-title-primary {
+        font-size: clamp(1.05rem, 3.8vw, 1.24rem) !important;
+        letter-spacing: 0.035em !important;
+        white-space: nowrap !important;
+    }
+
+    .school-title-secondary {
+        font-size: clamp(0.88rem, 3.1vw, 1.04rem) !important;
+        letter-spacing: 0.065em !important;
+        margin-top: 2px !important;
+        white-space: nowrap !important;
     }
 
     .login-body {
@@ -11791,20 +11815,28 @@ html.dark-theme .face-mode-btn.active {
 
     .login-school-title,
     .login-header h1 {
-        font-size: clamp(0.74rem, 3.4vw, 0.88rem) !important;
-        white-space: normal !important;
-        text-wrap: balance !important;
-        word-break: normal !important;
-        overflow-wrap: break-word !important;
-        letter-spacing: 0.025em !important;
-        text-align: center !important;
         width: 100% !important;
-        max-width: 320px !important;
-        margin: 0 auto 8px !important;
-        display: block !important;
+        max-width: 340px !important;
+        margin: 0 auto 10px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
         padding: 0 4px !important;
-        line-height: 1.35 !important;
         box-sizing: border-box !important;
+    }
+
+    .school-title-primary {
+        font-size: clamp(0.96rem, 4.4vw, 1.12rem) !important;
+        letter-spacing: 0.03em !important;
+        white-space: nowrap !important;
+    }
+
+    .school-title-secondary {
+        font-size: clamp(0.82rem, 3.6vw, 0.94rem) !important;
+        letter-spacing: 0.055em !important;
+        margin-top: 2px !important;
+        white-space: nowrap !important;
     }
 
     .login-system-badge {
