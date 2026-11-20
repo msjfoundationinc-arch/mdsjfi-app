@@ -8742,20 +8742,23 @@ td.actions-cell > .btn-sm,
     }
 
     .mobile-header h1 {
-        font-size: clamp(0.85rem, 3.8vw, 1.05rem) !important;
+        font-size: clamp(0.80rem, 3.5vw, 0.98rem) !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         flex: 1 1 auto !important;
         min-width: 0 !important;
-        margin: 0 !important;
+        margin: 0 4px !important;
     }
 
     .mobile-logo {
-        width: 38px !important;
-        height: 38px !important;
-        padding: 1px !important;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        margin: 0 4px !important;
+        border-radius: 50% !important;
         flex-shrink: 0 !important;
+        object-fit: contain !important;
     }
 
     .hamburger {
