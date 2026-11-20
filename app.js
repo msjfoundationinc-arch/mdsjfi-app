@@ -1419,6 +1419,20 @@ function proceedExecuteBatchPromotion(sourceSy, targetSy) {
 window.proceedExecuteBatchPromotion = proceedExecuteBatchPromotion;
 
 // ======================== DASHBOARD ========================
+function updateDashboardTimestamp() {
+    const el = document.getElementById('dashboardTimestampText');
+    if (!el) return;
+    try {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        el.textContent = 'Updated: ' + dateStr + ' • ' + timeStr;
+    } catch(e) {
+        el.textContent = 'Updated: Just now';
+    }
+}
+window.updateDashboardTimestamp = updateDashboardTimestamp;
+
 function refreshDashboard() {
     try {
         const cohort = currentSchoolYear ? students.filter(s => s.schoolYear === currentSchoolYear) : students;
@@ -1440,6 +1454,7 @@ function refreshDashboard() {
             dashSY.value = currentSchoolYear;
         }
 
+        try { updateDashboardTimestamp(); } catch (e) {}
         try { renderCharts(cohort); } catch (e) { console.error('Dashboard charts error:', e); }
         try { renderRecentTable(cohort); } catch (e) { console.error('Dashboard recent table error:', e); }
         try { initDashboardQuickSearch(); } catch (e) { console.error('Dashboard quick search error:', e); }

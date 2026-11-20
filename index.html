@@ -23,7 +23,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261120_06">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261120_06">
+    <link rel="stylesheet" href="styles.css?v=20261120_07">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -1836,15 +1836,56 @@
         
         <!-- ==================== DASHBOARD PAGE ==================== -->
         <section class="page active" id="page-dashboard">
-            <div class="page-header">
-                <div>
-                    <h2 class="page-title">Dashboard</h2>
-                    <p class="page-desc">Overview of student enrollment — S.Y. <span id="schoolYear">2026-2027</span></p>
+            <div class="page-header dashboard-saas-header" id="dashboardPageHeader">
+                <div class="dashboard-header-main">
+                    <!-- Title Row with Icon -->
+                    <div class="dashboard-title-row">
+                        <div class="dashboard-title-icon" aria-hidden="true">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <h1 class="page-title dashboard-title">Dashboard</h1>
+                    </div>
+                    
+                    <!-- Subtitle -->
+                    <p class="page-desc dashboard-subtitle">Overview of student enrollment</p>
+
+                    <!-- Dynamic Badges & Timestamp Row -->
+                    <div class="dashboard-meta-row">
+                        <div class="dashboard-badges-group">
+                            <!-- S.Y. Pill Badge -->
+                            <span class="dashboard-sy-badge" id="dashboardSyPillBadge">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>S.Y. </span><span id="schoolYear">2026-2027</span>
+                            </span>
+
+                            <!-- LIVE DATA Pulse Badge -->
+                            <span class="dashboard-live-badge">
+                                <span class="live-dot-pulse" aria-hidden="true">
+                                    <span class="live-dot-ping"></span>
+                                    <span class="live-dot-solid"></span>
+                                </span>
+                                <span>LIVE DATA</span>
+                            </span>
+                        </div>
+
+                        <!-- Dynamic Timestamp -->
+                        <div class="dashboard-timestamp-wrap">
+                            <span class="dashboard-timestamp-sep">•</span>
+                            <span class="dashboard-timestamp" id="dashboardLiveTimestamp">
+                                <i class="far fa-clock"></i>
+                                <span id="dashboardTimestampText">Updated: Just now</span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div class="header-controls">
-                    <div class="sy-selector-wrap">
-                        <label for="dashboardSchoolYear"><i class="fas fa-calendar-alt"></i> School Year:</label>
-                        <select id="dashboardSchoolYear" class="sy-select" onchange="setGlobalSchoolYear(this.value)">
+
+                <!-- Header Controls: School Year Selector -->
+                <div class="header-controls dashboard-header-controls">
+                    <div class="sy-selector-wrap dashboard-sy-selector-wrap">
+                        <label for="dashboardSchoolYear" class="dashboard-sy-label">
+                            <i class="fas fa-calendar-alt"></i> School Year:
+                        </label>
+                        <select id="dashboardSchoolYear" class="sy-select dashboard-sy-select" onchange="setGlobalSchoolYear(this.value)">
                             <option value="2000-2001">S.Y. 2000-2001</option>
                             <option value="2001-2002">S.Y. 2001-2002</option>
                             <option value="2002-2003">S.Y. 2002-2003</option>
@@ -8556,7 +8597,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261120_06"></script>
+    <script src="app.js?v=20261120_07"></script>
 </body>
 </html>
 
