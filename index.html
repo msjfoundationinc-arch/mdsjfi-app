@@ -23,10 +23,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261120_06">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261120_07">
+    <link rel="stylesheet" href="styles.css?v=20261120_08">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script id="sessionPrecheck">
     (function() {
@@ -144,17 +144,47 @@
     <div class="login-overlay" id="loginOverlay">
         <div class="login-container">
             <div class="login-card">
-                <div class="login-header">
+                <div class="login-header" id="loginHeader">
+                    <div class="login-header-glow" aria-hidden="true"></div>
                     <div class="login-logo">
-                        <img src="school-logo.png" alt="Montessori de San Jose Foundation Inc. Logo">
+                        <img src="school-logo.png" alt="Montessori de San Jose Foundation Inc. Logo" width="140" height="140">
                     </div>
-                    <h1 class="login-school-title" style="text-align: center; width: 100%; margin-left: auto; margin-right: auto;">MONTESSORI DE SAN JOSE FOUNDATION INC.</h1>
-                    <p class="login-tagline">Database Management System</p>
-                    <div class="login-welcome-banner">
-                        <div class="login-welcome-title">Welcome back, Personnel!</div>
+                    <h1 class="login-school-title" id="loginSchoolTitle">MONTESSORI DE SAN JOSE FOUNDATION INC.</h1>
+                    <div class="login-system-badge" id="loginSystemBadge">
+                        <span class="login-status-dot-pulse" aria-hidden="true">
+                            <span class="login-dot-ping"></span>
+                            <span class="login-dot-solid"></span>
+                        </span>
+                        <span class="login-system-text">Database Management System</span>
+                    </div>
+                    <div class="login-welcome-banner" id="loginWelcomeBanner">
+                        <div class="login-welcome-title" id="loginWelcomeTitle">
+                            <span class="login-greeting-icon" id="loginGreetingIcon"><i class="fas fa-moon" style="color: #93c5fd;"></i></span>
+                            <span class="login-greeting-text" id="loginGreetingText">Welcome back, Personnel!</span>
+                        </div>
                         <div class="login-welcome-sub">Sign in to start your session</div>
                     </div>
                 </div>
+                <script>
+                (function() {
+                    try {
+                        var titleEl = document.getElementById('loginGreetingText');
+                        var iconEl = document.getElementById('loginGreetingIcon');
+                        if (!titleEl) return;
+                        var h = new Date().getHours();
+                        if (h >= 5 && h < 12) {
+                            titleEl.textContent = "Good morning, Personnel!";
+                            if (iconEl) iconEl.innerHTML = '<i class="fas fa-sun" style="color: #fde047;"></i>';
+                        } else if (h >= 12 && h < 18) {
+                            titleEl.textContent = "Good afternoon, Personnel!";
+                            if (iconEl) iconEl.innerHTML = '<i class="fas fa-sun" style="color: #facc15;"></i>';
+                        } else {
+                            titleEl.textContent = "Good evening, Personnel!";
+                            if (iconEl) iconEl.innerHTML = '<i class="fas fa-moon" style="color: #93c5fd;"></i>';
+                        }
+                    } catch(e) {}
+                })();
+                </script>
                 <form id="loginForm" class="login-form" novalidate onsubmit="handleLoginSubmit(event); return false;">
                     <div class="login-field">
                         <label for="loginUsername"><i class="fas fa-user"></i> Username</label>
@@ -8597,7 +8627,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261120_07"></script>
+    <script src="app.js?v=20261120_08"></script>
 </body>
 </html>
 

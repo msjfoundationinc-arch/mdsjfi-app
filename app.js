@@ -620,6 +620,32 @@ function saveStudents() {
 
 // ======================== INITIALIZATION & AUTH ========================
 
+function updateLoginGreeting() {
+    try {
+        const titleEl = document.getElementById('loginGreetingText');
+        const iconEl = document.getElementById('loginGreetingIcon');
+        if (!titleEl) return;
+        const h = new Date().getHours();
+        let greeting = "Welcome back, Personnel!";
+        let iconHtml = '<i class="fas fa-user-circle"></i>';
+
+        if (h >= 5 && h < 12) {
+            greeting = "Good morning, Personnel!";
+            iconHtml = '<i class="fas fa-sun" style="color: #fde047;"></i>';
+        } else if (h >= 12 && h < 18) {
+            greeting = "Good afternoon, Personnel!";
+            iconHtml = '<i class="fas fa-sun" style="color: #facc15;"></i>';
+        } else {
+            greeting = "Good evening, Personnel!";
+            iconHtml = '<i class="fas fa-moon" style="color: #93c5fd;"></i>';
+        }
+
+        titleEl.textContent = greeting;
+        if (iconEl) iconEl.innerHTML = iconHtml;
+    } catch(e) {}
+}
+window.updateLoginGreeting = updateLoginGreeting;
+
 function initApp() {
     try {
         const isReload = (window.performance && window.performance.navigation && window.performance.navigation.type === 1) ||
@@ -654,6 +680,7 @@ function initApp() {
     try { initDashboardQuickSearch(); } catch(e) {}
     try { applySidebarCollapseState(); } catch(e) {}
     try { if (typeof window.initThemeMode === 'function') window.initThemeMode(); } catch(e) {}
+    try { updateLoginGreeting(); } catch(e) {}
 
     // Check for direct mobile / online QR scan or URL route (/profile/[student_id], ?profile=..., ?lrn=...)
     let directStudentTarget = null;
