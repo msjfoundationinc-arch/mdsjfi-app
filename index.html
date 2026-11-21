@@ -1378,9 +1378,10 @@
                 'alumni': 'JHS Finisher / Alumni Directory',
                 'archive': 'Archived Records'
             };
+            var isEditing = Boolean(document.getElementById('editStudentId') && document.getElementById('editStudentId').value);
             var breadcrumbEl = document.getElementById('topUtilityPageTitle');
             if (breadcrumbEl && pageTitles[pageId]) {
-                breadcrumbEl.textContent = pageTitles[pageId];
+                breadcrumbEl.textContent = (pageId === 'add-student' && isEditing) ? 'Edit Student Record' : pageTitles[pageId];
             }
 
             // Toggle view-fit-window mode for fixed-height single-window views
@@ -8107,7 +8108,7 @@
                 <button type="button" class="btn-secondary" id="btnExportProfilePdf" onclick="exportActiveProfilePdf()" title="Save / Export Learner Profile as PDF">
                     <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Export PDF
                 </button>
-                <button class="btn-primary" id="btnEditFromView" onclick="if (typeof currentViewId !== 'undefined' && currentViewId) { closeModal('viewModal'); editStudent(currentViewId); }">
+                <button class="btn-primary" id="btnEditFromView" onclick="const editTargetId = (typeof currentViewId !== 'undefined' && currentViewId) || window.currentViewId; if (editTargetId) { if (typeof closeModal === 'function') closeModal('viewModal', true); editStudent(editTargetId); }">
                     <i class="fas fa-edit"></i> Edit Record
                 </button>
             </div>

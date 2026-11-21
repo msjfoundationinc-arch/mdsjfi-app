@@ -1397,9 +1397,10 @@ function navigateTo(pageId) {
             'alumni': 'JHS Finisher / Alumni Directory',
             'archive': 'Archived Records'
         };
+        const isEditing = Boolean(document.getElementById('editStudentId')?.value);
         const breadcrumbEl = document.getElementById('topUtilityPageTitle');
         if (breadcrumbEl && pageTitles[pageId]) {
-            breadcrumbEl.textContent = pageTitles[pageId];
+            breadcrumbEl.textContent = (pageId === 'add-student' && isEditing) ? 'Edit Student Record' : pageTitles[pageId];
         }
     } catch(e) {}
 
@@ -5297,7 +5298,9 @@ function executeAdminAuth() {
 
     // Verify against School President / Admin credentials (strict case match)
     if (u === 'admin' && p === 'admin123') {
-        closeModal('adminAuthModal');
+        closeModal('adminAuthModal', true);
+        document.documentElement.classList.add('user-logged-in');
+        document.body.classList.remove('app-hidden');
         showToast('Administrator authorization granted.', 'success');
 
         const cb = pendingAdminAuthCallback;
@@ -5342,6 +5345,7 @@ function editStudent(id) {
     const s = findStudent(id);
     if (!s) {
         console.warn('Student record not found for edit:', id);
+        if (typeof showToast === 'function') showToast('Student record not found for edit.', 'warning');
         return;
     }
 
@@ -5500,13 +5504,38 @@ function proceedEditStudent(s) {
         setSignatureState(s.signature);
     } else {
         clearSignaturePad(false);
-
-    const relOtherContainer = document.getElementById('religionOtherContainer');
-    const relOtherInput = document.getElementById('religionOther');
-    if (relOtherContainer) relOtherContainer.style.display = 'none';
-    if (relOtherInput) relOtherInput.value = '';
     }
 
+    // Clean up any guest QR restrictions and overlays so the entire application is visible
+    document.documentElement.classList.remove('direct-profile-view', 'guest-qr-view');
+    document.body.classList.remove('direct-profile-view', 'guest-qr-view', 'app-hidden');
+    document.documentElement.classList.add('user-logged-in');
+
+    const qrBanner = document.getElementById('qrProfileClosedBanner');
+    if (qrBanner) qrBanner.style.display = 'none';
+
+    // Clear any search query params (like ?student= or ?id=) that trigger guest-qr locks
+    try {
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.pathname + '#add-student');
+        }
+    } catch(e) {}
+
+    // Forcibly close viewModal and mobile QR modal without triggering QR lock
+    closeModal('viewModal', true);
+    closeModal('learnerMobileModal', true);
+    const vm = document.getElementById('viewModal');
+    if (vm) vm.classList.remove('show', 'active');
+    const lm = document.getElementById('learnerMobileModal');
+    if (lm) lm.classList.remove('show', 'active');
+    if (!document.querySelector('.modal-overlay.show, .modal-overlay.active')) {
+        document.body.style.overflow = '';
+    }
+
+    // Navigate to add-student tab
+    navigateTo('add-student');
+
+    // Ensure form headers, buttons and breadcrumb reflect Edit Student Record
     const titleEl = document.getElementById('formTitle');
     if (titleEl) titleEl.textContent = 'Edit Student Record';
     const descEl = document.getElementById('formDesc');
@@ -5515,9 +5544,24 @@ function proceedEditStudent(s) {
     if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
     const btnCancel = document.getElementById('btnCancelEdit');
     if (btnCancel) btnCancel.style.display = 'inline-block';
+    const breadcrumbEl = document.getElementById('topUtilityPageTitle');
+    if (breadcrumbEl) breadcrumbEl.textContent = 'Edit Student Record';
 
-    closeModal('viewModal');
-    navigateTo('add-student');
+    // Ensure page-add-student is active and visible
+    const targetPage = document.getElementById('page-add-student');
+    if (targetPage) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        targetPage.classList.add('active');
+        targetPage.style.display = 'block';
+    }
+    const navItem = document.querySelector('.nav-item[data-page="add-student"]');
+    if (navItem) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        navItem.classList.add('active');
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast(`Editing student record for ${s.firstName} ${s.lastName}.`, 'info');
 }
 
 // ======================== DELETE MODAL & EXECUTION ========================
@@ -5602,10 +5646,12 @@ function initModals() {
 
     const btnEditFromView = document.getElementById('btnEditFromView');
     if (btnEditFromView) {
-        btnEditFromView.onclick = () => {
-            if (currentViewId) {
-                closeModal('viewModal');
-                editStudent(currentViewId);
+        btnEditFromView.onclick = (e) => {
+            if (e) e.preventDefault();
+            const id = (typeof currentViewId !== 'undefined' && currentViewId) || window.currentViewId;
+            if (id) {
+                closeModal('viewModal', true);
+                editStudent(id);
             }
         };
     }
@@ -5766,14 +5812,18 @@ function handleQrProfileClose() {
 }
 window.handleQrProfileClose = handleQrProfileClose;
 
-function closeModal(id) {
-    const isQrView = (id === 'viewModal' || id === 'learnerMobileModal') && 
-                     (document.documentElement.classList.contains('direct-profile-view') || 
-                      document.documentElement.classList.contains('guest-qr-view') ||
-                      (typeof getStudentIdFromUrl === 'function' && Boolean(getStudentIdFromUrl())));
-    if (isQrView) {
-        handleQrProfileClose();
-        return;
+function closeModal(id, forceClose = false) {
+    if (!forceClose) {
+        const isQrView = (id === 'viewModal' || id === 'learnerMobileModal') && 
+                         (document.documentElement.classList.contains('direct-profile-view') || 
+                          document.documentElement.classList.contains('guest-qr-view') ||
+                          (typeof getStudentIdFromUrl === 'function' && Boolean(getStudentIdFromUrl())));
+        const isLoggedIn = document.documentElement.classList.contains('user-logged-in') || 
+                           (typeof getCurrentUser === 'function' && Boolean(getCurrentUser()));
+        if (isQrView && !isLoggedIn) {
+            handleQrProfileClose();
+            return;
+        }
     }
     const m = document.getElementById(id);
     if (!m) return;
@@ -6901,76 +6951,115 @@ function initForm() {
             return;
         }
 
-        const editId = document.getElementById('editStudentId')?.value;
+        const editId = (document.getElementById('editStudentId')?.value || '').trim();
+        let targetStudent = null;
+        let index = -1;
+
         if (editId) {
-            const index = students.findIndex(s => s.id === editId);
-            if (index !== -1) {
-                const prev = students[index];
-                const formData = collectFormData();
-                if (prev.isJhsFinisher && !formData.isJhsFinisher && String(formData.gradeLevel) === '10' && ['graduated', 'completed', 'alumni'].includes((formData.enrollmentStatus || '').toLowerCase())) {
-                    formData.isJhsFinisher = true;
-                    formData.completionSchoolYear = prev.completionSchoolYear || formData.schoolYear;
-                }
-                const updated = { ...prev, ...formData, id: editId, dateModified: new Date().toISOString() };
-                students[index] = updated;
-                if (updated.photo) persistStudentPhoto(updated, updated.photo);
-                if (updated.birthCertDoc) persistStudentDoc(updated, 'birthcert', updated.birthCertDoc);
-                if (updated.torDoc) persistStudentDoc(updated, 'tor', updated.torDoc);
-                if (updated.studentCardDoc) persistStudentDoc(updated, 'card', updated.studentCardDoc);
-                if (updated.escAnnexDDoc) persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc);
-                if (updated.escAnnexFDoc) persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc);
-                saveStudents();
-                showToast('Student record updated successfully!', 'success');
-                if (typeof logActivity === 'function') {
-                    logActivity('Student Updated', `Updated profile records for ${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`, updated);
-                }
-
-                // Instant email notification to ADMIN_EMAIL via nodemailer
-                sendNewDataEmailAlert({
-                    category: 'Student Information System',
-                    action: 'Student Record Updated',
-                    title: `${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`,
-                    details: {
-                        'Student LRN': updated.lrn,
-                        'Full Name': `${updated.lastName}, ${updated.firstName} ${updated.middleName || ''} ${updated.extension || ''}`.trim(),
-                        'Grade Level': `Grade ${updated.gradeLevel}`,
-                        'Section': updated.section || 'N/A',
-                        'School Year': updated.schoolYear || currentSchoolYear || '2026-2027',
-                        'Enrollment Status': updated.enrollmentStatus || 'Active',
-                        'Gender': updated.gender || 'N/A',
-                        'Date of Birth': updated.dateOfBirth || 'N/A',
-                        'Age': updated.age || 'N/A',
-                        'Permanent Address': updated.address || 'N/A',
-                        'Contact Number': updated.contactNumber || 'N/A',
-                        'Email Address': updated.email || 'N/A',
-                        'Mother Name': updated.motherName || 'N/A',
-                        'Father Name': updated.fatherName || 'N/A',
-                        'Guardian Name': updated.guardianName || 'N/A',
-                        'Guardian Contact': updated.guardianContact || 'N/A',
-                        'Assessed Base Tuition': updated.tuitionFee,
-                        'Discount Status': updated.isDiscounted === 'YES' ? `Yes (₱${updated.discountAmount})` : 'None',
-                        'Net Assessed Tuition': updated.netTuition,
-                        'ESC Grantee': updated.escGrantee || 'NO',
-                        'ESC Number': updated.escNumber || 'N/A'
-                    }
-                });
-
-                // Stay in the current tab and keep the form updated with the saved student's data
-                const titleEl = document.getElementById('formTitle');
-                if (titleEl) titleEl.textContent = 'Edit Student Record';
-                const descEl = document.getElementById('formDesc');
-                if (descEl) descEl.textContent = `Editing: ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`;
-                const btnSubmit = document.getElementById('btnSubmitForm');
-                if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
-                const btnCancel = document.getElementById('btnCancelEdit');
-                if (btnCancel) btnCancel.style.display = 'inline-block';
-
-                refreshAll();
-                return;
-            } else {
-                showToast('Student record not found for update.', 'error');
-                return;
+            targetStudent = findStudent(editId);
+            if (targetStudent) {
+                index = students.indexOf(targetStudent);
             }
+        }
+
+        // Resilient fallback: If editStudentId was not set or mismatched, verify via form state and LRN
+        if (index === -1) {
+            const btnSubmit = document.getElementById('btnSubmitForm');
+            const isEditMode = (btnSubmit && btnSubmit.textContent.includes('Update')) || 
+                               (document.getElementById('formTitle')?.textContent.includes('Edit'));
+            if (isEditMode && lrnVal) {
+                targetStudent = findStudent(lrnVal);
+                if (targetStudent) {
+                    index = students.indexOf(targetStudent);
+                }
+            }
+        }
+
+        if (index !== -1 && targetStudent) {
+            const prev = students[index];
+            const formData = collectFormData();
+            if (prev.isJhsFinisher && !formData.isJhsFinisher && String(formData.gradeLevel) === '10' && ['graduated', 'completed', 'alumni'].includes((formData.enrollmentStatus || '').toLowerCase())) {
+                formData.isJhsFinisher = true;
+                formData.completionSchoolYear = prev.completionSchoolYear || formData.schoolYear;
+            }
+            const updated = { ...prev, ...formData, id: prev.id, dateModified: new Date().toISOString() };
+            students[index] = updated;
+            if (updated.photo) persistStudentPhoto(updated, updated.photo);
+            if (updated.birthCertDoc) persistStudentDoc(updated, 'birthcert', updated.birthCertDoc);
+            if (updated.torDoc) persistStudentDoc(updated, 'tor', updated.torDoc);
+            if (updated.studentCardDoc) persistStudentDoc(updated, 'card', updated.studentCardDoc);
+            if (updated.escAnnexDDoc) persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc);
+            if (updated.escAnnexFDoc) persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc);
+            saveStudents();
+            showToast('Student record updated successfully!', 'success');
+            if (typeof logActivity === 'function') {
+                logActivity('Student Updated', `Updated profile records for ${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`, updated);
+            }
+
+            // Instant email notification to ADMIN_EMAIL via nodemailer
+            sendNewDataEmailAlert({
+                category: 'Student Information System',
+                action: 'Student Record Updated',
+                title: `${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`,
+                details: {
+                    'Student LRN': updated.lrn,
+                    'Full Name': `${updated.lastName}, ${updated.firstName} ${updated.middleName || ''} ${updated.extension || ''}`.trim(),
+                    'Grade Level': `Grade ${updated.gradeLevel}`,
+                    'Section': updated.section || 'N/A',
+                    'School Year': updated.schoolYear || currentSchoolYear || '2026-2027',
+                    'Enrollment Status': updated.enrollmentStatus || 'Active',
+                    'Gender': updated.gender || 'N/A',
+                    'Date of Birth': updated.dateOfBirth || 'N/A',
+                    'Age': updated.age || 'N/A',
+                    'Permanent Address': updated.address || 'N/A',
+                    'Contact Number': updated.contactNumber || 'N/A',
+                    'Email Address': updated.email || 'N/A',
+                    'Mother Name': updated.motherName || 'N/A',
+                    'Father Name': updated.fatherName || 'N/A',
+                    'Guardian Name': updated.guardianName || 'N/A',
+                    'Guardian Contact': updated.guardianContact || 'N/A',
+                    'Assessed Base Tuition': updated.tuitionFee,
+                    'Discount Status': updated.isDiscounted === 'YES' ? `Yes (₱${updated.discountAmount})` : 'None',
+                    'Net Assessed Tuition': updated.netTuition,
+                    'ESC Grantee': updated.escGrantee || 'NO',
+                    'ESC Number': updated.escNumber || 'N/A'
+                }
+            });
+
+            // Keep editStudentId set to the updated student ID so subsequent updates work continuously
+            const editIdEl = document.getElementById('editStudentId');
+            if (editIdEl) editIdEl.value = updated.id;
+
+            // Stay in the current tab and keep the form in Edit Student Record mode
+            const titleEl = document.getElementById('formTitle');
+            if (titleEl) titleEl.textContent = 'Edit Student Record';
+            const descEl = document.getElementById('formDesc');
+            if (descEl) descEl.textContent = `Editing: ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`;
+            const btnSubmit = document.getElementById('btnSubmitForm');
+            if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
+            const btnCancel = document.getElementById('btnCancelEdit');
+            if (btnCancel) btnCancel.style.display = 'inline-block';
+            const breadcrumbEl = document.getElementById('topUtilityPageTitle');
+            if (breadcrumbEl) breadcrumbEl.textContent = 'Edit Student Record';
+
+            // Ensure page-add-student stays active and visible
+            const targetPage = document.getElementById('page-add-student');
+            if (targetPage) {
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                targetPage.classList.add('active');
+                targetPage.style.display = 'block';
+            }
+            const navItem = document.querySelector('.nav-item[data-page="add-student"]');
+            if (navItem) {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                navItem.classList.add('active');
+            }
+
+            refreshAll();
+            return;
+        } else if (editId) {
+            showToast('Student record not found for update.', 'error');
+            return;
         } else {
             const newStudent = { ...collectFormData(), id: generateId(), dateCreated: new Date().toISOString(), dateModified: new Date().toISOString() };
             students.unshift(newStudent);

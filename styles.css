@@ -12352,29 +12352,29 @@ html.guest-qr-view:not(.user-logged-in) .guest-profile-auth-bar {
     display: flex !important;
 }
 
-/* Scanned QR Mobile View - Remove all file uploads, modifications, and restrict to read-only pass viewing */
-html.guest-qr-view .avatar-action-btns,
-html.direct-profile-view .avatar-action-btns,
-html.guest-qr-view button[onclick*="uploadPhotoFromProfile"],
-html.direct-profile-view button[onclick*="uploadPhotoFromProfile"],
-html.guest-qr-view button[onclick*="takePhotoFromProfile"],
-html.direct-profile-view button[onclick*="takePhotoFromProfile"],
-html.guest-qr-view button[onclick*="deletePhotoFromProfile"],
-html.direct-profile-view button[onclick*="deletePhotoFromProfile"],
-html.guest-qr-view button[onclick*="triggerDocUploadFromProfile"],
-html.direct-profile-view button[onclick*="triggerDocUploadFromProfile"],
-html.guest-qr-view button[onclick*="deleteDocFromProfile"],
-html.direct-profile-view button[onclick*="deleteDocFromProfile"],
-html.guest-qr-view button[onclick*="openFaceEnrollmentForCurrentStudent"],
-html.direct-profile-view button[onclick*="openFaceEnrollmentForCurrentStudent"],
-html.guest-qr-view .view-doc-btn-wrap button:not(.btn-info),
-html.direct-profile-view .view-doc-btn-wrap button:not(.btn-info),
-html.guest-qr-view #btnDeleteFromView,
-html.direct-profile-view #btnDeleteFromView,
-html.guest-qr-view #btnArchiveFromView,
-html.direct-profile-view #btnArchiveFromView,
-html.guest-qr-view #btnEditFromView,
-html.direct-profile-view #btnEditFromView {
+/* Scanned QR Mobile View - Remove all file uploads, modifications, and restrict to read-only pass viewing for guests */
+html.guest-qr-view:not(.user-logged-in) .avatar-action-btns,
+html.direct-profile-view:not(.user-logged-in) .avatar-action-btns,
+html.guest-qr-view:not(.user-logged-in) button[onclick*="uploadPhotoFromProfile"],
+html.direct-profile-view:not(.user-logged-in) button[onclick*="uploadPhotoFromProfile"],
+html.guest-qr-view:not(.user-logged-in) button[onclick*="takePhotoFromProfile"],
+html.direct-profile-view:not(.user-logged-in) button[onclick*="takePhotoFromProfile"],
+html.guest-qr-view:not(.user-logged-in) button[onclick*="deletePhotoFromProfile"],
+html.direct-profile-view:not(.user-logged-in) button[onclick*="deletePhotoFromProfile"],
+html.guest-qr-view:not(.user-logged-in) button[onclick*="triggerDocUploadFromProfile"],
+html.direct-profile-view:not(.user-logged-in) button[onclick*="triggerDocUploadFromProfile"],
+html.guest-qr-view:not(.user-logged-in) button[onclick*="deleteDocFromProfile"],
+html.direct-profile-view:not(.user-logged-in) button[onclick*="deleteDocFromProfile"],
+html.guest-qr-view:not(.user-logged-in) button[onclick*="openFaceEnrollmentForCurrentStudent"],
+html.direct-profile-view:not(.user-logged-in) button[onclick*="openFaceEnrollmentForCurrentStudent"],
+html.guest-qr-view:not(.user-logged-in) .view-doc-btn-wrap button:not(.btn-info),
+html.direct-profile-view:not(.user-logged-in) .view-doc-btn-wrap button:not(.btn-info),
+html.guest-qr-view:not(.user-logged-in) #btnDeleteFromView,
+html.direct-profile-view:not(.user-logged-in) #btnDeleteFromView,
+html.guest-qr-view:not(.user-logged-in) #btnArchiveFromView,
+html.direct-profile-view:not(.user-logged-in) #btnArchiveFromView,
+html.guest-qr-view:not(.user-logged-in) #btnEditFromView,
+html.direct-profile-view:not(.user-logged-in) #btnEditFromView {
     display: none !important;
 }
 
