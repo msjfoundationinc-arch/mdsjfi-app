@@ -1928,10 +1928,11 @@ html.direct-profile-view:not(.user-logged-in) .avatar-action-btns button:not(#bt
 }
 
 .table-wrapper {
-    overflow-x: hidden !important; /* STRICT SINGLE-WINDOW FIT: ZERO HORIZONTAL SCROLLBAR */
+    overflow-x: auto !important; /* Touch-scrollable container when width exceeds viewport */
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    -webkit-overflow-scrolling: touch !important;
 }
 
 .data-table {
@@ -3319,15 +3320,31 @@ html.direct-profile-view:not(.user-logged-in) .avatar-action-btns button:not(#bt
 /* ============= DOCUMENT TABLE BADGES ============= */
 .doc-badge-group {
     display: inline-flex;
-    gap: 4px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    vertical-align: middle;
+}
+.doc-badge-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    white-space: nowrap;
 }
 .doc-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 1.5px 5px;
+    border-radius: 3px;
+    font-size: 0.63rem;
     font-weight: 700;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
+    line-height: 1.15;
+    white-space: nowrap;
     transition: all 0.2s;
 }
 .doc-badge.uploaded {
@@ -6016,36 +6033,38 @@ html, body {
     font-size: 0.78rem;
 }
 
-/* All Students Table Wrapper - Strict Single-Window Fit */
+/* All Students Table Wrapper - Strict Single-Window Fit with Touch-Scroll Support */
 #page-students .table-wrapper {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    overflow-x: hidden !important; /* NO SIDE BAR LEFT AND RIGHT */
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
     border-radius: var(--radius);
     background: var(--bg-card);
     box-shadow: var(--shadow-sm);
 }
 
-#page-students #studentsTable {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
+#page-students #studentsTable,
+#page-students #studentsTable.table-auto {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
     font-size: 0.81rem;
 }
 
 /* Colgroup column widths for 100% strict adherence */
-#page-students #studentsTable col:nth-child(1) { width: 4.5%; }
-#page-students #studentsTable col:nth-child(2) { width: 9.5%; }
-#page-students #studentsTable col:nth-child(3) { width: 18.5%; }
-#page-students #studentsTable col:nth-child(4) { width: 6.5%; }
-#page-students #studentsTable col:nth-child(5) { width: 6%; }
-#page-students #studentsTable col:nth-child(6) { width: 6.5%; }
-#page-students #studentsTable col:nth-child(7) { width: 6%; }
-#page-students #studentsTable col:nth-child(8) { width: 5.5%; }
-#page-students #studentsTable col:nth-child(9) { width: 6.5%; }
-#page-students #studentsTable col:nth-child(10) { width: 15%; }
-#page-students #studentsTable col:nth-child(11) { width: 15.5%; }
+#page-students #studentsTable col:nth-child(1) { width: 3.5%; }
+#page-students #studentsTable col:nth-child(2) { width: 8.5%; }
+#page-students #studentsTable col:nth-child(3) { width: 21%; }
+#page-students #studentsTable col:nth-child(4) { width: 6%; }
+#page-students #studentsTable col:nth-child(5) { width: 5.5%; }
+#page-students #studentsTable col:nth-child(6) { width: 5.5%; }
+#page-students #studentsTable col:nth-child(7) { width: 5%; }
+#page-students #studentsTable col:nth-child(8) { width: 4.5%; }
+#page-students #studentsTable col:nth-child(9) { width: 5.5%; }
+#page-students #studentsTable col:nth-child(10) { width: 17.5%; }
+#page-students #studentsTable col:nth-child(11) { width: 17.5%; }
 
 /* Table Headers */
 #page-students #studentsTable thead th {
@@ -6115,22 +6134,27 @@ html, body {
     color: inherit !important;
 }
 
-/* Col 3: Student Name (21%) - Left-aligned with comfortable padding */
+/* Col 3: Student Name (21%) - Left-aligned with comfortable padding & no truncation */
 #page-students #studentsTable th:nth-child(3) {
     width: 21%;
+    min-width: 220px;
     text-align: left;
-    padding-left: 12px;
+    padding-left: 8px;
 }
-#page-students #studentsTable td:nth-child(3) {
+#page-students #studentsTable td:nth-child(3),
+#page-students #studentsTable td.student-name-cell {
     width: 21%;
+    min-width: 220px;
     text-align: left;
-    padding-left: 12px;
+    padding: 4.5px 8px;
     white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
     line-height: 1.25;
 }
 #page-students .table-student-name {
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: 0.81rem;
+    font-weight: 700;
     color: var(--text-dark, #0f172a);
 }
 
@@ -6216,34 +6240,44 @@ html, body {
     vertical-align: middle;
 }
 
-/* Col 10: Docs (12.5%) - Centered, interactive document badges (PSA, TOR, CARD) */
+/* Col 10: Docs (17%) - Centered, wrapped document badges (PSA, TOR, CARD, ANNEX-D, ANNEX-F) */
 #page-students #studentsTable th:nth-child(10),
-#page-students #studentsTable td:nth-child(10) {
-    width: 15% !important;
-    min-width: 135px !important;
+#page-students #studentsTable td:nth-child(10),
+#page-students td.docs-cell {
+    width: 17% !important;
+    min-width: 140px !important;
     text-align: center !important;
-    padding: 4px 2px !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
+    padding: 3px 2px !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    vertical-align: middle !important;
 }
 #page-students .doc-badge-group {
     display: inline-flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 3px !important;
+    gap: 2.5px !important;
+    max-width: 146px !important;
+    margin: 0 auto !important;
     vertical-align: middle !important;
+}
+#page-students .doc-badge-row {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2.5px !important;
     white-space: nowrap !important;
-    flex-wrap: nowrap !important;
 }
 #page-students .doc-badge {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 2px !important;
-    padding: 2px 5px !important;
-    font-size: 0.65rem !important;
+    padding: 1.5px 4.5px !important;
+    font-size: 0.62rem !important;
     font-weight: 700 !important;
-    letter-spacing: 0.2px !important;
+    letter-spacing: 0.15px !important;
     line-height: 1.15 !important;
     border-radius: 3px !important;
     user-select: none !important;
@@ -6285,23 +6319,39 @@ html, body {
     color: #ef4444;
 }
 
-/* Col 11: Actions (12%) - Centered action buttons with true table-cell display */
+/* Col 11: Actions (17.5%) - Centered action buttons with true table-cell display */
 #page-students #studentsTable th:nth-child(11),
 #page-students #studentsTable td:nth-child(11) {
-    width: 12%;
-    text-align: center;
-    padding: 4px 2px;
+    width: 17.5% !important;
+    min-width: 156px !important;
+    text-align: center !important;
+    padding: 3px 2px !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
 }
 #page-students td.actions-cell {
     display: table-cell !important;
     text-align: center !important;
     vertical-align: middle !important;
     white-space: nowrap !important;
+    min-width: 156px !important;
+    padding: 3px 2px !important;
 }
 #page-students .actions-cell .btn-icon {
-    width: 25px !important;
-    height: 25px !important;
-    font-size: 0.70rem !important;
+    width: 23px !important;
+    height: 23px !important;
+    min-width: 23px !important;
+    max-width: 23px !important;
+    font-size: 0.66rem !important;
+    border-radius: 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 1px !important;
+    vertical-align: middle !important;
+    padding: 0 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
     border-radius: 4px !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -7643,18 +7693,18 @@ body:has(#page-soa.active) .main-content {
 /* Specific Proportional Column Widths for All Tables (Each Sums to Exactly 100%) */
 
 /* 1. Main Students Table (#studentsTable: 11 cols - Concise 100% Fit) */
-#page-students #studentsTable th:nth-child(1), #page-students #studentsTable td:nth-child(1) { width: 4.5% !important; min-width: 44px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(1), #page-students #studentsTable td:nth-child(1) { width: 3.5% !important; min-width: 36px !important; text-align: center; }
 #page-students #studentsTable th:nth-child(1) { overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important; }
-#page-students #studentsTable th:nth-child(2), #page-students #studentsTable td:nth-child(2) { width: 9.5% !important; text-align: center; font-family: monospace; }
-#page-students #studentsTable th:nth-child(3), #page-students #studentsTable td:nth-child(3) { width: 18.5% !important; }
-#page-students #studentsTable th:nth-child(4), #page-students #studentsTable td:nth-child(4) { width: 6.5% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(5), #page-students #studentsTable td:nth-child(5) { width: 6% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(6), #page-students #studentsTable td:nth-child(6) { width: 6.5% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(7), #page-students #studentsTable td:nth-child(7) { width: 6% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(8), #page-students #studentsTable td:nth-child(8) { width: 5.5% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(9), #page-students #studentsTable td:nth-child(9) { width: 6.5% !important; text-align: center; }
-#page-students #studentsTable th:nth-child(10), #page-students #studentsTable td:nth-child(10) { width: 15% !important; min-width: 135px !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
-#page-students #studentsTable th:nth-child(11), #page-students #studentsTable td:nth-child(11) { width: 15.5% !important; text-align: center; white-space: nowrap !important; overflow: visible !important; }
+#page-students #studentsTable th:nth-child(2), #page-students #studentsTable td:nth-child(2) { width: 8.5% !important; min-width: 90px !important; text-align: center; font-family: monospace; }
+#page-students #studentsTable th:nth-child(3), #page-students #studentsTable td:nth-child(3), #page-students #studentsTable td.student-name-cell { width: 21% !important; min-width: 220px !important; text-align: left !important; white-space: normal !important; overflow: visible !important; text-overflow: clip !important; word-break: normal !important; overflow-wrap: break-word !important; }
+#page-students #studentsTable th:nth-child(4), #page-students #studentsTable td:nth-child(4) { width: 6% !important; min-width: 65px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(5), #page-students #studentsTable td:nth-child(5) { width: 5.5% !important; min-width: 55px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(6), #page-students #studentsTable td:nth-child(6) { width: 5.5% !important; min-width: 55px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(7), #page-students #studentsTable td:nth-child(7) { width: 5% !important; min-width: 55px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(8), #page-students #studentsTable td:nth-child(8) { width: 4.5% !important; min-width: 45px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(9), #page-students #studentsTable td:nth-child(9) { width: 5.5% !important; min-width: 55px !important; text-align: center; }
+#page-students #studentsTable th:nth-child(10), #page-students #studentsTable td:nth-child(10) { width: 17.5% !important; min-width: 140px !important; text-align: center !important; white-space: normal !important; overflow: hidden !important; }
+#page-students #studentsTable th:nth-child(11), #page-students #studentsTable td:nth-child(11) { width: 17.5% !important; min-width: 156px !important; text-align: center !important; white-space: nowrap !important; overflow: visible !important; }
 
 /* 2. Dashboard Recent Students (#recentTable: 9 cols - Concise 100% Fit) */
 #recentTable th:nth-child(1), #recentTable td:nth-child(1) { width: 4% !important; text-align: center; }
@@ -7720,6 +7770,20 @@ body:has(#page-soa.active) .main-content {
     text-overflow: ellipsis !important;
 }
 
+#page-grade7 .data-table tbody td.student-name-cell,
+#page-grade8 .data-table tbody td.student-name-cell,
+#page-grade9 .data-table tbody td.student-name-cell,
+#page-grade10 .data-table tbody td.student-name-cell,
+#recentTable tbody td.student-name-cell,
+#alumniTable tbody td.student-name-cell,
+#page-archive .data-table tbody td.student-name-cell {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+}
+
 #page-grade7 .data-table tbody td,
 #page-grade8 .data-table tbody td,
 #page-grade9 .data-table tbody td,
@@ -7731,6 +7795,20 @@ body:has(#page-soa.active) .main-content {
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+}
+
+#page-grade7 .data-table tbody td.student-name-cell,
+#page-grade8 .data-table tbody td.student-name-cell,
+#page-grade9 .data-table tbody td.student-name-cell,
+#page-grade10 .data-table tbody td.student-name-cell,
+#recentTable tbody td.student-name-cell,
+#alumniTable tbody td.student-name-cell,
+#page-archive .data-table tbody td.student-name-cell {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
 }
 
 #page-grade7 .data-table tbody td .table-student-name,
@@ -8357,6 +8435,20 @@ body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #
     overflow: hidden !important;
     text-overflow: ellipsis !important;
 }
+
+#page-grade7 .data-table tbody td.student-name-cell,
+#page-grade8 .data-table tbody td.student-name-cell,
+#page-grade9 .data-table tbody td.student-name-cell,
+#page-grade10 .data-table tbody td.student-name-cell,
+#recentTable tbody td.student-name-cell,
+#alumniTable tbody td.student-name-cell,
+#page-archive .data-table tbody td.student-name-cell {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+}
 .soa-hub-table tbody td,
 #page-soa .soa-hub-table tbody td {
     font-size: 0.86rem !important;
@@ -8448,35 +8540,78 @@ body.role-teacher #promissoryClearanceTable th:nth-child(9), body.role-teacher #
 }
 
 /* Main Students Table Typography (Enlarged and Clear) */
-#page-students #studentsTable {
+#page-students #studentsTable,
+#page-students #studentsTable.table-auto {
     width: 100% !important;
-    table-layout: fixed !important;
+    table-layout: auto !important;
     border-collapse: collapse !important;
 }
 #page-students #studentsTable thead th {
-    font-size: 0.75rem !important;
+    font-size: 0.74rem !important;
     font-weight: 700 !important;
-    padding: 8px 3px !important;
-    letter-spacing: 0.25px !important;
+    padding: 7px 3px !important;
+    letter-spacing: 0.2px !important;
     background: #0b2545 !important;
     color: #ffffff !important;
     text-transform: uppercase !important;
     user-select: none !important;
 }
 #page-students #studentsTable tbody td {
-    font-size: 0.80rem !important;
+    font-size: 0.79rem !important;
     line-height: 1.25 !important;
-    padding: 5px 3px !important;
+    padding: 4.5px 3px !important;
     vertical-align: middle !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
     box-sizing: border-box !important;
 }
+
+/* STUDENT NAME COLUMN: Strict No-Truncation, Full-Visibility Rules */
+#page-students #studentsTable tbody td.student-name-cell,
+#page-students #studentsTable tbody td:nth-child(3),
+.data-table tbody td.student-name-cell {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    min-width: 220px !important;
+    text-align: left !important;
+    padding: 4.5px 8px !important;
+    vertical-align: middle !important;
+    max-width: none !important;
+}
+
+#page-students #studentsTable tbody td.student-name-cell strong.table-student-name,
+#page-students #studentsTable tbody td:nth-child(3) strong.table-student-name,
+.data-table tbody td.student-name-cell strong.table-student-name {
+    font-size: 0.81rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    display: inline !important;
+    max-width: none !important;
+}
+
+#page-students #studentsTable tbody td.student-name-cell span,
+#page-students #studentsTable tbody td:nth-child(3) span,
+.data-table tbody td.student-name-cell span {
+    font-size: 0.79rem !important;
+    font-weight: 400 !important;
+    color: #334155 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    display: inline !important;
+    max-width: none !important;
+}
 #page-students #studentsTable tbody td div,
 #page-students #studentsTable tbody td span,
 #page-students #studentsTable tbody td strong {
-    font-size: 0.80rem !important;
+    font-size: 0.79rem !important;
     line-height: 1.25 !important;
 }
 #page-students #studentsTable tbody td strong.table-student-name {
@@ -11266,21 +11401,45 @@ html.dark-theme .face-mode-btn.active {
     }
 
     #page-students #studentsTable th:nth-child(3),
-    #page-students #studentsTable td:nth-child(3) {
-        min-width: 180px !important;
+    #page-students #studentsTable td:nth-child(3),
+    #page-students #studentsTable td.student-name-cell {
+        min-width: 220px !important;
         white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
     }
 
     #page-students #studentsTable th:nth-child(10),
-    #page-students #studentsTable td:nth-child(10) {
+    #page-students #studentsTable td:nth-child(10),
+    #page-students td.docs-cell {
         min-width: 140px !important;
         text-align: center !important;
+        white-space: normal !important;
+        padding: 6px 2px !important;
+    }
+    #page-students #studentsTable td:nth-child(10) .doc-badge-group,
+    #page-students td.docs-cell .doc-badge-group {
+        display: inline-flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        max-width: 146px !important;
+        gap: 2.5px !important;
+    }
+    #page-students #studentsTable td:nth-child(10) .doc-badge-row,
+    #page-students td.docs-cell .doc-badge-row {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 2.5px !important;
         white-space: nowrap !important;
     }
 
     #page-students #studentsTable th:nth-child(11),
     #page-students #studentsTable td:nth-child(11) {
-        min-width: 130px !important;
+        min-width: 168px !important;
         text-align: center !important;
         white-space: nowrap !important;
     }
@@ -11288,14 +11447,16 @@ html.dark-theme .face-mode-btn.active {
     #page-students td.actions-cell {
         white-space: nowrap !important;
         display: table-cell !important;
+        min-width: 168px !important;
     }
 
     #page-students .actions-cell .btn-icon {
-        width: 28px !important;
-        height: 28px !important;
-        min-width: 28px !important;
-        font-size: 0.75rem !important;
-        margin: 0 2px !important;
+        width: 25px !important;
+        height: 25px !important;
+        min-width: 25px !important;
+        max-width: 25px !important;
+        font-size: 0.70rem !important;
+        margin: 0 1px !important;
     }
 
     #page-students .pagination {

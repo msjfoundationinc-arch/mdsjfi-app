@@ -757,6 +757,8 @@ function loadStudents() {
                     if (ex.birthCertDoc) s.birthCertDoc = ex.birthCertDoc;
                     if (ex.torDoc) s.torDoc = ex.torDoc;
                     if (ex.studentCardDoc) s.studentCardDoc = ex.studentCardDoc;
+                    if (ex.escAnnexDDoc) s.escAnnexDDoc = ex.escAnnexDDoc;
+                    if (ex.escAnnexFDoc) s.escAnnexFDoc = ex.escAnnexFDoc;
                     if (ex.payments && (!s.payments || s.payments.length === 0)) s.payments = ex.payments;
                 }
                 const photoFromStore = getStudentPhoto(s);
@@ -1957,26 +1959,44 @@ function getDocBadgesHtml(s) {
     const hasTor = s.torDoc && s.torDoc.data;
     const hasCard = s.studentCardDoc && s.studentCardDoc.data;
 
-    let badges = [];
+    let mainBadges = [];
     if (hasBirthCert) {
-        badges.push(`<span class="doc-badge ready" title="PSA Birth Certificate on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'birthCert')"><i class="fas fa-check"></i> PSA</span>`);
+        mainBadges.push(`<span class="doc-badge ready" title="PSA Birth Certificate on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'birthCert')"><i class="fas fa-check"></i> PSA</span>`);
     } else {
-        badges.push(`<span class="doc-badge missing" title="No PSA Birth Certificate on file"><i class="fas fa-times"></i> PSA</span>`);
+        mainBadges.push(`<span class="doc-badge missing" title="No PSA Birth Certificate on file"><i class="fas fa-times"></i> PSA</span>`);
     }
 
     if (hasTor) {
-        badges.push(`<span class="doc-badge ready" title="Form 137 / TOR on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'tor')"><i class="fas fa-check"></i> TOR</span>`);
+        mainBadges.push(`<span class="doc-badge ready" title="Form 137 / TOR on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'tor')"><i class="fas fa-check"></i> TOR</span>`);
     } else {
-        badges.push(`<span class="doc-badge missing" title="No Form 137 / TOR on file"><i class="fas fa-times"></i> TOR</span>`);
+        mainBadges.push(`<span class="doc-badge missing" title="No Form 137 / TOR on file"><i class="fas fa-times"></i> TOR</span>`);
     }
 
     if (hasCard) {
-        badges.push(`<span class="doc-badge ready" title="Report Card on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'card')"><i class="fas fa-check"></i> CARD</span>`);
+        mainBadges.push(`<span class="doc-badge ready" title="Report Card on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'card')"><i class="fas fa-check"></i> CARD</span>`);
     } else {
-        badges.push(`<span class="doc-badge missing" title="No Report Card / Form 138 on file"><i class="fas fa-times"></i> CARD</span>`);
+        mainBadges.push(`<span class="doc-badge missing" title="No Report Card / Form 138 on file"><i class="fas fa-times"></i> CARD</span>`);
     }
 
-    return `<div class="doc-badge-group">${badges.join('')}</div>`;
+    const isEsc = (s.escGrantee || '').toUpperCase() === 'YES';
+    let escBadges = [];
+    if (isEsc) {
+        if (s.escAnnexDDoc && s.escAnnexDDoc.data) {
+            escBadges.push(`<span class="doc-badge ready" title="ESC Annex D on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'escAnnexD')"><i class="fas fa-check"></i> ANNEX-D</span>`);
+        } else {
+            escBadges.push(`<span class="doc-badge missing" title="No ESC Annex D on file"><i class="fas fa-times"></i> ANNEX-D</span>`);
+        }
+        if (s.escAnnexFDoc && s.escAnnexFDoc.data) {
+            escBadges.push(`<span class="doc-badge ready" title="ESC Annex F on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'escAnnexF')"><i class="fas fa-check"></i> ANNEX-F</span>`);
+        } else {
+            escBadges.push(`<span class="doc-badge missing" title="No ESC Annex F on file"><i class="fas fa-times"></i> ANNEX-F</span>`);
+        }
+    }
+
+    if (isEsc && escBadges.length > 0) {
+        return `<div class="doc-badge-group has-esc"><div class="doc-badge-row">${mainBadges.join('')}</div><div class="doc-badge-row">${escBadges.join('')}</div></div>`;
+    }
+    return `<div class="doc-badge-group"><div class="doc-badge-row">${mainBadges.join('')}</div></div>`;
 }
 
 function previewDocFromTable(studentId, docType) {
@@ -1997,6 +2017,12 @@ function previewDocFromTable(studentId, docType) {
     } else if (docType === 'card') {
         doc = s.studentCardDoc;
         title = 'Report Card (SF9 / Form 138)';
+    } else if (docType === 'escAnnexD') {
+        doc = s.escAnnexDDoc;
+        title = 'ESC Application Form - Annex D';
+    } else if (docType === 'escAnnexF') {
+        doc = s.escAnnexFDoc;
+        title = "Affidavit of Family’s Financial Capacity - Annex F";
     }
 
     if (doc && doc.data) {
@@ -2023,7 +2049,7 @@ function renderRecentTable(cohort) {
         <tr onclick="viewStudent('${s.id}')" style="cursor:pointer;" title="Click to open ${escHtml(s.lastName)}, ${escHtml(s.firstName)} profile">
             <td style="text-align:center;">${thumb}</td>
             <td style="text-align:center;"><code style="font-size:0.78rem; font-family:monospace; color:#0b2545;">${escHtml(s.lrn)}</code></td>
-            <td><strong class="table-student-name" style="font-size:0.82rem; color:#0f172a;">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong></td>
+            <td class="student-name-cell"><strong class="table-student-name" style="font-size:0.82rem; color:#0f172a;">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong></td>
             <td style="text-align:center;"><span class="sy-pill" style="font-size:0.72rem;">${escHtml(s.schoolYear || '2026-2027')}</span></td>
             <td style="text-align:center; font-size:0.80rem;">Grade ${escHtml(s.gradeLevel)}</td>
             <td style="text-align:center; font-size:0.80rem;">${escHtml(s.section)}</td>
@@ -2200,7 +2226,7 @@ function refreshStudentsTable() {
                 <tr data-student-id="${s.id}">
                     <td>${thumb}</td>
                     <td>${escHtml(s.lrn)}</td>
-                    <td><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong>${s.middleName ? ' ' + escHtml(s.middleName) : ''}${s.suffix ? ' ' + escHtml(s.suffix) : ''}</td>
+                    <td class="student-name-cell"><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong>${s.middleName ? ' <span class="table-student-mid">' + escHtml(s.middleName) + '</span>' : ''}${s.suffix ? ' <span class="table-student-suffix">' + escHtml(s.suffix) + '</span>' : ''}</td>
                     <td><span class="sy-pill">${escHtml(s.schoolYear || '2026-2027')}</span></td>
                     <td>Grade ${escHtml(s.gradeLevel)}</td>
                     <td>${escHtml(s.section)}</td>
@@ -2211,7 +2237,7 @@ function refreshStudentsTable() {
                     </td>
                     <td>${escBadge}</td>
                     <td><span class="status-badge ${(s.enrollmentStatus || 'Active').toLowerCase()}">${escHtml(s.enrollmentStatus || 'Active')}</span></td>
-                    <td style="text-align:center; white-space:nowrap; overflow:visible;">${docBadge}</td>
+                    <td class="docs-cell">${docBadge}</td>
                     <td class="actions-cell">
                         <button type="button" class="btn-icon qr" title="Learner Mobile QR Pass" data-action="qr" data-id="${s.id}" onclick="openLearnerMobilePass('${s.id}')" style="color:#0284c7;"><i class="fas fa-qrcode"></i></button>
                         <button type="button" class="btn-icon view" title="View Profile" data-action="view" data-id="${s.id}" onclick="viewStudent('${s.id}')"><i class="fas fa-eye"></i></button>
@@ -2329,7 +2355,7 @@ function refreshGradeTable(grade) {
             <tr data-student-id="${s.id}">
                 <td>${thumb}</td>
                 <td><code>${escHtml(s.lrn)}</code></td>
-                <td><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong>${s.middleName ? ' ' + escHtml(s.middleName) : ''}${s.suffix ? ' ' + escHtml(s.suffix) : ''}</td>
+                <td class="student-name-cell"><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong>${s.middleName ? ' <span class="table-student-mid">' + escHtml(s.middleName) + '</span>' : ''}${s.suffix ? ' <span class="table-student-suffix">' + escHtml(s.suffix) + '</span>' : ''}</td>
                 <td><span class="sy-pill">${escHtml(s.schoolYear || '2026-2027')}</span></td>
                 <td>${escHtml(s.section)}</td>
                 <td>${escHtml(s.gender)}</td>
@@ -2649,7 +2675,7 @@ function refreshArchiveTable() {
         <tr data-student-id="${s.id}">
             <td style="text-align:center;">${thumb}</td>
             <td><code>${escHtml(s.lrn)}</code></td>
-            <td><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong></td>
+            <td class="student-name-cell"><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)}</strong></td>
             <td style="text-align:center;"><span class="sy-pill">${escHtml(s.schoolYear || '2026-2027')}</span></td>
             <td>Grade ${escHtml(s.gradeLevel)}</td>
             <td>${escHtml(s.section)}</td>
@@ -2834,7 +2860,7 @@ function refreshAlumniPage() {
         <tr data-student-id="${s.id}">
             <td style="text-align: center;">${thumb}</td>
             <td><code>${escHtml(s.lrn)}</code></td>
-            <td><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)} ${escHtml(s.middleName ? s.middleName.charAt(0) + '.' : '')} ${escHtml(s.suffix || '')}</strong></td>
+            <td class="student-name-cell"><strong class="table-student-name">${escHtml(s.lastName)}, ${escHtml(s.firstName)} ${escHtml(s.middleName ? s.middleName.charAt(0) + '.' : '')} ${escHtml(s.suffix || '')}</strong></td>
             <td><span class="sy-pill" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;"><i class="fas fa-graduation-cap"></i> S.Y. ${escHtml(compSy)}</span></td>
             <td>Grade 10 - ${escHtml(s.section || 'Amber')}</td>
             <td>${escHtml(s.gender || 'N/A')}</td>
@@ -3022,6 +3048,15 @@ function viewStudent(id) {
     renderDocPreview('viewBirthCert', s.birthCertDoc);
     renderDocPreview('viewTor', s.torDoc);
     renderDocPreview('viewCard', s.studentCardDoc);
+
+    const viewAnnexD = document.getElementById('viewEscAnnexDCard');
+    const viewAnnexF = document.getElementById('viewEscAnnexFCard');
+    if (viewAnnexD) viewAnnexD.style.display = isEsc ? 'block' : 'none';
+    if (viewAnnexF) viewAnnexF.style.display = isEsc ? 'block' : 'none';
+    if (isEsc) {
+        renderDocPreview('viewEscAnnexD', s.escAnnexDDoc);
+        renderDocPreview('viewEscAnnexF', s.escAnnexFDoc);
+    }
 
     // Signature
     const sigImg = document.getElementById('viewSigImg');
@@ -3664,37 +3699,37 @@ window.triggerDocUploadFromProfile = function(prefix) {
 };
 
 window.handleDirectDocUpload = function(event) {
-    const file = event.target.files && event.target.files[0];
+    const input = event.target;
+    const file = input && input.files && input.files[0];
     if (!file) return;
     const prefix = window.activeProfileDocPrefix;
     if (!prefix) return;
     const s = findStudent(currentViewId);
     if (!s) return;
 
+    if (!validateDocumentFile(file, input)) {
+        renderDocPreview(prefix, getDocFromStudent(s, prefix));
+        return;
+    }
+
     const details = document.getElementById(prefix + 'Details');
     if (details) {
         details.innerHTML = `<span style="color:#2563eb; font-weight:600; font-size:0.84rem;"><i class="fas fa-spinner fa-spin"></i> Uploading ${escHtml(file.name)}...</span>`;
-    }
-
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!isImage && !isPdf) {
-        showToast('Please upload a PDF document or scanned image (JPG, PNG).', 'warning');
-        renderDocPreview(prefix, getDocFromStudent(s, prefix));
-        return;
     }
 
     const processComplete = (dataUrl) => {
         const docObj = {
             data: dataUrl,
             name: file.name,
-            type: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+            type: 'application/pdf',
             size: formatBytes(file.size),
             dateUploaded: new Date().toISOString()
         };
         if (prefix === 'viewBirthCert') s.birthCertDoc = docObj;
         else if (prefix === 'viewTor') s.torDoc = docObj;
         else if (prefix === 'viewCard') s.studentCardDoc = docObj;
+        else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = docObj;
+        else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = docObj;
 
         saveStudents();
         renderDocPreview(prefix, docObj);
@@ -3704,24 +3739,34 @@ window.handleDirectDocUpload = function(event) {
         showToast(`${file.name} uploaded successfully!`, 'success');
     };
 
-    if (isImage) {
-        optimizeImage(file, 1600, 1600, 0.85, processComplete);
-    } else {
-        const reader = new FileReader();
-        reader.onload = (e) => processComplete(e.target.result);
-        reader.readAsDataURL(file);
-    }
+    const reader = new FileReader();
+    reader.onload = (e) => processComplete(e.target.result);
+    reader.onerror = () => {
+        if (input) input.value = '';
+        renderDocPreview(prefix, getDocFromStudent(s, prefix));
+        showToast('Failed to read the file. Please try again.', 'error');
+    };
+    reader.readAsDataURL(file);
 };
 
 window.deleteDocFromProfile = function(prefix) {
     const s = findStudent(currentViewId);
     if (!s) return;
-    const title = prefix === 'viewBirthCert' ? 'PSA Birth Certificate' : (prefix === 'viewTor' ? 'Form 137 / TOR' : 'Report Card');
+    const titles = {
+        viewBirthCert: 'PSA Birth Certificate',
+        viewTor: 'Form 137 / TOR',
+        viewCard: 'Report Card',
+        viewEscAnnexD: 'ESC Application Form (Annex D)',
+        viewEscAnnexF: "Affidavit of Family's Financial Capacity (Annex F)"
+    };
+    const title = titles[prefix] || 'Document';
     if (!confirm(`Are you sure you want to delete or replace the ${title}?`)) return;
 
     if (prefix === 'viewBirthCert') s.birthCertDoc = null;
     else if (prefix === 'viewTor') s.torDoc = null;
     else if (prefix === 'viewCard') s.studentCardDoc = null;
+    else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = null;
+    else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = null;
 
     saveStudents();
     renderDocPreview(prefix, null);
@@ -3736,6 +3781,8 @@ function getDocFromStudent(s, prefix) {
     if (prefix === 'viewBirthCert') return s.birthCertDoc;
     if (prefix === 'viewTor') return s.torDoc;
     if (prefix === 'viewCard') return s.studentCardDoc;
+    if (prefix === 'viewEscAnnexD') return s.escAnnexDDoc;
+    if (prefix === 'viewEscAnnexF') return s.escAnnexFDoc;
     return null;
 }
 
@@ -3927,6 +3974,12 @@ function previewDocData(prefix) {
     } else if (prefix === 'viewCard') {
         doc = s.studentCardDoc;
         title = 'Student Report Card (SF9 / Form 138)';
+    } else if (prefix === 'viewEscAnnexD') {
+        doc = s.escAnnexDDoc;
+        title = 'ESC Application Form - Annex D';
+    } else if (prefix === 'viewEscAnnexF') {
+        doc = s.escAnnexFDoc;
+        title = "Affidavit of Family’s Financial Capacity - Annex F";
     }
 
     if (!doc || !doc.data) {
@@ -5130,6 +5183,21 @@ function proceedEditStudent(s) {
         removeCurrentDoc('card', false);
     }
 
+    const isEsc = (s.escGrantee || 'NO').toUpperCase() === 'YES';
+    toggleEscDocFields(isEsc);
+
+    if (s.escAnnexDDoc && s.escAnnexDDoc.data) {
+        setDocCardState('escAnnexD', s.escAnnexDDoc);
+    } else {
+        removeCurrentDoc('escAnnexD', false);
+    }
+
+    if (s.escAnnexFDoc && s.escAnnexFDoc.data) {
+        setDocCardState('escAnnexF', s.escAnnexFDoc);
+    } else {
+        removeCurrentDoc('escAnnexF', false);
+    }
+
     // Restore Signature
     if (s.signature) {
         setSignatureState(s.signature);
@@ -6029,6 +6097,36 @@ function initPhotoUpload() {
     }
 }
 
+function validateDocumentFile(file, inputEl) {
+    if (!file) return false;
+
+    const fileName = file.name || '';
+    const fileType = (file.type || '').toLowerCase();
+    const hasPdfExt = fileName.toLowerCase().endsWith('.pdf');
+    const isPdfMime = fileType === 'application/pdf' || fileType.includes('pdf') || (!fileType && hasPdfExt);
+    const isPdf = hasPdfExt && isPdfMime;
+    const isUnderLimit = typeof file.size === 'number' && file.size <= 5 * 1024 * 1024;
+
+    if (!isPdf || !isUnderLimit) {
+        if (inputEl) {
+            try { inputEl.value = ''; } catch(e) {}
+        }
+        showToast('File rejected: Only PDF files up to 5 MB are allowed.', 'error');
+        return false;
+    }
+    return true;
+}
+window.validateDocumentFile = validateDocumentFile;
+
+function toggleEscDocFields(isEsc) {
+    const annexD = document.getElementById('escAnnexDCardUploader');
+    const annexF = document.getElementById('escAnnexFCardUploader');
+    const displayStyle = isEsc ? 'block' : 'none';
+    if (annexD) annexD.style.display = displayStyle;
+    if (annexF) annexF.style.display = displayStyle;
+}
+window.toggleEscDocFields = toggleEscDocFields;
+
 function setDocCardState(type, doc) {
     const dataEl = document.getElementById(`${type}DocData`);
     const nameEl = document.getElementById(`${type}DocName`);
@@ -6101,7 +6199,9 @@ function previewCurrentDoc(type) {
     const titles = {
         birthCert: 'PSA / NSO Birth Certificate',
         tor: 'Transcript of Records (SF10 / Form 137)',
-        card: 'Student Report Card (SF9 / Form 138)'
+        card: 'Student Report Card (SF9 / Form 138)',
+        escAnnexD: 'ESC Application Form - Annex D',
+        escAnnexF: "Affidavit of Family’s Financial Capacity - Annex F"
     };
 
     viewDocumentInModal(titles[type] || 'Document Preview', name, {
@@ -6112,7 +6212,7 @@ function previewCurrentDoc(type) {
 }
 
 function initDocUploads() {
-    ['birthCert', 'tor', 'card'].forEach(type => {
+    ['birthCert', 'tor', 'card', 'escAnnexD', 'escAnnexF'].forEach(type => {
         const fileInput = document.getElementById(`${type}FileInput`);
         const dropzone = document.getElementById(`${type}Dropzone`);
         const indicator = document.getElementById(`${type}UploadingIndicator`);
@@ -6121,57 +6221,42 @@ function initDocUploads() {
         function processFile(file) {
             if (!file) return;
 
-            const isImage = file.type.startsWith('image/');
-            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-
-            if (!isImage && !isPdf) {
-                showToast('Please upload a PDF document or scanned image (JPG, PNG).', 'warning');
+            // Strict validation: .pdf only and max 5 MB
+            if (!validateDocumentFile(file, fileInput)) {
                 return;
             }
 
             if (indicator) indicator.style.display = 'block';
             if (progressFill) progressFill.style.width = '30%';
 
-            if (isImage) {
-                optimizeImage(file, 1600, 1600, 0.85, function(dataUrl) {
-                    if (progressFill) progressFill.style.width = '100%';
-                    setTimeout(() => {
-                        if (indicator) indicator.style.display = 'none';
-                        if (progressFill) progressFill.style.width = '0%';
-                        setDocCardState(type, {
-                            data: dataUrl,
-                            name: file.name,
-                            type: file.type || 'image/jpeg',
-                            size: formatBytes(file.size),
-                            date: new Date().toISOString()
-                        });
-                        showToast(`${file.name} uploaded successfully!`, 'success');
-                    }, 250);
-                });
-            } else {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    if (progressFill) progressFill.style.width = '100%';
-                    setTimeout(() => {
-                        if (indicator) indicator.style.display = 'none';
-                        if (progressFill) progressFill.style.width = '0%';
-                        setDocCardState(type, {
-                            data: e.target.result,
-                            name: file.name,
-                            type: 'application/pdf',
-                            size: formatBytes(file.size),
-                            date: new Date().toISOString()
-                        });
-                        showToast(`${file.name} uploaded successfully!`, 'success');
-                    }, 250);
-                };
-                reader.readAsDataURL(file);
-            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (progressFill) progressFill.style.width = '100%';
+                setTimeout(() => {
+                    if (indicator) indicator.style.display = 'none';
+                    if (progressFill) progressFill.style.width = '0%';
+                    setDocCardState(type, {
+                        data: e.target.result,
+                        name: file.name,
+                        type: 'application/pdf',
+                        size: formatBytes(file.size),
+                        date: new Date().toISOString()
+                    });
+                    showToast(`${file.name} uploaded successfully!`, 'success');
+                }, 250);
+            };
+            reader.onerror = function() {
+                if (indicator) indicator.style.display = 'none';
+                if (progressFill) progressFill.style.width = '0%';
+                if (fileInput) fileInput.value = '';
+                showToast('Failed to read the file. Please try again.', 'error');
+            };
+            reader.readAsDataURL(file);
         }
 
         if (fileInput) {
             fileInput.onchange = function(e) {
-                const file = e.target.files[0];
+                const file = e.target.files && e.target.files[0];
                 if (file) processFile(file);
             };
         }
@@ -6489,6 +6574,7 @@ function initForm() {
             const isEsc = (escSelect.value === 'YES');
             const escGroup = document.getElementById('escNumberGroup');
             if (escGroup) escGroup.style.display = isEsc ? 'block' : 'none';
+            toggleEscDocFields(isEsc);
 
             if (isEsc) {
                 if (discSelect) discSelect.value = 'YES';
@@ -6685,6 +6771,24 @@ function collectFormData() {
         date: document.getElementById('cardDocDate')?.value || new Date().toISOString()
     } : null;
 
+    const annexDData = document.getElementById('escAnnexDDocData')?.value;
+    const escAnnexDDoc = annexDData ? {
+        data: annexDData,
+        name: document.getElementById('escAnnexDDocName')?.value || 'ESC_Annex_D.pdf',
+        type: document.getElementById('escAnnexDDocType')?.value || 'application/pdf',
+        size: document.getElementById('escAnnexDDocSize')?.value || 'Attached',
+        date: document.getElementById('escAnnexDDocDate')?.value || new Date().toISOString()
+    } : null;
+
+    const annexFData = document.getElementById('escAnnexFDocData')?.value;
+    const escAnnexFDoc = annexFData ? {
+        data: annexFData,
+        name: document.getElementById('escAnnexFDocName')?.value || 'ESC_Annex_F.pdf',
+        type: document.getElementById('escAnnexFDocType')?.value || 'application/pdf',
+        size: document.getElementById('escAnnexFDocSize')?.value || 'Attached',
+        date: document.getElementById('escAnnexFDocDate')?.value || new Date().toISOString()
+    } : null;
+
     const enrolledGrade = getV('gradeLevel') || '7';
     const statusVal = getV('enrollmentStatus') || 'Active';
     const finisherCheck = document.getElementById('isJhsFinisher')?.checked;
@@ -6761,6 +6865,8 @@ function collectFormData() {
         birthCertDoc: birthCertDoc,
         torDoc: torDoc,
         studentCardDoc: studentCardDoc,
+        escAnnexDDoc: escAnnexDDoc,
+        escAnnexFDoc: escAnnexFDoc,
         isJhsFinisher: isFinisher,
         completionSchoolYear: isFinisher ? formSy : undefined
     };
@@ -6788,10 +6894,16 @@ function resetForm() {
     if (finisherGroup) finisherGroup.style.display = 'none';
     if (finisherCheck) finisherCheck.checked = false;
 
+    toggleEscDocFields(false);
+    const escGroup = document.getElementById('escNumberGroup');
+    if (escGroup) escGroup.style.display = 'none';
+
     removeCurrentPhoto(false);
     removeCurrentDoc('birthCert', false);
     removeCurrentDoc('tor', false);
     removeCurrentDoc('card', false);
+    removeCurrentDoc('escAnnexD', false);
+    removeCurrentDoc('escAnnexF', false);
     clearSignaturePad(false);
 
     const relOtherContainer = document.getElementById('religionOtherContainer');
@@ -7378,7 +7490,7 @@ function executeExportWithOptions() {
         const blob = new Blob([JSON.stringify(exportSet, null, 2)], { type: 'application/json' });
         downloadBlob(blob, `${filePrefix}_${timestamp}.json`);
     } else {
-        const keys = Object.keys(exportSet[0]).filter(k => k !== 'photo' && k !== 'signature' && k !== 'birthCertDoc' && k !== 'torDoc' && k !== 'studentCardDoc');
+        const keys = Object.keys(exportSet[0]).filter(k => k !== 'photo' && k !== 'signature' && k !== 'birthCertDoc' && k !== 'torDoc' && k !== 'studentCardDoc' && k !== 'escAnnexDDoc' && k !== 'escAnnexFDoc');
         const csvHeader = keys.join(',');
         const csvRows = exportSet.map(row => {
             return keys.map(k => {

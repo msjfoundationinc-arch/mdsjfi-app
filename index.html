@@ -24,7 +24,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_10">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261121_06">
+    <link rel="stylesheet" href="styles.css?v=20261121_13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -2478,19 +2478,19 @@
             </div>
 
             <div class="table-wrapper">
-                <table class="data-table sortable" id="studentsTable">
+                <table class="data-table sortable table-auto" id="studentsTable">
                     <colgroup>
-                        <col style="width: 4.5%;">
-                        <col style="width: 9.5%;">
-                        <col style="width: 18.5%;">
-                        <col style="width: 6.5%;">
-                        <col style="width: 6%;">
-                        <col style="width: 6.5%;">
+                        <col style="width: 3.5%;">
+                        <col style="width: 8.5%;">
+                        <col style="width: 21%;">
                         <col style="width: 6%;">
                         <col style="width: 5.5%;">
-                        <col style="width: 6.5%;">
-                        <col style="width: 15%;">
-                        <col style="width: 15.5%;">
+                        <col style="width: 5.5%;">
+                        <col style="width: 5%;">
+                        <col style="width: 4.5%;">
+                        <col style="width: 5.5%;">
+                        <col style="width: 17.5%;">
+                        <col style="width: 17.5%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -3030,7 +3030,7 @@
                         <h3 class="form-section-title"><i class="fas fa-folder-open"></i> Learner Credentials &amp; Documents</h3>
                         <span class="sy-badge-hint"><i class="fas fa-file-upload"></i> Birth Certificate, SF10 &amp; SF9</span>
                     </div>
-                    <p class="section-desc-note">Upload official learner documents: PSA/NSO Birth Certificate, DepEd Form 137 (SF10), and Report Card (SF9). Accepted formats: Scanned Image (JPG, PNG) or PDF document.</p>
+                    <p class="section-desc-note">Upload official learner documents: PSA/NSO Birth Certificate, DepEd Form 137 (SF10), Report Card (SF9), and ESC Grant documents (if applicable). Accepted format: PDF only, max 5 MB.</p>
                     <div class="docs-upload-row">
                         <!-- Birth Certificate Upload Card -->
                         <div class="doc-card-uploader" id="birthCertCardUploader">
@@ -3041,7 +3041,7 @@
                                     <p>Certificate of Live Birth (Official DepEd Requirement)</p>
                                 </div>
                             </div>
-                            <input type="file" id="birthCertFileInput" accept="image/*,.pdf" style="display:none;">
+                            <input type="file" id="birthCertFileInput" accept=".pdf,application/pdf" style="display:none;">
                             <input type="hidden" id="birthCertDocData" value="">
                             <input type="hidden" id="birthCertDocName" value="">
                             <input type="hidden" id="birthCertDocType" value="">
@@ -3052,7 +3052,7 @@
                             <div class="doc-dropzone" id="birthCertDropzone" onclick="document.getElementById('birthCertFileInput').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <span>Click to Upload Birth Certificate</span>
-                                <small>JPG, PNG, or PDF (Scanned PSA / NSO Birth Certificate)</small>
+                                <small>PDF only, max 5 MB (PSA / NSO Birth Certificate)</small>
                             </div>
 
                             <!-- Uploading progress indicator -->
@@ -3070,7 +3070,7 @@
                                     <i class="fas fa-check-circle"></i> File Uploaded Successfully
                                 </div>
                                 <div class="doc-file-left">
-                                    <i class="fas fa-file-alt" id="birthCertIconDisplay"></i>
+                                    <i class="fas fa-file-pdf" id="birthCertIconDisplay" style="color:#ef4444;"></i>
                                     <div class="doc-file-text">
                                         <strong id="birthCertFileNameDisplay">filename.pdf</strong>
                                         <span id="birthCertFileSizeDisplay">0 KB</span>
@@ -3097,7 +3097,7 @@
                                     <p>Learner Permanent Record / Form 137</p>
                                 </div>
                             </div>
-                            <input type="file" id="torFileInput" accept="image/*,.pdf" style="display:none;">
+                            <input type="file" id="torFileInput" accept=".pdf,application/pdf" style="display:none;">
                             <input type="hidden" id="torDocData" value="">
                             <input type="hidden" id="torDocName" value="">
                             <input type="hidden" id="torDocType" value="">
@@ -3108,7 +3108,7 @@
                             <div class="doc-dropzone" id="torDropzone" onclick="document.getElementById('torFileInput').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <span>Click to Upload TOR</span>
-                                <small>JPG, PNG, or PDF (Scanned Form 137 / SF10)</small>
+                                <small>PDF only, max 5 MB (Form 137 / SF10)</small>
                             </div>
 
                             <!-- Uploading progress indicator -->
@@ -3126,7 +3126,7 @@
                                     <i class="fas fa-check-circle"></i> File Uploaded Successfully
                                 </div>
                                 <div class="doc-file-left">
-                                    <i class="fas fa-file-alt" id="torIconDisplay"></i>
+                                    <i class="fas fa-file-pdf" id="torIconDisplay" style="color:#ef4444;"></i>
                                     <div class="doc-file-text">
                                         <strong id="torFileNameDisplay">filename.pdf</strong>
                                         <span id="torFileSizeDisplay">0 KB</span>
@@ -3153,7 +3153,7 @@
                                     <p>Learner Progress Report / Form 138</p>
                                 </div>
                             </div>
-                            <input type="file" id="cardFileInput" accept="image/*,.pdf" style="display:none;">
+                            <input type="file" id="cardFileInput" accept=".pdf,application/pdf" style="display:none;">
                             <input type="hidden" id="cardDocData" value="">
                             <input type="hidden" id="cardDocName" value="">
                             <input type="hidden" id="cardDocType" value="">
@@ -3164,7 +3164,7 @@
                             <div class="doc-dropzone" id="cardDropzone" onclick="document.getElementById('cardFileInput').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <span>Click to Upload Student Card</span>
-                                <small>JPG, PNG, or PDF (Scanned Form 138 / SF9)</small>
+                                <small>PDF only, max 5 MB (Form 138 / SF9)</small>
                             </div>
 
                             <!-- Uploading progress indicator -->
@@ -3182,9 +3182,9 @@
                                     <i class="fas fa-check-circle"></i> File Uploaded Successfully
                                 </div>
                                 <div class="doc-file-left">
-                                    <i class="fas fa-file-alt" id="cardIconDisplay"></i>
+                                    <i class="fas fa-file-pdf" id="cardIconDisplay" style="color:#ef4444;"></i>
                                     <div class="doc-file-text">
-                                        <strong id="cardFileNameDisplay">filename.jpg</strong>
+                                        <strong id="cardFileNameDisplay">filename.pdf</strong>
                                         <span id="cardFileSizeDisplay">0 KB</span>
                                         <span class="doc-upload-time" id="cardUploadTimeDisplay"></span>
                                     </div>
@@ -3194,6 +3194,118 @@
                                         <i class="fas fa-eye"></i> View File
                                     </button>
                                     <button type="button" class="btn-sm btn-danger btn-doc-delete" id="btnRemoveCard" onclick="removeCurrentDoc('card')" title="Delete or replace this file">
+                                        <i class="fas fa-trash-alt"></i> Delete / Replace
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ESC Annex D Upload Card (Conditional for ESC Grantees) -->
+                        <div class="doc-card-uploader" id="escAnnexDCardUploader" style="display:none;">
+                            <div class="doc-card-header">
+                                <div class="doc-type-icon" style="background:#e0f2fe; color:#0284c7;"><i class="fas fa-file-invoice"></i></div>
+                                <div>
+                                    <h4>ESC Application Form - Annex D</h4>
+                                    <p>DepEd / PEAC Official Grant Application Form</p>
+                                </div>
+                            </div>
+                            <input type="file" id="escAnnexDFileInput" accept=".pdf,application/pdf" style="display:none;">
+                            <input type="hidden" id="escAnnexDDocData" value="">
+                            <input type="hidden" id="escAnnexDDocName" value="">
+                            <input type="hidden" id="escAnnexDDocType" value="">
+                            <input type="hidden" id="escAnnexDDocSize" value="">
+                            <input type="hidden" id="escAnnexDDocDate" value="">
+
+                            <!-- Empty dropzone -->
+                            <div class="doc-dropzone" id="escAnnexDDropzone" onclick="document.getElementById('escAnnexDFileInput').click()">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Click to Upload ESC Annex D</span>
+                                <small>PDF only, max 5 MB</small>
+                            </div>
+
+                            <!-- Uploading progress indicator -->
+                            <div class="doc-uploading-indicator" id="escAnnexDUploadingIndicator" style="display:none;">
+                                <div class="doc-upload-spinner"></div>
+                                <span class="upload-progress-text" id="escAnnexDProgressText">Uploading ESC Annex D...</span>
+                                <div class="doc-upload-progress-bar">
+                                    <div class="doc-upload-progress-fill" id="escAnnexDProgressFill"></div>
+                                </div>
+                            </div>
+
+                            <!-- Uploaded file info & actions -->
+                            <div class="doc-file-card" id="escAnnexDFileCard" style="display:none;">
+                                <div class="doc-uploaded-status-badge">
+                                    <i class="fas fa-check-circle"></i> File Uploaded Successfully
+                                </div>
+                                <div class="doc-file-left">
+                                    <i class="fas fa-file-pdf" id="escAnnexDIconDisplay" style="color:#ef4444;"></i>
+                                    <div class="doc-file-text">
+                                        <strong id="escAnnexDFileNameDisplay">filename.pdf</strong>
+                                        <span id="escAnnexDFileSizeDisplay">0 KB</span>
+                                        <span class="doc-upload-time" id="escAnnexDUploadTimeDisplay"></span>
+                                    </div>
+                                </div>
+                                <div class="doc-file-buttons">
+                                    <button type="button" class="btn-sm btn-info btn-doc-view" id="btnPreviewEscAnnexD" onclick="previewCurrentDoc('escAnnexD')">
+                                        <i class="fas fa-eye"></i> View File
+                                    </button>
+                                    <button type="button" class="btn-sm btn-danger btn-doc-delete" id="btnRemoveEscAnnexD" onclick="removeCurrentDoc('escAnnexD')" title="Delete or replace this file">
+                                        <i class="fas fa-trash-alt"></i> Delete / Replace
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ESC Annex F Upload Card (Conditional for ESC Grantees) -->
+                        <div class="doc-card-uploader" id="escAnnexFCardUploader" style="display:none;">
+                            <div class="doc-card-header">
+                                <div class="doc-type-icon" style="background:#ecfdf5; color:#059669;"><i class="fas fa-file-shield"></i></div>
+                                <div>
+                                    <h4>Affidavit of Family’s Financial Capacity - Annex F</h4>
+                                    <p>DepEd / PEAC Financial Capacity Sworn Statement</p>
+                                </div>
+                            </div>
+                            <input type="file" id="escAnnexFFileInput" accept=".pdf,application/pdf" style="display:none;">
+                            <input type="hidden" id="escAnnexFDocData" value="">
+                            <input type="hidden" id="escAnnexFDocName" value="">
+                            <input type="hidden" id="escAnnexFDocType" value="">
+                            <input type="hidden" id="escAnnexFDocSize" value="">
+                            <input type="hidden" id="escAnnexFDocDate" value="">
+
+                            <!-- Empty dropzone -->
+                            <div class="doc-dropzone" id="escAnnexFDropzone" onclick="document.getElementById('escAnnexFFileInput').click()">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Click to Upload ESC Annex F</span>
+                                <small>PDF only, max 5 MB</small>
+                            </div>
+
+                            <!-- Uploading progress indicator -->
+                            <div class="doc-uploading-indicator" id="escAnnexFUploadingIndicator" style="display:none;">
+                                <div class="doc-upload-spinner"></div>
+                                <span class="upload-progress-text" id="escAnnexFProgressText">Uploading ESC Annex F...</span>
+                                <div class="doc-upload-progress-bar">
+                                    <div class="doc-upload-progress-fill" id="escAnnexFProgressFill"></div>
+                                </div>
+                            </div>
+
+                            <!-- Uploaded file info & actions -->
+                            <div class="doc-file-card" id="escAnnexFFileCard" style="display:none;">
+                                <div class="doc-uploaded-status-badge">
+                                    <i class="fas fa-check-circle"></i> File Uploaded Successfully
+                                </div>
+                                <div class="doc-file-left">
+                                    <i class="fas fa-file-pdf" id="escAnnexFIconDisplay" style="color:#ef4444;"></i>
+                                    <div class="doc-file-text">
+                                        <strong id="escAnnexFFileNameDisplay">filename.pdf</strong>
+                                        <span id="escAnnexFFileSizeDisplay">0 KB</span>
+                                        <span class="doc-upload-time" id="escAnnexFUploadTimeDisplay"></span>
+                                    </div>
+                                </div>
+                                <div class="doc-file-buttons">
+                                    <button type="button" class="btn-sm btn-info btn-doc-view" id="btnPreviewEscAnnexF" onclick="previewCurrentDoc('escAnnexF')">
+                                        <i class="fas fa-eye"></i> View File
+                                    </button>
+                                    <button type="button" class="btn-sm btn-danger btn-doc-delete" id="btnRemoveEscAnnexF" onclick="removeCurrentDoc('escAnnexF')" title="Delete or replace this file">
                                         <i class="fas fa-trash-alt"></i> Delete / Replace
                                     </button>
                                 </div>
@@ -7737,7 +7849,7 @@
                         <div id="viewPhotoLoading" style="display:none; font-size:0.72rem; color:#2563eb; font-weight:600;"><i class="fas fa-spinner fa-spin"></i> Uploading...</div>
                     </div>
                     <input type="file" id="profileDirectPhotoInput" accept="image/*" style="display:none;" onchange="handleDirectPhotoUpload(event)">
-                    <input type="file" id="profileDirectDocInput" accept=".pdf,image/*" style="display:none;" onchange="handleDirectDocUpload(event)">
+                    <input type="file" id="profileDirectDocInput" accept=".pdf,application/pdf" style="display:none;" onchange="handleDirectDocUpload(event)">
                     <div>
                         <h2 id="viewFullName">—</h2>
                         <p id="viewGradeSection">—</p>
@@ -7891,6 +8003,32 @@
                                     </div>
                                 </div>
                                 <div class="view-doc-btn-wrap" id="viewCardBtnWrap">
+                                    <span class="doc-status-badge missing"><i class="fas fa-exclamation-circle"></i> Not Uploaded</span>
+                                </div>
+                            </div>
+                            <!-- ESC Annex D Document (Conditional for ESC Grantees) -->
+                            <div class="view-doc-card" id="viewEscAnnexDCard" style="display:none;">
+                                <div class="view-doc-top">
+                                    <div class="view-doc-icon" style="background:#e0f2fe; color:#0284c7;"><i class="fas fa-file-invoice"></i></div>
+                                    <div class="view-doc-details">
+                                        <strong>ESC Application Form - Annex D</strong>
+                                        <p id="viewEscAnnexDDetails">Not uploaded</p>
+                                    </div>
+                                </div>
+                                <div class="view-doc-btn-wrap" id="viewEscAnnexDBtnWrap">
+                                    <span class="doc-status-badge missing"><i class="fas fa-exclamation-circle"></i> Not Uploaded</span>
+                                </div>
+                            </div>
+                            <!-- ESC Annex F Document (Conditional for ESC Grantees) -->
+                            <div class="view-doc-card" id="viewEscAnnexFCard" style="display:none;">
+                                <div class="view-doc-top">
+                                    <div class="view-doc-icon" style="background:#ecfdf5; color:#059669;"><i class="fas fa-file-shield"></i></div>
+                                    <div class="view-doc-details">
+                                        <strong>Affidavit of Family’s Financial Capacity - Annex F</strong>
+                                        <p id="viewEscAnnexFDetails">Not uploaded</p>
+                                    </div>
+                                </div>
+                                <div class="view-doc-btn-wrap" id="viewEscAnnexFBtnWrap">
                                     <span class="doc-status-badge missing"><i class="fas fa-exclamation-circle"></i> Not Uploaded</span>
                                 </div>
                             </div>
@@ -8964,7 +9102,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_09"></script>
+    <script src="app.js?v=20261121_13"></script>
 </body>
 </html>
 
