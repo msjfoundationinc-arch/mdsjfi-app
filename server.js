@@ -16,7 +16,20 @@ let studentPhotoHandler = null;
         } catch (err) {}
     }
 })();
-const studentFileHandler = require('./api/student-file.js');
+let studentFileHandler = null;
+(async () => {
+    try {
+        const mod = await import('./api/student-file.js');
+        studentFileHandler = mod.default || mod;
+    } catch (e) {
+        try {
+            studentFileHandler = require('./api/student-file.js');
+            if (studentFileHandler && studentFileHandler.default) {
+                studentFileHandler = studentFileHandler.default;
+            }
+        } catch (err) {}
+    }
+})();
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -93,6 +106,51 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/student-file' || pathname.startsWith('/api/student-file/')) {
+        if (!studentFileHandler) {
+            try {
+                const mod = await import('./api/student-file.js');
+                studentFileHandler = mod.default || mod;
+            } catch (err) {
+                console.error('[Server] studentFileHandler load error:', err.message);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+        }
+        if (!req.query) {
+            req.query = Object.fromEntries(url.searchParams.entries());
+        }
+        if (!res.status) {
+            res.status = function(code) { this.statusCode = code; return this; };
+        }
+        if (!res.json) {
+            res.json = function(data) {
+                this.setHeader('Content-Type', 'application/json');
+                this.end(JSON.stringify(data));
+                return this;
+            };
+        }
+        if (!res.send) {
+            res.send = function(data) {
+                return this.end(data);
+            };
+        }
+        if (!res.redirect) {
+            res.redirect = function(status, targetUrl) {
+                if (typeof status === 'string') { targetUrl = status; status = 302; }
+                this.writeHead(status || 302, { Location: targetUrl });
+                this.end();
+                return this;
+            };
+        }
+        if (req.method === 'POST' && !req.body) {
+            let rawBody = '';
+            req.on('data', chunk => rawBody += chunk);
+            req.on('end', () => {
+                try { req.body = JSON.parse(rawBody); } catch(e) { req.body = {}; }
+                return studentFileHandler(req, res);
+            });
+            return;
+        }
         return studentFileHandler(req, res);
     }
 

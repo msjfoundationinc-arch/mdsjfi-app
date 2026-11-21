@@ -766,15 +766,21 @@ function persistStudentDoc(student, docType, docObj) {
                         id: student.id,
                         lrn: student.lrn,
                         studentNumber: student.studentNumber,
+                        type: cleanType,
                         docType: cleanType,
+                        file: docObj.data,
+                        dataUrl: docObj.data,
                         doc: docObj,
                         timestamp: Date.now()
                     })
                 })
                 .then(res => res.json().catch(() => null))
                 .then(data => {
-                    if (data && data.success) {
+                    if (data && (data.success || data.ok)) {
                         console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}`);
+                        if (data.url && docObj) {
+                            docObj.url = data.url;
+                        }
                     }
                 })
                 .catch(err => {
@@ -803,14 +809,23 @@ function fetchRemoteStudentDocs(s, callback) {
             fetch(endpoint)
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
-                    if (data && data.docs && typeof data.docs === 'object') {
+                    const docs = data && (data.files || data.docs);
+                    if (docs && typeof docs === 'object') {
                         let updated = false;
-                        const docs = data.docs;
-                        if (docs.birthcert && !s.birthCertDoc) { s.birthCertDoc = docs.birthcert; updated = true; }
-                        if (docs.tor && !s.torDoc) { s.torDoc = docs.tor; updated = true; }
-                        if (docs.card && !s.studentCardDoc) { s.studentCardDoc = docs.card; updated = true; }
-                        if (docs.escannexd && !s.escAnnexDDoc) { s.escAnnexDDoc = docs.escannexd; updated = true; }
-                        if (docs.escannexf && !s.escAnnexFDoc) { s.escAnnexFDoc = docs.escannexf; updated = true; }
+                        const makeDocObj = (val, defaultName) => {
+                            if (!val) return null;
+                            if (typeof val === 'string') {
+                                return { name: defaultName, type: 'application/pdf', data: val, size: 'Attached', dateUploaded: new Date().toISOString() };
+                            }
+                            return val;
+                        };
+                        if (docs.birthcert && !s.birthCertDoc) { s.birthCertDoc = makeDocObj(docs.birthcert, 'PSA_Birth_Certificate.pdf'); updated = true; }
+                        if (docs.tor && !s.torDoc) { s.torDoc = makeDocObj(docs.tor, 'Transcript_Of_Records.pdf'); updated = true; }
+                        if (docs.card && !s.studentCardDoc) { s.studentCardDoc = makeDocObj(docs.card, 'Report_Card.pdf'); updated = true; }
+                        const escD = docs.escannexd || docs.esc_annex_d;
+                        if (escD && !s.escAnnexDDoc) { s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf'); updated = true; }
+                        const escF = docs.escannexf || docs.esc_annex_f;
+                        if (escF && !s.escAnnexFDoc) { s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf'); updated = true; }
                         if (updated) {
                             saveStudents();
                             if (typeof callback === 'function') callback(s);
