@@ -1,16 +1,37 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import { fileURLToPath } from 'url';
-import { put, list } from '@vercel/blob';
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
-// In-memory file cache for fast retrieval and serverless execution
+// In-memory file cache for fast retrieval
 const memoryFileStore = new Map();
+
+// Dynamic @vercel/blob loader (avoids crash if package is missing or uninstalled)
+let blobPut = null;
+let blobList = null;
+let blobLoaded = false;
+
+async function getBlobHelpers() {
+  if (blobLoaded) return { put: blobPut, list: blobList };
+  blobLoaded = true;
+  try {
+    const mod = await import('@vercel/blob');
+    blobPut = mod.put || (mod.default && mod.default.put);
+    blobList = mod.list || (mod.default && mod.default.list);
+  } catch (e) {
+    try {
+      const mod = require('@vercel/blob');
+      blobPut = mod.put;
+      blobList = mod.list;
+    } catch (e2) {
+      console.warn('[StudentFile] @vercel/blob not available, using disk/memory fallback:', e2.message);
+    }
+  }
+  return { put: blobPut, list: blobList };
+}
 
 function getStoragePaths() {
   const list = [];
   try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
     list.push(path.resolve(__dirname, '..', 'data', 'student-files.json'));
   } catch (e) {}
   try {
@@ -126,12 +147,52 @@ function getLookupKeys(id, lrn, studentNumber) {
   return Array.from(set);
 }
 
-export default async function handler(req, res) {
+// Ensure res.status, res.json, res.send exist on raw Node HTTP responses
+function wrapResponse(res) {
+  if (!res.status) {
+    res.status = function(code) { this.statusCode = code; return this; };
+  }
+  if (!res.json) {
+    res.json = function(data) {
+      this.setHeader('Content-Type', 'application/json');
+      this.end(JSON.stringify(data));
+      return this;
+    };
+  }
+  if (!res.send) {
+    res.send = function(data) {
+      return this.end(data);
+    };
+  }
+  if (!res.redirect) {
+    res.redirect = function(status, targetUrl) {
+      if (typeof status === 'string') { targetUrl = status; status = 302; }
+      this.writeHead(status || 302, { Location: targetUrl });
+      this.end();
+      return this;
+    };
+  }
+}
+
+module.exports = async function handler(req, res) {
+  wrapResponse(res);
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Parse query params if running in raw HTTP server
+  if (!req.query && req.url) {
+    try {
+      const parsedUrl = new URL(req.url, 'http://localhost');
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+    } catch (e) {
+      req.query = {};
+    }
+  }
+  req.query = req.query || {};
 
   // 1. SERVE OR LIST FILES
   if (req.method === 'GET') {
@@ -140,28 +201,39 @@ export default async function handler(req, res) {
     if (!key) return res.status(400).json({ error: 'Missing id' });
 
     const lookupKeys = getLookupKeys(rawId, req.query.lrn, req.query.studentNumber);
+    const { list } = await getBlobHelpers();
 
     try {
       // A. SERVE A SPECIFIC PDF INLINE
       if (req.query.type && req.query.raw === '1') {
         const docType = normalizeDocType(req.query.type);
 
-        // Tier 1: Try Vercel Blob if token is available
-        if (process.env.BLOB_READ_WRITE_TOKEN) {
+        // Tier 1: Try Vercel Blob if available and token exists
+        if (list && process.env.BLOB_READ_WRITE_TOKEN) {
           try {
             for (const testKey of [key, ...lookupKeys]) {
               const strippedKey = normalizeKey(testKey);
               const { blobs } = await list({ prefix: `student-files/${strippedKey}/${docType}` });
               if (blobs && blobs.length > 0) {
-                const fileRes = await fetch(blobs[0].url, {
-                  headers: { authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
-                });
-                if (fileRes.ok) {
+                let fileRes = null;
+                try {
+                  fileRes = await fetch(blobs[0].url, {
+                    headers: { authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+                  });
+                } catch (e) {}
+
+                if (!fileRes || !fileRes.ok) {
+                  try {
+                    fileRes = await fetch(blobs[0].url);
+                  } catch (e) {}
+                }
+
+                if (fileRes && fileRes.ok) {
                   const arrayBuffer = await fileRes.arrayBuffer();
                   const blobContentType = fileRes.headers.get('content-type') || 'application/pdf';
                   res.setHeader('Content-Type', blobContentType);
                   res.setHeader('Content-Disposition', `inline; filename="${docType}.pdf"`);
-                  res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+                  res.setHeader('Cache-Control', 'public, max-age=3600');
                   return res.send(Buffer.from(arrayBuffer));
                 }
               }
@@ -194,7 +266,7 @@ export default async function handler(req, res) {
                 const buf = Buffer.from(base64Data, 'base64');
                 res.setHeader('Content-Type', contentType);
                 res.setHeader('Content-Disposition', `inline; filename="${docType}.pdf"`);
-                res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+                res.setHeader('Cache-Control', 'public, max-age=3600');
                 return res.send(buf);
               }
             }
@@ -208,16 +280,17 @@ export default async function handler(req, res) {
       const files = {};
 
       // Check Vercel Blob
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
+      if (list && process.env.BLOB_READ_WRITE_TOKEN) {
         try {
           for (const testKey of [key, ...lookupKeys]) {
             const strippedKey = normalizeKey(testKey);
             const { blobs } = await list({ prefix: `student-files/${strippedKey}/` });
             if (blobs && blobs.length > 0) {
               for (const blob of blobs) {
-                const filename = blob.pathname.split('/').pop().replace(/\.pdf$/i, '');
-                if (filename && !files[filename]) {
-                  files[filename] = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(filename)}&raw=1`;
+                const filename = blob.pathname.split('/').pop().replace(/\.[^.]+$/i, '');
+                const cleanName = normalizeDocType(filename);
+                if (cleanName && !files[cleanName]) {
+                  files[cleanName] = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
                 }
               }
             }
@@ -233,22 +306,36 @@ export default async function handler(req, res) {
         const studentDocs = memoryFileStore.get(testKey) || memoryFileStore.get(testKey.toLowerCase());
         if (studentDocs && typeof studentDocs === 'object') {
           for (const [docName, docVal] of Object.entries(studentDocs)) {
-            if (docVal && !files[docName]) {
-              files[docName] = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(docName)}&raw=1`;
+            const cleanName = normalizeDocType(docName);
+            if (docVal && cleanName && !files[cleanName]) {
+              files[cleanName] = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
             }
           }
         }
       }
 
-      return res.status(200).json({ ok: true, id: key, files });
+      return res.status(200).json({ ok: true, id: key, files, docs: files });
     } catch (err) {
       console.error('[StudentFile] GET error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
 
-  // 2. UPLOAD PDF
+  // 2. UPLOAD PDF / FILE
   if (req.method === 'POST') {
+    if (!req.body) {
+      try {
+        let rawBody = '';
+        await new Promise((resolve) => {
+          req.on('data', chunk => rawBody += chunk);
+          req.on('end', resolve);
+        });
+        req.body = JSON.parse(rawBody || '{}');
+      } catch (e) {
+        req.body = {};
+      }
+    }
+
     const { id, type, docType: altType, file, dataUrl, doc, lrn, studentNumber } = req.body || {};
     const rawId = id || lrn || studentNumber;
     const key = normalizeKey(rawId);
@@ -260,24 +347,35 @@ export default async function handler(req, res) {
     }
 
     const lookupKeys = getLookupKeys(rawId, lrn, studentNumber);
-    let blobUrl = null;
-
-    // Tier 1: Upload to Vercel Blob with private access if token is present
     const mimeMatch = rawData.match(/^data:([^;]+);base64,(.+)$/);
     const contentType = mimeMatch ? mimeMatch[1] : 'application/pdf';
     const ext = contentType.includes('png') ? 'png' : (contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'pdf');
     const base64Data = mimeMatch ? mimeMatch[2] : rawData.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
+    let blobUrl = null;
+    const { put } = await getBlobHelpers();
+
+    // Tier 1: Upload to Vercel Blob if available and token present
+    if (put && process.env.BLOB_READ_WRITE_TOKEN) {
       try {
-        const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
-          access: 'private',
-          contentType,
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        });
-        blobUrl = blob.url;
+        try {
+          const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
+            access: 'private',
+            contentType,
+            addRandomSuffix: false,
+            allowOverwrite: true,
+          });
+          blobUrl = blob.url;
+        } catch (privErr) {
+          const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
+            access: 'public',
+            contentType,
+            addRandomSuffix: false,
+            allowOverwrite: true,
+          });
+          blobUrl = blob.url;
+        }
       } catch (blobPutErr) {
         console.warn('[StudentFile] Vercel Blob put warning (falling back to disk):', blobPutErr.message);
       }
@@ -291,17 +389,13 @@ export default async function handler(req, res) {
       size: 'Attached',
       dateUploaded: new Date().toISOString()
     };
-      data: rawData,
-      size: 'Attached',
-      dateUploaded: new Date().toISOString()
-    };
     saveFilesToDisk(lookupKeys, docType, storedObj);
 
     const secureUrl = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(docType)}&raw=1`;
     return res.status(200).json({ ok: true, url: secureUrl, blobUrl });
   }
 
-  // 3. DELETE PDF
+  // 3. DELETE PDF / FILE
   if (req.method === 'DELETE') {
     const rawId = req.query.id || req.query.studentId;
     const key = normalizeKey(rawId);
@@ -314,4 +408,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

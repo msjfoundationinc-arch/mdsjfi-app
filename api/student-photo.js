@@ -1,16 +1,37 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import { fileURLToPath } from 'url';
-import { put, list } from '@vercel/blob';
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 // In-memory photo cache
 const memoryPhotoStore = new Map();
 
+// Dynamic @vercel/blob loader
+let blobPut = null;
+let blobList = null;
+let blobLoaded = false;
+
+async function getBlobHelpers() {
+  if (blobLoaded) return { put: blobPut, list: blobList };
+  blobLoaded = true;
+  try {
+    const mod = await import('@vercel/blob');
+    blobPut = mod.put || (mod.default && mod.default.put);
+    blobList = mod.list || (mod.default && mod.default.list);
+  } catch (e) {
+    try {
+      const mod = require('@vercel/blob');
+      blobPut = mod.put;
+      blobList = mod.list;
+    } catch (e2) {
+      console.warn('[StudentPhoto] @vercel/blob not available, using disk/memory fallback:', e2.message);
+    }
+  }
+  return { put: blobPut, list: blobList };
+}
+
 function getStoragePaths() {
   const list = [];
   try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
     list.push(path.resolve(__dirname, '..', 'data', 'student-photos.json'));
   } catch (e) {}
   try {
@@ -115,12 +136,50 @@ function getLookupKeys(id, lrn, studentNumber) {
   return Array.from(set);
 }
 
-export default async function handler(req, res) {
+function wrapResponse(res) {
+  if (!res.status) {
+    res.status = function(code) { this.statusCode = code; return this; };
+  }
+  if (!res.json) {
+    res.json = function(data) {
+      this.setHeader('Content-Type', 'application/json');
+      this.end(JSON.stringify(data));
+      return this;
+    };
+  }
+  if (!res.send) {
+    res.send = function(data) {
+      return this.end(data);
+    };
+  }
+  if (!res.redirect) {
+    res.redirect = function(status, targetUrl) {
+      if (typeof status === 'string') { targetUrl = status; status = 302; }
+      this.writeHead(status || 302, { Location: targetUrl });
+      this.end();
+      return this;
+    };
+  }
+}
+
+module.exports = async function handler(req, res) {
+  wrapResponse(res);
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (!req.query && req.url) {
+    try {
+      const parsedUrl = new URL(req.url, 'http://localhost');
+      req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+    } catch (e) {
+      req.query = {};
+    }
+  }
+  req.query = req.query || {};
 
   // 1. SERVE PHOTO
   if (req.method === 'GET') {
@@ -129,10 +188,11 @@ export default async function handler(req, res) {
     if (!key) return res.status(400).json({ error: 'Missing id' });
 
     const lookupKeys = getLookupKeys(rawId, req.query.lrn, req.query.studentNumber);
+    const { list } = await getBlobHelpers();
 
     try {
-      // Tier 1: Try Vercel Blob if token is available
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
+      // Tier 1: Try Vercel Blob if available and token exists
+      if (list && process.env.BLOB_READ_WRITE_TOKEN) {
         try {
           for (const testKey of [key, ...lookupKeys]) {
             const strippedKey = normalizeKey(testKey);
@@ -174,6 +234,19 @@ export default async function handler(req, res) {
 
   // 2. UPLOAD PHOTO
   if (req.method === 'POST') {
+    if (!req.body) {
+      try {
+        let rawBody = '';
+        await new Promise((resolve) => {
+          req.on('data', chunk => rawBody += chunk);
+          req.on('end', resolve);
+        });
+        req.body = JSON.parse(rawBody || '{}');
+      } catch (e) {
+        req.body = {};
+      }
+    }
+
     const { id, photo, dataUrl, lrn, studentNumber } = req.body || {};
     const rawId = id || lrn || studentNumber;
     const key = normalizeKey(rawId);
@@ -185,9 +258,10 @@ export default async function handler(req, res) {
 
     const lookupKeys = getLookupKeys(rawId, lrn, studentNumber);
     let blobUrl = null;
+    const { put } = await getBlobHelpers();
 
     // Tier 1: Try Vercel Blob
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
+    if (put && process.env.BLOB_READ_WRITE_TOKEN) {
       try {
         const match = rawData.match(/^data:(image\/\w+);base64,(.+)$/);
         const contentType = match ? match[1] : 'image/jpeg';
@@ -223,4 +297,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};
