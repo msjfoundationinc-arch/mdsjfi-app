@@ -731,7 +731,7 @@ function fetchRemoteStudentPhoto(s, callback) {
     try {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
             const origin = getAppOrigin();
-            const endpoint = (origin ? origin : '') + '/api/student-photo?id=' + encodeURIComponent(studentKey) + '&v=' + Date.now();
+            const endpoint = (origin ? origin : '') + '/api/student-photo?id=' + encodeURIComponent(studentKey) + '&lrn=' + encodeURIComponent(s.lrn || '') + '&studentNumber=' + encodeURIComponent(s.studentNumber || '') + '&v=' + Date.now();
             fetch(endpoint)
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
@@ -753,11 +753,24 @@ window.fetchRemoteStudentPhoto = fetchRemoteStudentPhoto;
 
 function persistStudentDoc(student, docType, docObj) {
     if (!student || !docType) return;
+    const cleanType = String(docType).replace(/^view/, '').toLowerCase();
+    try {
+        const rawFiles = localStorage.getItem('mdsj_student_files') || '{}';
+        const parsedFiles = JSON.parse(rawFiles);
+        const sKey = (student.id || student.lrn || '').replace(/^STU-/i, '');
+        if (!parsedFiles[sKey]) parsedFiles[sKey] = {};
+        if (docObj) {
+            parsedFiles[sKey][cleanType] = docObj;
+        } else {
+            delete parsedFiles[sKey][cleanType];
+        }
+        localStorage.setItem('mdsj_student_files', JSON.stringify(parsedFiles));
+    } catch(e) {}
+
     try {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
             const origin = getAppOrigin();
             const endpoint = (origin ? origin : '') + '/api/student-file';
-            const cleanType = String(docType).replace(/^view/, '').toLowerCase();
             if (docObj && docObj.data) {
                 fetch(endpoint, {
                     method: 'POST',
@@ -798,6 +811,34 @@ function persistStudentDoc(student, docType, docObj) {
 }
 window.persistStudentDoc = persistStudentDoc;
 
+function syncStudentDocsFromStore(s) {
+    if (!s) return;
+    try {
+        const rawFiles = localStorage.getItem('mdsj_student_files');
+        if (!rawFiles) return;
+        const parsed = JSON.parse(rawFiles);
+        if (!parsed || typeof parsed !== 'object') return;
+        const keys = [s.id, s.lrn, s.studentNumber].filter(Boolean);
+        for (const k of keys) {
+            const cleanKey = String(k).trim().replace(/^STU-/i, '');
+            const studentDocs = parsed[cleanKey] || parsed[cleanKey.toLowerCase()] || parsed[String(k).trim()];
+            if (studentDocs && typeof studentDocs === 'object') {
+                const bc = studentDocs.birthcert || studentDocs.birthCert || studentDocs.psa;
+                if (bc && (!s.birthCertDoc || (s.birthCertDoc && s.birthCertDoc.data === SAMPLE_DOC_DATA))) s.birthCertDoc = bc;
+                const tor = studentDocs.tor || studentDocs.form137;
+                if (tor && (!s.torDoc || (s.torDoc && s.torDoc.data === SAMPLE_DOC_DATA))) s.torDoc = tor;
+                const card = studentDocs.card || studentDocs.studentCard;
+                if (card && (!s.studentCardDoc || (s.studentCardDoc && s.studentCardDoc.data === SAMPLE_DOC_DATA))) s.studentCardDoc = card;
+                const escD = studentDocs.escannexd || studentDocs.escAnnexDDoc;
+                if (escD && !s.escAnnexDDoc) s.escAnnexDDoc = escD;
+                const escF = studentDocs.escannexf || studentDocs.escAnnexFDoc;
+                if (escF && !s.escAnnexFDoc) s.escAnnexFDoc = escF;
+            }
+        }
+    } catch(e) {}
+}
+window.syncStudentDocsFromStore = syncStudentDocsFromStore;
+
 function fetchRemoteStudentDocs(s, callback) {
     if (!s) return;
     const studentKey = s.id || s.studentNumber || s.lrn;
@@ -805,7 +846,7 @@ function fetchRemoteStudentDocs(s, callback) {
     try {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
             const origin = getAppOrigin();
-            const endpoint = (origin ? origin : '') + '/api/student-file?id=' + encodeURIComponent(studentKey) + '&v=' + Date.now();
+            const endpoint = (origin ? origin : '') + '/api/student-file?id=' + encodeURIComponent(studentKey) + '&lrn=' + encodeURIComponent(s.lrn || '') + '&studentNumber=' + encodeURIComponent(s.studentNumber || '') + '&v=' + Date.now();
             fetch(endpoint)
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
@@ -814,19 +855,52 @@ function fetchRemoteStudentDocs(s, callback) {
                         let updated = false;
                         const makeDocObj = (val, defaultName) => {
                             if (!val) return null;
-                            if (typeof val === 'string') {
-                                return { name: defaultName, type: 'application/pdf', data: val, size: 'Attached', dateUploaded: new Date().toISOString() };
-                            }
-                            return val;
+                            let raw = typeof val === 'string' ? val : (val.data || val.url || '');
+                            let resolved = resolveAssetUrl(raw);
+                            let name = (typeof val === 'object' && val.name) ? val.name : defaultName;
+                            let size = (typeof val === 'object' && val.size) ? val.size : 'Attached';
+                            let type = (typeof val === 'object' && val.type) ? val.type : 'application/pdf';
+                            return {
+                                name: name,
+                                type: type,
+                                data: resolved,
+                                url: resolved,
+                                size: size,
+                                dateUploaded: (typeof val === 'object' && val.dateUploaded) ? val.dateUploaded : new Date().toISOString()
+                            };
                         };
-                        if (docs.birthcert && !s.birthCertDoc) { s.birthCertDoc = makeDocObj(docs.birthcert, 'PSA_Birth_Certificate.pdf'); updated = true; }
-                        if (docs.tor && !s.torDoc) { s.torDoc = makeDocObj(docs.tor, 'Transcript_Of_Records.pdf'); updated = true; }
-                        if (docs.card && !s.studentCardDoc) { s.studentCardDoc = makeDocObj(docs.card, 'Report_Card.pdf'); updated = true; }
-                        const escD = docs.escannexd || docs.esc_annex_d;
-                        if (escD && !s.escAnnexDDoc) { s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf'); updated = true; }
-                        const escF = docs.escannexf || docs.esc_annex_f;
-                        if (escF && !s.escAnnexFDoc) { s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf'); updated = true; }
+
+                        const bc = docs.birthcert || docs.birth_cert || docs.psa || docs.birthCert;
+                        if (bc) { s.birthCertDoc = makeDocObj(bc, 'PSA_Birth_Certificate.pdf'); updated = true; }
+
+                        const tor = docs.tor || docs.form137 || docs.form_137 || docs.sf10;
+                        if (tor) { s.torDoc = makeDocObj(tor, 'Transcript_Of_Records.pdf'); updated = true; }
+
+                        const card = docs.card || docs.studentcard || docs.reportcard || docs.form138 || docs.form_138 || docs.sf9;
+                        if (card) { s.studentCardDoc = makeDocObj(card, 'Report_Card.pdf'); updated = true; }
+
+                        const escD = docs.escannexd || docs.esc_annex_d || docs.annexd || docs.annex_d;
+                        if (escD) { s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf'); updated = true; }
+
+                        const escF = docs.escannexf || docs.esc_annex_f || docs.annexf || docs.annex_f;
+                        if (escF) { s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf'); updated = true; }
+
                         if (updated) {
+                            try {
+                                const rawFiles = localStorage.getItem('mdsj_student_files') || '{}';
+                                const parsedFiles = JSON.parse(rawFiles);
+                                for (const k of [studentKey, s.id, s.lrn, s.studentNumber].filter(Boolean)) {
+                                    const cleanK = String(k).replace(/^STU-/i, '');
+                                    if (!parsedFiles[cleanK]) parsedFiles[cleanK] = {};
+                                    if (s.birthCertDoc) parsedFiles[cleanK].birthcert = s.birthCertDoc;
+                                    if (s.torDoc) parsedFiles[cleanK].tor = s.torDoc;
+                                    if (s.studentCardDoc) parsedFiles[cleanK].card = s.studentCardDoc;
+                                    if (s.escAnnexDDoc) parsedFiles[cleanK].escannexd = s.escAnnexDDoc;
+                                    if (s.escAnnexFDoc) parsedFiles[cleanK].escannexf = s.escAnnexFDoc;
+                                }
+                                localStorage.setItem('mdsj_student_files', JSON.stringify(parsedFiles));
+                            } catch(e) {}
+
                             saveStudents();
                             if (typeof callback === 'function') callback(s);
                         }
@@ -909,6 +983,7 @@ function loadStudents() {
     }
 
     students.forEach(s => {
+        syncStudentDocsFromStore(s);
         if (!s.photo || s.photo.length < 10) {
             const p = getStudentPhoto(s);
             if (p) {
@@ -2158,7 +2233,12 @@ function previewDocFromTable(studentId, docType) {
         title = "Affidavit of Family’s Financial Capacity - Annex F";
     }
 
-    if (doc && doc.data) {
+    if (doc) {
+        if (!doc.data && doc.url) doc.data = doc.url;
+        if (!doc.url && doc.data) doc.url = doc.data;
+    }
+
+    if (doc && (doc.data || doc.url)) {
         viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
     } else {
         showToast(`${title} is not yet uploaded for this student.`, 'info');
@@ -3181,7 +3261,10 @@ function viewStudent(id) {
         }
     }
 
-    // Documents
+    // Documents: Sync from local store first, then render
+    if (typeof syncStudentDocsFromStore === 'function') {
+        syncStudentDocsFromStore(s);
+    }
     renderDocPreview('viewBirthCert', s.birthCertDoc);
     renderDocPreview('viewTor', s.torDoc);
     renderDocPreview('viewCard', s.studentCardDoc);
@@ -3195,8 +3278,8 @@ function viewStudent(id) {
         renderDocPreview('viewEscAnnexF', s.escAnnexFDoc);
     }
 
-    // Cross-device sync: fetch remote documents if missing from local state
-    if (typeof fetchRemoteStudentDocs === 'function' && (!s.birthCertDoc || !s.torDoc || !s.studentCardDoc || (isEsc && (!s.escAnnexDDoc || !s.escAnnexFDoc)))) {
+    // Cross-device sync: fetch remote documents from server tier
+    if (typeof fetchRemoteStudentDocs === 'function') {
         fetchRemoteStudentDocs(s, function(updatedStudent) {
             if (window.currentViewId === s.id) {
                 renderDocPreview('viewBirthCert', updatedStudent.birthCertDoc);
@@ -3394,6 +3477,38 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
                 }
             });
         }
+    }
+
+    const renderPassDocs = (student) => {
+        const wrap = document.getElementById('mobilePassDocsWrap');
+        if (!wrap) return;
+        const isEscSt = (student.escGrantee || 'NO').toUpperCase() === 'YES';
+        const makePill = (doc, label, type) => {
+            const hasDoc = Boolean(doc && (doc.data || doc.url));
+            const bg = hasDoc ? '#dcfce7' : '#fee2e2';
+            const color = hasDoc ? '#15803d' : '#991b1b';
+            const border = hasDoc ? '#86efac' : '#fca5a5';
+            const icon = hasDoc ? 'fa-check-circle' : 'fa-times-circle';
+            const click = hasDoc ? `onclick="previewDocFromTable('${student.id}', '${type}')" style="cursor:pointer; background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Click to view ${label}"` : `style="background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.72rem; font-weight:600; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; opacity:0.85;" title="${label}: Not uploaded"`;
+            return `<span ${click}><i class="fas ${icon}"></i> ${label}</span>`;
+        };
+        let pills = '';
+        pills += makePill(student.birthCertDoc, 'PSA', 'birthCert');
+        pills += makePill(student.torDoc, 'TOR', 'tor');
+        pills += makePill(student.studentCardDoc, 'CARD', 'card');
+        if (isEscSt) {
+            pills += makePill(student.escAnnexDDoc, 'ANNEX-D', 'escAnnexD');
+            pills += makePill(student.escAnnexFDoc, 'ANNEX-F', 'escAnnexF');
+        }
+        wrap.innerHTML = pills;
+    };
+    renderPassDocs(s);
+    if (typeof fetchRemoteStudentDocs === 'function') {
+        fetchRemoteStudentDocs(s, function(updated) {
+            if (window.currentViewId === s.id) {
+                renderPassDocs(updated);
+            }
+        });
     }
 
     openModal('learnerMobileModal');
@@ -3791,7 +3906,12 @@ function renderDocPreview(prefix, doc) {
                                document.documentElement.classList.contains('direct-profile-view') || 
                                (typeof getCurrentUser === 'function' && !getCurrentUser());
 
-    if (doc && doc.data) {
+    if (doc) {
+        if (!doc.data && doc.url) doc.data = doc.url;
+        if (!doc.url && doc.data) doc.url = doc.data;
+    }
+
+    if (doc && (doc.data || doc.url)) {
         details.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:2px;">
                 <span class="badge-uploaded" style="display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:4px; background:#dcfce7; color:#15803d; font-size:0.75rem; font-weight:700; width:fit-content;">
@@ -4142,7 +4262,12 @@ function previewDocData(prefix) {
         title = "Affidavit of Family’s Financial Capacity - Annex F";
     }
 
-    if (!doc || !doc.data) {
+    if (doc) {
+        if (!doc.data && doc.url) doc.data = doc.url;
+        if (!doc.url && doc.data) doc.url = doc.data;
+    }
+
+    if (!doc || (!doc.data && !doc.url)) {
         showToast('No document attached for this record.', 'warning');
         return;
     }
@@ -4191,18 +4316,29 @@ function viewDocumentInModal(title, subtitle, doc) {
     if (titleEl) titleEl.innerHTML = `<i class="fas fa-file-alt"></i> ${escHtml(title)}`;
     if (subEl) subEl.textContent = subtitle || 'Official Academic Credential';
 
-    if (btnDl && doc && doc.data) {
-        btnDl.href = doc.data;
-        btnDl.download = doc.name || 'document_download';
+    if (doc) {
+        if (!doc.data && doc.url) doc.data = doc.url;
+        if (!doc.url && doc.data) doc.url = doc.data;
+    }
+    const rawSrc = doc && (doc.data || doc.url) ? (doc.data || doc.url) : '';
+    const assetUrl = resolveAssetUrl(rawSrc);
+
+    if (btnDl && assetUrl) {
+        btnDl.href = assetUrl;
+        btnDl.download = (doc && doc.name) ? doc.name : 'document_download';
     }
 
-    if (container && doc && doc.data) {
-        const isPdf = (doc.type && doc.type.includes('pdf')) || (doc.name && doc.name.toLowerCase().endsWith('.pdf')) || (doc.data && doc.data.startsWith('data:application/pdf'));
+    if (container && assetUrl) {
+        const isPdf = (doc && doc.type && doc.type.includes('pdf')) || 
+                      (doc && doc.name && doc.name.toLowerCase().endsWith('.pdf')) || 
+                      assetUrl.includes('application/pdf') || 
+                      assetUrl.toLowerCase().includes('.pdf') || 
+                      assetUrl.includes('/api/student-file');
 
         if (isPdf) {
-            container.innerHTML = `<iframe src="${doc.data}" title="${escHtml(title)}" style="width:100%; height:75vh; border:none; border-radius:6px; background:#fff;"></iframe>`;
+            container.innerHTML = `<iframe src="${assetUrl}" title="${escHtml(title)}" style="width:100%; height:75vh; border:none; border-radius:6px; background:#fff;"></iframe>`;
         } else {
-            container.innerHTML = `<img src="${doc.data}" alt="${escHtml(title)}" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,0.5); background:#fff;">`;
+            container.innerHTML = `<img src="${assetUrl}" alt="${escHtml(title)}" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,0.5); background:#fff;">`;
         }
     }
 
