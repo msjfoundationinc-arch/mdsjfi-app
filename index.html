@@ -115,10 +115,44 @@
                 });
             }
 
+            function findStoredPhoto(sId, sLrn, sNum) {
+                var sIdClean = sId ? String(sId).trim() : '';
+                var sIdRaw = sIdClean.replace(/^STU-/i, '');
+                var sLrnClean = sLrn ? String(sLrn).trim() : '';
+                var sNumClean = sNum ? String(sNum).trim() : '';
+
+                var photo = (sIdClean && storedPhotos[sIdClean]) ||
+                            (sIdRaw && storedPhotos[sIdRaw]) ||
+                            (sIdRaw && storedPhotos['STU-' + sIdRaw]) ||
+                            (sLrnClean && storedPhotos[sLrnClean]) ||
+                            (sNumClean && storedPhotos[sNumClean]);
+
+                if (!photo && typeof storedPhotos === 'object') {
+                    var keys = Object.keys(storedPhotos);
+                    var idLow = sIdClean.toLowerCase();
+                    var rawLow = sIdRaw.toLowerCase();
+                    var lrnLow = sLrnClean.toLowerCase();
+                    var numLow = sNumClean.toLowerCase();
+                    for (var i = 0; i < keys.length; i++) {
+                        var k = keys[i];
+                        var kLow = k.toLowerCase();
+                        if ((idLow && kLow === idLow) ||
+                            (rawLow && kLow === rawLow) ||
+                            (rawLow && kLow === ('stu-' + rawLow)) ||
+                            (lrnLow && kLow === lrnLow) ||
+                            (numLow && kLow === numLow)) {
+                            photo = storedPhotos[k];
+                            break;
+                        }
+                    }
+                }
+                return (photo && typeof photo === 'string' && photo.length > 10) ? photo : null;
+            }
+
             var merged = JSON.parse(JSON.stringify(matrix));
             merged.forEach(function(m){
                 var sId = m.id || '';
-                var sIdRaw = sId.replace(/^STU-/, '');
+                var sIdRaw = sId.replace(/^STU-/i, '');
                 var sLrn = m.lrn ? String(m.lrn).trim() : '';
                 var sNum = m.studentNumber ? String(m.studentNumber).trim() : '';
 
@@ -130,7 +164,7 @@
                     if (ex.torDoc) m.torDoc = ex.torDoc;
                     if (ex.studentCardDoc) m.studentCardDoc = ex.studentCardDoc;
                 }
-                var pPhoto = (sId && storedPhotos[sId]) || (sIdRaw && storedPhotos[sIdRaw]) || (sLrn && storedPhotos[sLrn]) || (sNum && storedPhotos[sNum]);
+                var pPhoto = findStoredPhoto(sId, sLrn, sNum);
                 if (pPhoto && (!m.photo || m.photo.length < 10)) {
                     m.photo = pPhoto;
                 }
@@ -142,10 +176,9 @@
                 var updated = false;
                 existingStus.forEach(function(es) {
                     var sId = es.id || '';
-                    var sIdRaw = sId.replace(/^STU-/, '');
                     var sLrn = es.lrn ? String(es.lrn).trim() : '';
                     var sNum = es.studentNumber ? String(es.studentNumber).trim() : '';
-                    var pPhoto = (sId && storedPhotos[sId]) || (sIdRaw && storedPhotos[sIdRaw]) || (sIdRaw && storedPhotos['STU-' + sIdRaw]) || (sLrn && storedPhotos[sLrn]) || (sNum && storedPhotos[sNum]);
+                    var pPhoto = findStoredPhoto(sId, sLrn, sNum);
                     if (pPhoto && (!es.photo || es.photo.length < 10)) {
                         es.photo = pPhoto;
                         updated = true;
@@ -8930,7 +8963,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_06"></script>
+    <script src="app.js?v=20261121_09"></script>
 </body>
 </html>
 

@@ -530,10 +530,12 @@ function findStudent(id) {
 function getStudentPhoto(s) {
     if (!s) return '';
     if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) return s.photo.trim();
+    
+    // Check localStorage mdsj_student_photos
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
         const sId = s.id ? String(s.id).trim() : '';
-        const sIdRaw = sId.replace(/^STU-/, '');
+        const sIdRaw = sId.replace(/^STU-/i, '');
         const sLrn = s.lrn ? String(s.lrn).trim() : '';
         const sNum = s.studentNumber ? String(s.studentNumber).trim() : '';
 
@@ -545,12 +547,17 @@ function getStudentPhoto(s) {
 
         if (!photo && typeof storedPhotos === 'object') {
             const keys = Object.keys(storedPhotos);
+            const idLow = sId.toLowerCase();
+            const rawLow = sIdRaw.toLowerCase();
+            const lrnLow = sLrn.toLowerCase();
+            const numLow = sNum.toLowerCase();
             for (const k of keys) {
                 const kClean = String(k).trim().toLowerCase();
-                if ((sId && kClean === sId.toLowerCase()) || 
-                    (sIdRaw && kClean === sIdRaw.toLowerCase()) || 
-                    (sLrn && kClean === sLrn.toLowerCase()) || 
-                    (sNum && kClean === sNum.toLowerCase())) {
+                if ((idLow && kClean === idLow) || 
+                    (rawLow && kClean === rawLow) || 
+                    (rawLow && kClean === ('stu-' + rawLow)) ||
+                    (lrnLow && kClean === lrnLow) || 
+                    (numLow && kClean === numLow)) {
                     photo = storedPhotos[k];
                     break;
                 }
@@ -569,11 +576,21 @@ function getStudentPhoto(s) {
         if (raw) {
             const list = JSON.parse(raw);
             if (Array.isArray(list)) {
-                const match = list.find(x => 
-                    (x.id && s.id && (String(x.id) === String(s.id) || String(x.id).replace(/^STU-/, '') === String(s.id).replace(/^STU-/, ''))) ||
-                    (x.lrn && s.lrn && String(x.lrn).trim() === String(s.lrn).trim()) ||
-                    (x.studentNumber && s.studentNumber && String(x.studentNumber).trim() === String(s.studentNumber).trim())
-                );
+                const sId = s.id ? String(s.id).trim().toLowerCase() : '';
+                const sIdRaw = sId.replace(/^stu-/i, '');
+                const sLrn = s.lrn ? String(s.lrn).trim() : '';
+                const sNum = s.studentNumber ? String(s.studentNumber).trim() : '';
+
+                const match = list.find(x => {
+                    if (!x) return false;
+                    const xId = x.id ? String(x.id).trim().toLowerCase() : '';
+                    const xIdRaw = xId.replace(/^stu-/i, '');
+                    const xLrn = x.lrn ? String(x.lrn).trim() : '';
+                    const xNum = x.studentNumber ? String(x.studentNumber).trim() : '';
+                    return (sId && (xId === sId || xIdRaw === sIdRaw || xIdRaw === sId || xId === sIdRaw)) ||
+                           (sLrn && xLrn === sLrn) ||
+                           (sNum && xNum === sNum);
+                });
                 if (match && match.photo && typeof match.photo === 'string' && match.photo.trim().length > 10) {
                     s.photo = match.photo.trim();
                     persistStudentPhoto(s, s.photo);
@@ -604,31 +621,91 @@ function persistStudentPhoto(student, dataUrl) {
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
         const sId = student.id ? String(student.id).trim() : '';
-        const sIdRaw = sId.replace(/^STU-/, '');
+        const sIdRaw = sId.replace(/^STU-/i, '');
         const sLrn = student.lrn ? String(student.lrn).trim() : '';
         const sNum = student.studentNumber ? String(student.studentNumber).trim() : '';
 
         if (dataUrl) {
-            if (sId) storedPhotos[sId] = dataUrl;
+            if (sId) {
+                storedPhotos[sId] = dataUrl;
+                storedPhotos[sId.toLowerCase()] = dataUrl;
+            }
             if (sIdRaw) {
                 storedPhotos[sIdRaw] = dataUrl;
                 storedPhotos['STU-' + sIdRaw] = dataUrl;
+                storedPhotos['stu-' + sIdRaw.toLowerCase()] = dataUrl;
             }
             if (sLrn) storedPhotos[sLrn] = dataUrl;
-            if (sNum) storedPhotos[sNum] = dataUrl;
+            if (sNum) {
+                storedPhotos[sNum] = dataUrl;
+                storedPhotos['STU-' + sNum] = dataUrl;
+            }
         } else {
-            if (sId) delete storedPhotos[sId];
+            if (sId) {
+                delete storedPhotos[sId];
+                delete storedPhotos[sId.toLowerCase()];
+            }
             if (sIdRaw) {
                 delete storedPhotos[sIdRaw];
                 delete storedPhotos['STU-' + sIdRaw];
+                delete storedPhotos['stu-' + sIdRaw.toLowerCase()];
             }
             if (sLrn) delete storedPhotos[sLrn];
-            if (sNum) delete storedPhotos[sNum];
+            if (sNum) {
+                delete storedPhotos[sNum];
+                delete storedPhotos['STU-' + sNum];
+            }
         }
         localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
     } catch(e) {}
+
+    // Asynchronously push to server storage for cross-device mobile QR scanning
+    try {
+        if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+            const endpoint = (window.location.origin ? window.location.origin.replace(/\/+$/, '') : '') + '/api/student-photo';
+            if (dataUrl) {
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: student.id,
+                        lrn: student.lrn,
+                        studentNumber: student.studentNumber,
+                        photo: dataUrl
+                    })
+                }).catch(() => {});
+            } else {
+                const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
+                fetch(`${endpoint}?id=${sParam}`, { method: 'DELETE' }).catch(() => {});
+            }
+        }
+    } catch(e) {}
 }
 window.persistStudentPhoto = persistStudentPhoto;
+
+function fetchRemoteStudentPhoto(s, callback) {
+    if (!s) return;
+    const studentKey = s.id || s.studentNumber || s.lrn;
+    if (!studentKey) return;
+    try {
+        if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+            const endpoint = (window.location.origin ? window.location.origin.replace(/\/+$/, '') : '') + '/api/student-photo?id=' + encodeURIComponent(studentKey);
+            fetch(endpoint)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data && data.photo && typeof data.photo === 'string' && data.photo.length > 10) {
+                        s.photo = data.photo;
+                        persistStudentPhoto(s, data.photo);
+                        if (typeof callback === 'function') {
+                            callback(data.photo);
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+    } catch(e) {}
+}
+window.fetchRemoteStudentPhoto = fetchRemoteStudentPhoto;
 
 function loadStudents() {
     const matrixData = (typeof OFFICIAL_IMPORTED_STUDENTS !== 'undefined' && Array.isArray(OFFICIAL_IMPORTED_STUDENTS) && OFFICIAL_IMPORTED_STUDENTS.length > 0)
@@ -701,9 +778,10 @@ function loadStudents() {
     students.forEach(s => {
         if (!s.photo || s.photo.length < 10) {
             const p = getStudentPhoto(s);
-            if (p) s.photo = p;
+            if (p) {
+                s.photo = p;
+            }
         }
-        if (s.photo) persistStudentPhoto(s, s.photo);
         if (!s.schoolYear || s.schoolYear === '2025-2026') {
             s.schoolYear = '2026-2027';
         }
@@ -872,7 +950,7 @@ function initApp() {
             setTimeout(() => {
                 viewStudent(directStudentTarget.id);
                 try {
-                    if (!window.location.pathname.includes('/student/') && !window.location.pathname.includes('/profile/')) {
+                    if (window.location.protocol.startsWith('http') && !window.location.pathname.includes('/student/') && !window.location.pathname.includes('/profile/')) {
                         const cleanPath = window.location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
                         window.history.replaceState({}, '', (cleanPath || '') + '/?student=' + encodeURIComponent(directStudentTarget.id));
                     }
@@ -894,7 +972,7 @@ function initApp() {
             setTimeout(() => {
                 viewStudent(directStudentTarget.id);
                 try {
-                    if (!window.location.pathname.includes('/student/') && !window.location.pathname.includes('/profile/')) {
+                    if (window.location.protocol.startsWith('http') && !window.location.pathname.includes('/student/') && !window.location.pathname.includes('/profile/')) {
                         const cleanPath = window.location.pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
                         window.history.replaceState({}, '', (cleanPath || '') + '/?student=' + encodeURIComponent(directStudentTarget.id));
                     }
@@ -2925,6 +3003,19 @@ function viewStudent(id) {
         avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         if (photoDelBtn) photoDelBtn.style.display = (isGuestProfileView || !photoSrc) ? 'none' : 'inline-block';
         if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
+
+        // Seamless remote fetch for scanned QR view on external/mobile devices
+        if (!photoSrc && typeof fetchRemoteStudentPhoto === 'function') {
+            fetchRemoteStudentPhoto(s, function(remotePhoto) {
+                if (window.currentViewId === s.id) {
+                    const currentImg = avatar.querySelector('.student-avatar-img');
+                    if (currentImg && remotePhoto) {
+                        currentImg.src = remotePhoto;
+                    }
+                    if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
+                }
+            });
+        }
     }
 
     // Documents
@@ -3099,6 +3190,17 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         const displayPhoto = photoSrc || defaultAvatar;
 
         avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="this.onerror=null; this.src='${defaultAvatar}';" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
+
+        if (!photoSrc && typeof fetchRemoteStudentPhoto === 'function') {
+            fetchRemoteStudentPhoto(s, function(remotePhoto) {
+                if (window.currentViewId === s.id) {
+                    const mobileImg = avatarEl.querySelector('img');
+                    if (mobileImg && remotePhoto) {
+                        mobileImg.src = remotePhoto;
+                    }
+                }
+            });
+        }
     }
 
     openModal('learnerMobileModal');

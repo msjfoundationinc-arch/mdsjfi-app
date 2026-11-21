@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const sendAlertHandler = require('./api/send-alert.js');
+const studentPhotoHandler = require('./api/student-photo.js');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -30,6 +31,10 @@ const server = http.createServer(async (req, res) => {
     // API Routes
     if (pathname === '/api/send-alert' || pathname === '/api/send-email') {
         return sendAlertHandler(req, res);
+    }
+
+    if (pathname === '/api/student-photo') {
+        return studentPhotoHandler(req, res);
     }
 
     // Direct Student Profile SPA Route (/student/:id or /profile/:id)
