@@ -5513,6 +5513,8 @@ function proceedEditStudent(s) {
     if (descEl) descEl.textContent = `Editing: ${s.firstName} ${s.lastName} (LRN: ${s.lrn})`;
     const btnSubmit = document.getElementById('btnSubmitForm');
     if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
+    const btnCancel = document.getElementById('btnCancelEdit');
+    if (btnCancel) btnCancel.style.display = 'inline-block';
 
     closeModal('viewModal');
     navigateTo('add-student');
@@ -6952,6 +6954,22 @@ function initForm() {
                         'ESC Number': updated.escNumber || 'N/A'
                     }
                 });
+
+                // Stay in the current tab and keep the form updated with the saved student's data
+                const titleEl = document.getElementById('formTitle');
+                if (titleEl) titleEl.textContent = 'Edit Student Record';
+                const descEl = document.getElementById('formDesc');
+                if (descEl) descEl.textContent = `Editing: ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`;
+                const btnSubmit = document.getElementById('btnSubmitForm');
+                if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
+                const btnCancel = document.getElementById('btnCancelEdit');
+                if (btnCancel) btnCancel.style.display = 'inline-block';
+
+                refreshAll();
+                return;
+            } else {
+                showToast('Student record not found for update.', 'error');
+                return;
             }
         } else {
             const newStudent = { ...collectFormData(), id: generateId(), dateCreated: new Date().toISOString(), dateModified: new Date().toISOString() };
@@ -7194,6 +7212,8 @@ function resetForm() {
     if (descEl) descEl.textContent = 'Fill out all required fields to register a new student.';
     const btnSubmit = document.getElementById('btnSubmitForm');
     if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Save Student Record';
+    const btnCancel = document.getElementById('btnCancelEdit');
+    if (btnCancel) btnCancel.style.display = 'none';
 
     const formSy = document.getElementById('formSchoolYear');
     if (formSy) formSy.value = currentSchoolYear || '2026-2027';
