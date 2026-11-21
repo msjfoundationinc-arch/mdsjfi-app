@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@vercel/blob": "^2.9.0",
+    "@vercel/speed-insights": "^2.1.0",
     "nodemailer": "^6.10.1"
   },
   "devDependencies": {
