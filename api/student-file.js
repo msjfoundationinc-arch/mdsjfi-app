@@ -27,26 +27,36 @@ export default async function handler(req, res) {
     if (!key) return res.status(400).json({ error: 'Missing id' });
 
     try {
-      // Serve a specific PDF inline
+      // Serve a specific PDF inline with private token authorization
       if (req.query.type && req.query.raw === '1') {
         const docType = normalizeDocType(req.query.type);
         const { blobs } = await list({ prefix: `student-files/${key}/${docType}.pdf` });
         if (!blobs.length) return res.status(404).json({ error: 'File not found' });
 
-        const fileRes = await fetch(blobs[0].url);
+        const fetchHeaders = {};
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          fetchHeaders.authorization = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+        }
+        const fileRes = await fetch(blobs[0].url, { headers: fetchHeaders });
+        if (!fileRes.ok) {
+          return res.status(fileRes.status).json({ error: 'Failed to retrieve private document' });
+        }
+
         const arrayBuffer = await fileRes.arrayBuffer();
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${docType}.pdf"`);
+        res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
         return res.send(Buffer.from(arrayBuffer));
       }
 
-      // Otherwise return all uploaded docs for this student
+      // Otherwise return all uploaded docs for this student via secure API proxy routes
       const { blobs } = await list({ prefix: `student-files/${key}/` });
       const files = {};
       for (const blob of blobs) {
         const filename = blob.pathname.split('/').pop().replace(/\.pdf$/i, '');
-        files[filename] = blob.url;
+        // Proxy through authenticated API route so private blobs remain securely viewable to valid app users
+        files[filename] = `/api/student-file?id=${encodeURIComponent(key)}&type=${encodeURIComponent(filename)}&raw=1`;
       }
 
       return res.status(200).json({ ok: true, id: key, files });
@@ -55,7 +65,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. UPLOAD PDF
+  // 2. UPLOAD PDF (Strictly Private Access)
   if (req.method === 'POST') {
     const { id, type, docType: altType, file, dataUrl, doc } = req.body || {};
     const key = normalizeKey(id);
@@ -71,13 +81,14 @@ export default async function handler(req, res) {
       const buffer = Buffer.from(base64Data, 'base64');
 
       const blob = await put(`student-files/${key}/${docType}.pdf`, buffer, {
-        access: 'public',
+        access: 'private',
         contentType: 'application/pdf',
         addRandomSuffix: false,
         allowOverwrite: true,
       });
 
-      return res.status(200).json({ ok: true, url: blob.url });
+      const secureUrl = `/api/student-file?id=${encodeURIComponent(key)}&type=${encodeURIComponent(docType)}&raw=1`;
+      return res.status(200).json({ ok: true, url: secureUrl, blobUrl: blob.url });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
