@@ -2,7 +2,20 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const sendAlertHandler = require('./api/send-alert.js');
-const studentPhotoHandler = require('./api/student-photo.js');
+let studentPhotoHandler = null;
+(async () => {
+    try {
+        const mod = await import('./api/student-photo.js');
+        studentPhotoHandler = mod.default || mod;
+    } catch (e) {
+        try {
+            studentPhotoHandler = require('./api/student-photo.js');
+            if (studentPhotoHandler && studentPhotoHandler.default) {
+                studentPhotoHandler = studentPhotoHandler.default;
+            }
+        } catch (err) {}
+    }
+})();
 const studentFileHandler = require('./api/student-file.js');
 
 const PORT = process.env.PORT || 3000;
@@ -36,6 +49,46 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/student-photo' || pathname.startsWith('/api/student-photo/')) {
+        if (!studentPhotoHandler) {
+            try {
+                const mod = await import('./api/student-photo.js');
+                studentPhotoHandler = mod.default || mod;
+            } catch (err) {
+                console.error('[Server] studentPhotoHandler load error:', err.message);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+        }
+        if (!req.query) {
+            req.query = Object.fromEntries(url.searchParams.entries());
+        }
+        if (!res.status) {
+            res.status = function(code) { this.statusCode = code; return this; };
+        }
+        if (!res.json) {
+            res.json = function(data) {
+                this.setHeader('Content-Type', 'application/json');
+                this.end(JSON.stringify(data));
+                return this;
+            };
+        }
+        if (!res.redirect) {
+            res.redirect = function(status, targetUrl) {
+                if (typeof status === 'string') { targetUrl = status; status = 302; }
+                this.writeHead(status || 302, { Location: targetUrl });
+                this.end();
+                return this;
+            };
+        }
+        if (req.method === 'POST' && !req.body) {
+            let rawBody = '';
+            req.on('data', chunk => rawBody += chunk);
+            req.on('end', () => {
+                try { req.body = JSON.parse(rawBody); } catch(e) { req.body = {}; }
+                return studentPhotoHandler(req, res);
+            });
+            return;
+        }
         return studentPhotoHandler(req, res);
     }
 

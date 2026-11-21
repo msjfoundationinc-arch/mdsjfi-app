@@ -701,8 +701,11 @@ function persistStudentPhoto(student, dataUrl) {
                     return res.json().catch(() => null);
                 })
                 .then(data => {
-                    if (data && data.success) {
+                    if (data && (data.success || data.ok)) {
                         console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn);
+                        if (data.url) {
+                            student.photo = data.url;
+                        }
                     }
                 })
                 .catch(err => {
