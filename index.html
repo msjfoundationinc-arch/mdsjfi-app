@@ -24,7 +24,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261121_10">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b2545">
-    <link rel="stylesheet" href="styles.css?v=20261121_13">
+    <link rel="stylesheet" href="styles.css?v=20261121_14">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -122,32 +122,34 @@
                 var sLrnClean = sLrn ? String(sLrn).trim() : '';
                 var sNumClean = sNum ? String(sNum).trim() : '';
 
-                var photo = (sIdClean && storedPhotos[sIdClean]) ||
-                            (sIdRaw && storedPhotos[sIdRaw]) ||
-                            (sIdRaw && storedPhotos['STU-' + sIdRaw]) ||
-                            (sLrnClean && storedPhotos[sLrnClean]) ||
-                            (sNumClean && storedPhotos[sNumClean]);
+                var targetKeys = [sIdClean, sIdClean.toLowerCase(), sIdRaw, sIdRaw.toLowerCase(), 'STU-' + sIdRaw, 'stu-' + sIdRaw.toLowerCase(), sLrnClean, sNumClean];
 
-                if (!photo && typeof storedPhotos === 'object') {
+                for (var j = 0; j < targetKeys.length; j++) {
+                    var tk = targetKeys[j];
+                    if (tk && storedPhotos[tk] && typeof storedPhotos[tk] === 'string' && storedPhotos[tk].length > 10) {
+                        return storedPhotos[tk];
+                    }
+                }
+
+                if (typeof storedPhotos === 'object') {
                     var keys = Object.keys(storedPhotos);
-                    var idLow = sIdClean.toLowerCase();
-                    var rawLow = sIdRaw.toLowerCase();
-                    var lrnLow = sLrnClean.toLowerCase();
-                    var numLow = sNumClean.toLowerCase();
                     for (var i = 0; i < keys.length; i++) {
                         var k = keys[i];
-                        var kLow = k.toLowerCase();
-                        if ((idLow && kLow === idLow) ||
-                            (rawLow && kLow === rawLow) ||
-                            (rawLow && kLow === ('stu-' + rawLow)) ||
-                            (lrnLow && kLow === lrnLow) ||
-                            (numLow && kLow === numLow)) {
-                            photo = storedPhotos[k];
-                            break;
+                        var kClean = k.trim().toLowerCase();
+                        var kRaw = kClean.replace(/^stu-/i, '');
+                        for (var mIdx = 0; mIdx < targetKeys.length; mIdx++) {
+                            var target = targetKeys[mIdx];
+                            if (!target) continue;
+                            var tClean = target.toLowerCase();
+                            var tRaw = tClean.replace(/^stu-/i, '');
+                            if (kClean === tClean || kRaw === tRaw || kRaw === tClean || kClean === tRaw) {
+                                var val = storedPhotos[k];
+                                if (val && typeof val === 'string' && val.length > 10) return val;
+                            }
                         }
                     }
                 }
-                return (photo && typeof photo === 'string' && photo.length > 10) ? photo : null;
+                return null;
             }
 
             var merged = JSON.parse(JSON.stringify(matrix));
@@ -164,6 +166,8 @@
                     if (ex.birthCertDoc) m.birthCertDoc = ex.birthCertDoc;
                     if (ex.torDoc) m.torDoc = ex.torDoc;
                     if (ex.studentCardDoc) m.studentCardDoc = ex.studentCardDoc;
+                    if (ex.escAnnexDDoc) m.escAnnexDDoc = ex.escAnnexDDoc;
+                    if (ex.escAnnexFDoc) m.escAnnexFDoc = ex.escAnnexFDoc;
                 }
                 var pPhoto = findStoredPhoto(sId, sLrn, sNum);
                 if (pPhoto && (!m.photo || m.photo.length < 10)) {
@@ -9102,7 +9106,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_13"></script>
+    <script src="app.js?v=20261121_14"></script>
 </body>
 </html>
 

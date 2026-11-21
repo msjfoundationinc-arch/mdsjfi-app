@@ -5,55 +5,85 @@ const os = require('os');
 // In-memory cache for fast retrieval and serverless cold-start resilience
 const memoryPhotoStore = new Map();
 
-// Helper to determine persistent storage path
-function getStoragePath() {
-    // 1. Try local project directory 'data/student-photos.json'
-    const projectDataDir = path.resolve(process.cwd(), 'data');
+// Helper to determine persistent storage paths
+function getStorageCandidates() {
+    const list = [];
     try {
+        const projectDataDir = path.resolve(__dirname, '..', 'data');
         if (!fs.existsSync(projectDataDir)) {
             fs.mkdirSync(projectDataDir, { recursive: true });
         }
-        return path.join(projectDataDir, 'student-photos.json');
+        list.push(path.join(projectDataDir, 'student-photos.json'));
     } catch (e) {
-        // 2. Fall back to OS temp directory (e.g., in Vercel serverless /tmp)
-        const tmpDir = os.tmpdir();
-        return path.join(tmpDir, 'mdsj_student_photos.json');
+        // Ignored if root is read-only
     }
+
+    try {
+        const cwdDataDir = path.resolve(process.cwd(), 'data');
+        if (!fs.existsSync(cwdDataDir)) {
+            fs.mkdirSync(cwdDataDir, { recursive: true });
+        }
+        list.push(path.join(cwdDataDir, 'student-photos.json'));
+    } catch (e) {
+        // Ignored
+    }
+
+    try {
+        list.push(path.join(os.tmpdir(), 'mdsj_student_photos.json'));
+    } catch (e) {
+        // Ignored
+    }
+
+    return Array.from(new Set(list));
 }
 
 // Load photos from disk into memory cache
 function loadPhotosFromDisk() {
-    try {
-        const filePath = getStoragePath();
-        if (fs.existsSync(filePath)) {
-            const raw = fs.readFileSync(filePath, 'utf8');
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === 'object') {
-                for (const [k, v] of Object.entries(parsed)) {
-                    if (k && v && typeof v === 'string') {
-                        memoryPhotoStore.set(k.trim().toLowerCase(), v);
-                        memoryPhotoStore.set(k.trim(), v);
+    const candidates = getStorageCandidates();
+    for (const filePath of candidates) {
+        try {
+            if (fs.existsSync(filePath)) {
+                const raw = fs.readFileSync(filePath, 'utf8');
+                const parsed = JSON.parse(raw || '{}');
+                if (parsed && typeof parsed === 'object') {
+                    for (const [k, v] of Object.entries(parsed)) {
+                        if (k && v && typeof v === 'string') {
+                            const cleanKey = k.trim();
+                            memoryPhotoStore.set(cleanKey, v);
+                            memoryPhotoStore.set(cleanKey.toLowerCase(), v);
+                        }
                     }
                 }
             }
+        } catch (e) {
+            // Non-blocking fallback
         }
-    } catch (e) {
-        // Non-blocking fallback to in-memory store
     }
 }
 
 // Persist photos from memory cache to disk
 function savePhotosToDisk() {
-    try {
-        const filePath = getStoragePath();
-        const obj = {};
-        for (const [k, v] of memoryPhotoStore.entries()) {
-            obj[k] = v;
-        }
-        fs.writeFileSync(filePath, JSON.stringify(obj), 'utf8');
-    } catch (e) {
-        // Non-blocking fallback
+    const obj = {};
+    for (const [k, v] of memoryPhotoStore.entries()) {
+        obj[k] = v;
     }
+    const jsonStr = JSON.stringify(obj);
+
+    const candidates = getStorageCandidates();
+    let saved = false;
+    for (const filePath of candidates) {
+        try {
+            const dir = path.dirname(filePath);
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+            fs.writeFileSync(filePath, jsonStr, 'utf8');
+            saved = true;
+        } catch (e) {
+            // Continue to next candidate
+        }
+    }
+    return saved;
 }
 
 // Initial load
@@ -63,7 +93,7 @@ module.exports = async function studentPhotoHandler(req, res) {
     // Enable CORS for cross-device mobile scanners and local file browsing
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
 
     if (req.method === 'OPTIONS') {
         res.writeHead(200);
@@ -72,7 +102,6 @@ module.exports = async function studentPhotoHandler(req, res) {
 
     const host = req.headers.host || 'localhost';
     const parsedUrl = new URL(req.url, `http://${host}`);
-    const pathname = parsedUrl.pathname;
 
     // GET /api/student-photo?id=...
     if (req.method === 'GET') {
@@ -80,6 +109,10 @@ module.exports = async function studentPhotoHandler(req, res) {
                         parsedUrl.searchParams.get('student') || 
                         parsedUrl.searchParams.get('lrn') || 
                         parsedUrl.searchParams.get('studentNumber');
+
+        const wantRawImage = parsedUrl.searchParams.get('img') === '1' ||
+                             parsedUrl.searchParams.get('raw') === '1' ||
+                             (req.headers.accept && req.headers.accept.includes('image/') && !req.headers.accept.includes('application/json'));
 
         if (!queryId) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -91,7 +124,7 @@ module.exports = async function studentPhotoHandler(req, res) {
         const rawId = idClean.replace(/^STU-/i, '');
         const rawIdLower = rawId.toLowerCase();
 
-        // Check in-memory store and re-check disk if needed
+        // Refresh cache from disk
         loadPhotosFromDisk();
 
         let photo = memoryPhotoStore.get(idClean) ||
@@ -113,14 +146,37 @@ module.exports = async function studentPhotoHandler(req, res) {
         }
 
         if (photo && typeof photo === 'string' && photo.length > 10) {
+            // If raw image binary is requested (e.g. for direct <img src="..."> in mobile/QR views)
+            if (wantRawImage) {
+                try {
+                    const match = photo.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+                    if (match) {
+                        const contentType = match[1] || 'image/jpeg';
+                        const buffer = Buffer.from(match[2], 'base64');
+                        res.writeHead(200, {
+                            'Content-Type': contentType,
+                            'Content-Length': buffer.length,
+                            'Cache-Control': 'public, max-age=120, must-revalidate',
+                            'Access-Control-Allow-Origin': '*'
+                        });
+                        return res.end(buffer);
+                    }
+                } catch (e) {
+                    // Fall back to JSON response
+                }
+            }
+
+            // Return JSON payload
+            const rawUrl = `/api/student-photo?id=${encodeURIComponent(idClean)}&img=1`;
             res.writeHead(200, {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=60'
+                'Cache-Control': 'public, max-age=60, must-revalidate'
             });
             return res.end(JSON.stringify({
                 success: true,
                 id: idClean,
-                photo: photo
+                photo: photo,
+                url: rawUrl
             }));
         }
 
@@ -133,10 +189,10 @@ module.exports = async function studentPhotoHandler(req, res) {
         let body = '';
         req.on('data', chunk => {
             body += chunk;
-            // Prevent payload exceeding 10MB
+            // Limit payload to 10MB
             if (body.length > 10 * 1024 * 1024) {
                 res.writeHead(413, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, message: 'Payload too large' }));
+                res.end(JSON.stringify({ success: false, message: 'Payload too large (max 10MB)' }));
                 req.destroy();
             }
         });
@@ -154,33 +210,46 @@ module.exports = async function studentPhotoHandler(req, res) {
                     return res.end(JSON.stringify({ success: false, message: 'Valid photo and at least one student identifier required' }));
                 }
 
-                // Register keys in memory
-                const keysToStore = [];
-                if (id) {
-                    keysToStore.push(id, id.toLowerCase());
-                    const raw = id.replace(/^STU-/i, '');
-                    keysToStore.push(raw, raw.toLowerCase(), 'STU-' + raw, 'stu-' + raw.toLowerCase());
-                }
-                if (lrn) {
-                    keysToStore.push(lrn, lrn.toLowerCase());
-                }
-                if (studentNumber) {
-                    keysToStore.push(studentNumber, studentNumber.toLowerCase(), 'STU-' + studentNumber);
-                }
+                // Register keys across all normalized permutations
+                const keysToStore = new Set();
+                const addPermutations = (val) => {
+                    if (!val) return;
+                    const c = String(val).trim();
+                    keysToStore.add(c);
+                    keysToStore.add(c.toLowerCase());
+                    const raw = c.replace(/^STU-/i, '').trim();
+                    if (raw) {
+                        keysToStore.add(raw);
+                        keysToStore.add(raw.toLowerCase());
+                        keysToStore.add('STU-' + raw);
+                        keysToStore.add('stu-' + raw.toLowerCase());
+                    }
+                };
+
+                addPermutations(id);
+                addPermutations(lrn);
+                addPermutations(studentNumber);
 
                 for (const k of keysToStore) {
                     memoryPhotoStore.set(k, photo);
                 }
 
                 savePhotosToDisk();
+                console.log(`[StudentPhoto API] Persisted photo for ${id || studentNumber || lrn} (${keysToStore.size} lookup keys)`);
+
+                const primaryId = id || studentNumber || lrn;
+                const rawUrl = `/api/student-photo?id=${encodeURIComponent(primaryId)}&img=1`;
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify({
                     success: true,
                     message: 'Photo persisted successfully',
-                    id: id || studentNumber || lrn
+                    id: primaryId,
+                    url: rawUrl,
+                    timestamp: Date.now()
                 }));
             } catch (err) {
+                console.error('[StudentPhoto API] Parse error:', err);
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify({ success: false, message: 'Invalid JSON payload', error: err.message }));
             }
@@ -204,6 +273,7 @@ module.exports = async function studentPhotoHandler(req, res) {
             memoryPhotoStore.delete('STU-' + rawId);
             memoryPhotoStore.delete('stu-' + rawId.toLowerCase());
             savePhotosToDisk();
+            console.log('[StudentPhoto API] Deleted photo for', idClean);
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });

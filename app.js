@@ -527,142 +527,163 @@ function findStudent(id) {
 
 // ======================== DATA LAYER & COHORT SEEDING ========================
 
+// ======================== CROSS-DEVICE IDENTIFIERS & STORAGE HELPERS ========================
+
+function getStudentLookupKeys(s) {
+    if (!s) return [];
+    const keys = new Set();
+    const addKey = (val) => {
+        if (val === undefined || val === null) return;
+        const clean = String(val).trim();
+        if (!clean) return;
+        keys.add(clean);
+        keys.add(clean.toLowerCase());
+        const raw = clean.replace(/^STU-/i, '').trim();
+        if (raw) {
+            keys.add(raw);
+            keys.add(raw.toLowerCase());
+            keys.add('STU-' + raw);
+            keys.add('stu-' + raw.toLowerCase());
+        }
+    };
+
+    if (typeof s === 'string' || typeof s === 'number') {
+        addKey(s);
+    } else if (typeof s === 'object') {
+        addKey(s.id);
+        addKey(s.studentNumber);
+        addKey(s.lrn);
+        if (s.escNumber) addKey(s.escNumber);
+    }
+    return Array.from(keys);
+}
+window.getStudentLookupKeys = getStudentLookupKeys;
+
+function getAppOrigin() {
+    if (typeof window !== 'undefined' && window.location) {
+        if (window.location.origin && window.location.origin !== 'null') {
+            return window.location.origin.replace(/\/+$/, '');
+        }
+        return (window.location.protocol + '//' + window.location.host).replace(/\/+$/, '');
+    }
+    return '';
+}
+window.getAppOrigin = getAppOrigin;
+
+function resolveAssetUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    const origin = getAppOrigin();
+    const cleanPath = url.startsWith('/') ? url : ('/' + url);
+    return origin ? (origin + cleanPath) : cleanPath;
+}
+window.resolveAssetUrl = resolveAssetUrl;
+
 function getStudentPhoto(s) {
     if (!s) return '';
     if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) return s.photo.trim();
-    
-    // Check localStorage mdsj_student_photos
+
+    const lookupKeys = getStudentLookupKeys(s);
+
+    // 1. Check localStorage mdsj_student_photos
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
-        const sId = s.id ? String(s.id).trim() : '';
-        const sIdRaw = sId.replace(/^STU-/i, '');
-        const sLrn = s.lrn ? String(s.lrn).trim() : '';
-        const sNum = s.studentNumber ? String(s.studentNumber).trim() : '';
-
-        let photo = (sId && storedPhotos[sId]) || 
-                    (sIdRaw && storedPhotos[sIdRaw]) || 
-                    (sIdRaw && storedPhotos['STU-' + sIdRaw]) ||
-                    (sLrn && storedPhotos[sLrn]) || 
-                    (sNum && storedPhotos[sNum]);
-
-        if (!photo && typeof storedPhotos === 'object') {
-            const keys = Object.keys(storedPhotos);
-            const idLow = sId.toLowerCase();
-            const rawLow = sIdRaw.toLowerCase();
-            const lrnLow = sLrn.toLowerCase();
-            const numLow = sNum.toLowerCase();
-            for (const k of keys) {
-                const kClean = String(k).trim().toLowerCase();
-                if ((idLow && kClean === idLow) || 
-                    (rawLow && kClean === rawLow) || 
-                    (rawLow && kClean === ('stu-' + rawLow)) ||
-                    (lrnLow && kClean === lrnLow) || 
-                    (numLow && kClean === numLow)) {
-                    photo = storedPhotos[k];
-                    break;
+        if (storedPhotos && typeof storedPhotos === 'object') {
+            for (const k of lookupKeys) {
+                if (storedPhotos[k] && typeof storedPhotos[k] === 'string' && storedPhotos[k].trim().length > 10) {
+                    s.photo = storedPhotos[k].trim();
+                    return s.photo;
+                }
+            }
+            // Fuzzy search across stored keys
+            const storedKeyList = Object.keys(storedPhotos);
+            for (const k of storedKeyList) {
+                const kClean = k.trim().toLowerCase();
+                const kRaw = kClean.replace(/^stu-/i, '');
+                for (const targetKey of lookupKeys) {
+                    const tClean = targetKey.toLowerCase();
+                    const tRaw = tClean.replace(/^stu-/i, '');
+                    if (kClean === tClean || kRaw === tRaw || kRaw === tClean || kClean === tRaw) {
+                        const found = storedPhotos[k];
+                        if (found && typeof found === 'string' && found.trim().length > 10) {
+                            s.photo = found.trim();
+                            return s.photo;
+                        }
+                    }
                 }
             }
         }
-
-        if (photo && typeof photo === 'string' && photo.trim().length > 10) {
-            s.photo = photo.trim();
-            return photo.trim();
-        }
     } catch(e) {}
 
-    // Check localStorage mdsj_students
+    // 2. Check localStorage mdsj_students
     try {
         const raw = localStorage.getItem('mdsj_students');
         if (raw) {
             const list = JSON.parse(raw);
             if (Array.isArray(list)) {
-                const sId = s.id ? String(s.id).trim().toLowerCase() : '';
-                const sIdRaw = sId.replace(/^stu-/i, '');
-                const sLrn = s.lrn ? String(s.lrn).trim() : '';
-                const sNum = s.studentNumber ? String(s.studentNumber).trim() : '';
+                for (const x of list) {
+                    if (!x || !x.photo || typeof x.photo !== 'string' || x.photo.trim().length <= 10) continue;
+                    const xKeys = getStudentLookupKeys(x);
+                    const hasCommonKey = lookupKeys.some(lk => xKeys.includes(lk));
+                    if (hasCommonKey) {
+                        s.photo = x.photo.trim();
+                        persistStudentPhoto(s, s.photo);
+                        return s.photo;
+                    }
+                }
+            }
+        }
+    } catch(e) {}
 
-                const match = list.find(x => {
-                    if (!x) return false;
-                    const xId = x.id ? String(x.id).trim().toLowerCase() : '';
-                    const xIdRaw = xId.replace(/^stu-/i, '');
-                    const xLrn = x.lrn ? String(x.lrn).trim() : '';
-                    const xNum = x.studentNumber ? String(x.studentNumber).trim() : '';
-                    return (sId && (xId === sId || xIdRaw === sIdRaw || xIdRaw === sId || xId === sIdRaw)) ||
-                           (sLrn && xLrn === sLrn) ||
-                           (sNum && xNum === sNum);
-                });
-                if (match && match.photo && typeof match.photo === 'string' && match.photo.trim().length > 10) {
-                    s.photo = match.photo.trim();
-                    persistStudentPhoto(s, s.photo);
+    // 3. Check MDSJ_FaceEngine enrollment photos
+    try {
+        if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
+            for (const k of lookupKeys) {
+                const enroll = window.MDSJ_FaceEngine.findEnrollmentByPersonId(k);
+                const facePhoto = enroll && (enroll.facePhoto || enroll.sampleImage);
+                if (facePhoto && typeof facePhoto === 'string' && facePhoto.length > 10) {
+                    s.photo = facePhoto.trim();
                     return s.photo;
                 }
             }
         }
     } catch(e) {}
 
-    try {
-        if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
-            const enroll = window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.id) ||
-                           (s.studentNumber && window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.studentNumber)) ||
-                           (s.lrn && window.MDSJ_FaceEngine.findEnrollmentByPersonId(s.lrn));
-            const facePhoto = (enroll && (enroll.facePhoto || enroll.sampleImage));
-            if (facePhoto && typeof facePhoto === 'string' && facePhoto.length > 10) {
-                s.photo = facePhoto.trim();
-                return facePhoto.trim();
-            }
-        }
-    } catch(e) {}
     return '';
 }
 window.getStudentPhoto = getStudentPhoto;
 
 function persistStudentPhoto(student, dataUrl) {
     if (!student) return;
+    const lookupKeys = getStudentLookupKeys(student);
+
+    // Save locally
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
-        const sId = student.id ? String(student.id).trim() : '';
-        const sIdRaw = sId.replace(/^STU-/i, '');
-        const sLrn = student.lrn ? String(student.lrn).trim() : '';
-        const sNum = student.studentNumber ? String(student.studentNumber).trim() : '';
-
         if (dataUrl) {
-            if (sId) {
-                storedPhotos[sId] = dataUrl;
-                storedPhotos[sId.toLowerCase()] = dataUrl;
-            }
-            if (sIdRaw) {
-                storedPhotos[sIdRaw] = dataUrl;
-                storedPhotos['STU-' + sIdRaw] = dataUrl;
-                storedPhotos['stu-' + sIdRaw.toLowerCase()] = dataUrl;
-            }
-            if (sLrn) storedPhotos[sLrn] = dataUrl;
-            if (sNum) {
-                storedPhotos[sNum] = dataUrl;
-                storedPhotos['STU-' + sNum] = dataUrl;
+            for (const k of lookupKeys) {
+                storedPhotos[k] = dataUrl;
             }
         } else {
-            if (sId) {
-                delete storedPhotos[sId];
-                delete storedPhotos[sId.toLowerCase()];
-            }
-            if (sIdRaw) {
-                delete storedPhotos[sIdRaw];
-                delete storedPhotos['STU-' + sIdRaw];
-                delete storedPhotos['stu-' + sIdRaw.toLowerCase()];
-            }
-            if (sLrn) delete storedPhotos[sLrn];
-            if (sNum) {
-                delete storedPhotos[sNum];
-                delete storedPhotos['STU-' + sNum];
+            for (const k of lookupKeys) {
+                delete storedPhotos[k];
             }
         }
         localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
-    } catch(e) {}
+    } catch(e) {
+        console.warn('LocalStorage mdsj_student_photos save warning:', e);
+    }
+
+    // Sync student.photo in-memory
+    student.photo = dataUrl || '';
 
     // Asynchronously push to server storage for cross-device mobile QR scanning
     try {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
-            const endpoint = (window.location.origin ? window.location.origin.replace(/\/+$/, '') : '') + '/api/student-photo';
+            const origin = getAppOrigin();
+            const endpoint = (origin ? origin : '') + '/api/student-photo';
             if (dataUrl) {
                 fetch(endpoint, {
                     method: 'POST',
@@ -671,15 +692,32 @@ function persistStudentPhoto(student, dataUrl) {
                         id: student.id,
                         lrn: student.lrn,
                         studentNumber: student.studentNumber,
-                        photo: dataUrl
+                        photo: dataUrl,
+                        timestamp: Date.now()
                     })
-                }).catch(() => {});
+                })
+                .then(res => {
+                    if (!res.ok) console.warn('[StudentPhoto] Remote persist status:', res.status);
+                    return res.json().catch(() => null);
+                })
+                .then(data => {
+                    if (data && data.success) {
+                        console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn);
+                    }
+                })
+                .catch(err => {
+                    console.error('[StudentPhoto] Remote persist network error:', err);
+                });
             } else {
                 const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
-                fetch(`${endpoint}?id=${sParam}`, { method: 'DELETE' }).catch(() => {});
+                fetch(`${endpoint}?id=${sParam}`, { method: 'DELETE' }).catch(err => {
+                    console.error('[StudentPhoto] Remote delete error:', err);
+                });
             }
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error('[StudentPhoto] Push error:', e);
+    }
 }
 window.persistStudentPhoto = persistStudentPhoto;
 
@@ -689,7 +727,8 @@ function fetchRemoteStudentPhoto(s, callback) {
     if (!studentKey) return;
     try {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
-            const endpoint = (window.location.origin ? window.location.origin.replace(/\/+$/, '') : '') + '/api/student-photo?id=' + encodeURIComponent(studentKey);
+            const origin = getAppOrigin();
+            const endpoint = (origin ? origin : '') + '/api/student-photo?id=' + encodeURIComponent(studentKey) + '&v=' + Date.now();
             fetch(endpoint)
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
@@ -701,11 +740,85 @@ function fetchRemoteStudentPhoto(s, callback) {
                         }
                     }
                 })
-                .catch(() => {});
+                .catch(err => {
+                    console.warn('[StudentPhoto] Remote fetch warning for ' + studentKey + ':', err);
+                });
         }
     } catch(e) {}
 }
 window.fetchRemoteStudentPhoto = fetchRemoteStudentPhoto;
+
+function persistStudentDoc(student, docType, docObj) {
+    if (!student || !docType) return;
+    try {
+        if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+            const origin = getAppOrigin();
+            const endpoint = (origin ? origin : '') + '/api/student-file';
+            const cleanType = String(docType).replace(/^view/, '').toLowerCase();
+            if (docObj && docObj.data) {
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: student.id,
+                        lrn: student.lrn,
+                        studentNumber: student.studentNumber,
+                        docType: cleanType,
+                        doc: docObj,
+                        timestamp: Date.now()
+                    })
+                })
+                .then(res => res.json().catch(() => null))
+                .then(data => {
+                    if (data && data.success) {
+                        console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}`);
+                    }
+                })
+                .catch(err => {
+                    console.error(`[StudentDoc] Failed to persist ${cleanType}:`, err);
+                });
+            } else {
+                const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
+                fetch(`${endpoint}?id=${sParam}&type=${encodeURIComponent(cleanType)}`, { method: 'DELETE' })
+                    .catch(err => console.error('[StudentDoc] Delete error:', err));
+            }
+        }
+    } catch(e) {
+        console.error('[StudentDoc] Save error:', e);
+    }
+}
+window.persistStudentDoc = persistStudentDoc;
+
+function fetchRemoteStudentDocs(s, callback) {
+    if (!s) return;
+    const studentKey = s.id || s.studentNumber || s.lrn;
+    if (!studentKey) return;
+    try {
+        if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+            const origin = getAppOrigin();
+            const endpoint = (origin ? origin : '') + '/api/student-file?id=' + encodeURIComponent(studentKey) + '&v=' + Date.now();
+            fetch(endpoint)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data && data.docs && typeof data.docs === 'object') {
+                        let updated = false;
+                        const docs = data.docs;
+                        if (docs.birthcert && !s.birthCertDoc) { s.birthCertDoc = docs.birthcert; updated = true; }
+                        if (docs.tor && !s.torDoc) { s.torDoc = docs.tor; updated = true; }
+                        if (docs.card && !s.studentCardDoc) { s.studentCardDoc = docs.card; updated = true; }
+                        if (docs.escannexd && !s.escAnnexDDoc) { s.escAnnexDDoc = docs.escannexd; updated = true; }
+                        if (docs.escannexf && !s.escAnnexFDoc) { s.escAnnexFDoc = docs.escannexf; updated = true; }
+                        if (updated) {
+                            saveStudents();
+                            if (typeof callback === 'function') callback(s);
+                        }
+                    }
+                })
+                .catch(err => console.warn('[StudentDoc] Remote fetch warning for ' + studentKey + ':', err));
+        }
+    } catch(e) {}
+}
+window.fetchRemoteStudentDocs = fetchRemoteStudentDocs;
 
 function loadStudents() {
     const matrixData = (typeof OFFICIAL_IMPORTED_STUDENTS !== 'undefined' && Array.isArray(OFFICIAL_IMPORTED_STUDENTS) && OFFICIAL_IMPORTED_STUDENTS.length > 0)
@@ -1947,8 +2060,10 @@ function getStudentInitials(s) {
 }
 
 function getStudentThumbHtml(s) {
-    if (s.photo) {
-        return `<div class="student-table-thumb"><img src="${s.photo}" alt="${escHtml(s.lastName)}"></div>`;
+    if (!s) return '';
+    const photo = s.photo || getStudentPhoto(s);
+    if (photo && photo.length > 10) {
+        return `<div class="student-table-thumb"><img src="${resolveAssetUrl(photo)}" alt="${escHtml(s.lastName)}" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(getStudentInitials(s))}</span>';"></div>`;
     }
     const initials = getStudentInitials(s);
     return `<div class="student-table-thumb"><span>${escHtml(initials)}</span></div>`;
@@ -3024,14 +3139,18 @@ function viewStudent(id) {
 
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
-        const displayPhoto = photoSrc || defaultAvatar;
+        const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
-        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatar}';" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
+        const origin = getAppOrigin();
+        const serverPhotoUrl = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
+        const displayPhoto = photoSrc ? resolveAssetUrl(photoSrc) : serverPhotoUrl;
+
+        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         if (photoDelBtn) photoDelBtn.style.display = (isGuestProfileView || !photoSrc) ? 'none' : 'inline-block';
         if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
 
         // Seamless remote fetch for scanned QR view on external/mobile devices
-        if (!photoSrc && typeof fetchRemoteStudentPhoto === 'function') {
+        if (typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
                 if (window.currentViewId === s.id) {
                     const currentImg = avatar.querySelector('.student-avatar-img');
@@ -3056,6 +3175,23 @@ function viewStudent(id) {
     if (isEsc) {
         renderDocPreview('viewEscAnnexD', s.escAnnexDDoc);
         renderDocPreview('viewEscAnnexF', s.escAnnexFDoc);
+    }
+
+    // Cross-device sync: fetch remote documents if missing from local state
+    if (typeof fetchRemoteStudentDocs === 'function' && (!s.birthCertDoc || !s.torDoc || !s.studentCardDoc || (isEsc && (!s.escAnnexDDoc || !s.escAnnexFDoc)))) {
+        fetchRemoteStudentDocs(s, function(updatedStudent) {
+            if (window.currentViewId === s.id) {
+                renderDocPreview('viewBirthCert', updatedStudent.birthCertDoc);
+                renderDocPreview('viewTor', updatedStudent.torDoc);
+                renderDocPreview('viewCard', updatedStudent.studentCardDoc);
+                if (isEsc) {
+                    renderDocPreview('viewEscAnnexD', updatedStudent.escAnnexDDoc);
+                    renderDocPreview('viewEscAnnexF', updatedStudent.escAnnexFDoc);
+                }
+                try { refreshStudentsTable(); } catch(e){}
+                try { refreshGradeTable(s.gradeLevel); } catch(e){}
+            }
+        });
     }
 
     // Signature
@@ -3222,11 +3358,15 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         if (photoSrc && !s.photo) s.photo = photoSrc;
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
-        const displayPhoto = photoSrc || defaultAvatar;
+        const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
-        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="this.onerror=null; this.src='${defaultAvatar}';" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
+        const origin = getAppOrigin();
+        const serverPhotoUrl = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
+        const displayPhoto = photoSrc ? resolveAssetUrl(photoSrc) : serverPhotoUrl;
 
-        if (!photoSrc && typeof fetchRemoteStudentPhoto === 'function') {
+        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
+
+        if (typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
                 if (window.currentViewId === s.id) {
                     const mobileImg = avatarEl.querySelector('img');
@@ -3731,6 +3871,7 @@ window.handleDirectDocUpload = function(event) {
         else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = docObj;
         else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = docObj;
 
+        persistStudentDoc(s, prefix, docObj);
         saveStudents();
         renderDocPreview(prefix, docObj);
         renderPrintableStudentProfile(s);
@@ -3768,6 +3909,7 @@ window.deleteDocFromProfile = function(prefix) {
     else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = null;
     else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = null;
 
+    persistStudentDoc(s, prefix, null);
     saveStudents();
     renderDocPreview(prefix, null);
     renderPrintableStudentProfile(s);
@@ -3803,7 +3945,7 @@ window.handleDirectPhotoUpload = function(event) {
     const loader = document.getElementById('viewPhotoLoading');
     if (loader) loader.style.display = 'block';
 
-    optimizeImage(file, 400, 400, 0.85, function(dataUrl) {
+    optimizeImage(file, 400, 400, 0.82, function(dataUrl) {
         s.photo = dataUrl;
         persistStudentPhoto(s, dataUrl);
         saveStudents();
@@ -3906,7 +4048,7 @@ window.captureProfileDirectPhoto = function() {
         return;
     }
 
-    compressAndResizeImage(video, 500, 500, 0.80, function(dataUrl) {
+    compressAndResizeImage(video, 400, 400, 0.82, function(dataUrl) {
         s.photo = dataUrl;
         persistStudentPhoto(s, dataUrl);
         saveStudents();
@@ -4060,8 +4202,9 @@ function renderPrintableStudentProfile(s) {
     const fullAddress = s.address || `${s.addressBarangay || 'Poblacion'}, ${s.addressMunicipality || 'San Jose'}, ${s.addressProvince || 'Batangas'}`;
 
     let avatarHtml = `<div class="print-profile-avatar-fallback"><i class="fas fa-user-graduate"></i></div>`;
-    if (s.photo) {
-        avatarHtml = `<img src="${s.photo}" alt="Student Photo" class="print-profile-avatar-img">`;
+    const printablePhoto = s.photo || (typeof getStudentPhoto === 'function' ? getStudentPhoto(s) : null);
+    if (printablePhoto) {
+        avatarHtml = `<img src="${printablePhoto}" alt="Student Photo" class="print-profile-avatar-img">`;
     }
 
     let sigContentHtml = `
@@ -5775,9 +5918,9 @@ let studentPhotoCameraFacing = 'user'; // 'user' (front/webcam) or 'environment'
 function compressAndResizeImage(source, maxWidth, maxHeight, quality, callback) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const q = quality || 0.80;
-    const maxW = maxWidth || 500;
-    const maxH = maxHeight || 500;
+    const q = quality || 0.82;
+    const maxW = maxWidth || 400;
+    const maxH = maxHeight || 400;
 
     function processImg(img) {
         let width = img.naturalWidth || img.videoWidth || img.width;
@@ -5850,7 +5993,7 @@ function compressAndResizeImage(source, maxWidth, maxHeight, quality, callback) 
 }
 
 function optimizeImage(file, maxWidth, maxHeight, quality, callback) {
-    compressAndResizeImage(file, maxWidth || 500, maxHeight || 500, quality || 0.80, callback);
+    compressAndResizeImage(file, maxWidth || 400, maxHeight || 400, quality || 0.82, callback);
 }
 
 async function startStudentPhotoCamera() {
@@ -5946,7 +6089,7 @@ function captureStudentPhoto() {
     if (indicator) indicator.style.display = 'block';
     if (progressFill) progressFill.style.width = '50%';
 
-    compressAndResizeImage(video, 500, 500, 0.80, function(dataUrl) {
+    compressAndResizeImage(video, 400, 400, 0.82, function(dataUrl) {
         stopStudentPhotoCamera();
         if (progressFill) progressFill.style.width = '100%';
         setTimeout(() => {
@@ -6053,7 +6196,7 @@ function initPhotoUpload() {
         if (indicator) indicator.style.display = 'block';
         if (progressFill) progressFill.style.width = '35%';
 
-        optimizeImage(file, 500, 500, 0.80, function(dataUrl) {
+        optimizeImage(file, 400, 400, 0.82, function(dataUrl) {
             if (progressFill) progressFill.style.width = '100%';
             setTimeout(() => {
                 if (spinner) spinner.style.display = 'none';
@@ -6614,6 +6757,12 @@ function initForm() {
                 }
                 const updated = { ...prev, ...formData, id: editId, dateModified: new Date().toISOString() };
                 students[index] = updated;
+                if (updated.photo) persistStudentPhoto(updated, updated.photo);
+                if (updated.birthCertDoc) persistStudentDoc(updated, 'birthcert', updated.birthCertDoc);
+                if (updated.torDoc) persistStudentDoc(updated, 'tor', updated.torDoc);
+                if (updated.studentCardDoc) persistStudentDoc(updated, 'card', updated.studentCardDoc);
+                if (updated.escAnnexDDoc) persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc);
+                if (updated.escAnnexFDoc) persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc);
                 saveStudents();
                 showToast('Student record updated successfully!', 'success');
                 if (typeof logActivity === 'function') {
@@ -6653,6 +6802,12 @@ function initForm() {
         } else {
             const newStudent = { ...collectFormData(), id: generateId(), dateCreated: new Date().toISOString(), dateModified: new Date().toISOString() };
             students.unshift(newStudent);
+            if (newStudent.photo) persistStudentPhoto(newStudent, newStudent.photo);
+            if (newStudent.birthCertDoc) persistStudentDoc(newStudent, 'birthcert', newStudent.birthCertDoc);
+            if (newStudent.torDoc) persistStudentDoc(newStudent, 'tor', newStudent.torDoc);
+            if (newStudent.studentCardDoc) persistStudentDoc(newStudent, 'card', newStudent.studentCardDoc);
+            if (newStudent.escAnnexDDoc) persistStudentDoc(newStudent, 'escannexd', newStudent.escAnnexDDoc);
+            if (newStudent.escAnnexFDoc) persistStudentDoc(newStudent, 'escannexf', newStudent.escAnnexFDoc);
             saveStudents();
             showToast(`Student ${newStudent.firstName} ${newStudent.lastName} enrolled successfully! Generated dedicated Mobile QR Pass.`, 'success');
             if (typeof logActivity === 'function') {

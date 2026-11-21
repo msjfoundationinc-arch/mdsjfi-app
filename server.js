@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const sendAlertHandler = require('./api/send-alert.js');
 const studentPhotoHandler = require('./api/student-photo.js');
+const studentFileHandler = require('./api/student-file.js');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -15,6 +16,7 @@ const MIME_TYPES = {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
     '.gif': 'image/gif',
     '.svg': 'image/svg+xml',
     '.ico': 'image/x-icon',
@@ -33,8 +35,12 @@ const server = http.createServer(async (req, res) => {
         return sendAlertHandler(req, res);
     }
 
-    if (pathname === '/api/student-photo') {
+    if (pathname === '/api/student-photo' || pathname.startsWith('/api/student-photo/')) {
         return studentPhotoHandler(req, res);
+    }
+
+    if (pathname === '/api/student-file' || pathname.startsWith('/api/student-file/')) {
+        return studentFileHandler(req, res);
     }
 
     // Direct Student Profile SPA Route (/student/:id or /profile/:id)
