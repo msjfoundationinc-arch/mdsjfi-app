@@ -86,6 +86,40 @@ function loadFilesFromDisk() {
 // Initial load
 loadFilesFromDisk();
 
+function matchesDocGroup(filenameOrType, targetDocType) {
+  const a = normalizeDocType(filenameOrType);
+  const b = normalizeDocType(targetDocType);
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+
+  // Birth Certificate group
+  const isBirthA = a.includes('birth') || a.includes('psa');
+  const isBirthB = b.includes('birth') || b.includes('psa');
+  if (isBirthA && isBirthB) return true;
+
+  // TOR / Form 137 group
+  const isTorA = a.includes('tor') || a.includes('137') || a.includes('sf10');
+  const isTorB = b.includes('tor') || b.includes('137') || b.includes('sf10');
+  if (isTorA && isTorB) return true;
+
+  // Card / Form 138 group
+  const isCardA = a.includes('card') || a.includes('138') || a.includes('sf9');
+  const isCardB = b.includes('card') || b.includes('138') || b.includes('sf9');
+  if (isCardA && isCardB) return true;
+
+  // ESC Annex D
+  const isAnnexDA = a.includes('annexd') || a.includes('annex_d');
+  const isAnnexDB = b.includes('annexd') || b.includes('annex_d');
+  if (isAnnexDA && isAnnexDB) return true;
+
+  // ESC Annex F
+  const isAnnexFA = a.includes('annexf') || a.includes('annex_f');
+  const isAnnexFB = b.includes('annexf') || b.includes('annex_f');
+  if (isAnnexFA && isAnnexFB) return true;
+
+  return false;
+}
+
 function saveFilesToDisk(keys, docType, docObj) {
   loadFilesFromDisk();
   for (const k of keys) {
@@ -94,7 +128,11 @@ function saveFilesToDisk(keys, docType, docObj) {
     if (docObj) {
       current[docType] = docObj;
     } else {
-      delete current[docType];
+      for (const prop of Object.keys(current)) {
+        if (matchesDocGroup(prop, docType)) {
+          delete current[prop];
+        }
+      }
     }
     memoryFileStore.set(cleanK, current);
     memoryFileStore.set(cleanK.toLowerCase(), current);
@@ -117,7 +155,11 @@ function saveFilesToDisk(keys, docType, docObj) {
         if (docObj) {
           studentDisk[docType] = docObj;
         } else {
-          delete studentDisk[docType];
+          for (const prop of Object.keys(studentDisk)) {
+            if (matchesDocGroup(prop, docType)) {
+              delete studentDisk[prop];
+            }
+          }
         }
         currentDisk[cleanK] = studentDisk;
       }
@@ -426,20 +468,29 @@ module.exports = async function handler(req, res) {
         const prefixes = new Set();
         for (const testKey of [key, ...lookupKeys]) {
           const sk = normalizeKey(testKey);
-          prefixes.add(`student-files/${sk}/${docType}`);
-          prefixes.add(`student-files/STU-${sk}/${docType}`);
-          prefixes.add(`student-files/${testKey}/${docType}`);
+          prefixes.add(`student-files/${sk}/`);
+          prefixes.add(`student-files/STU-${sk}/`);
+          prefixes.add(`student-files/${testKey}/`);
+          prefixes.add(`student-files/${sk}`);
         }
         for (const pfx of prefixes) {
           const listOpts = { prefix: pfx };
           if (token) listOpts.token = token;
           const { blobs } = await list(listOpts);
           if (blobs && blobs.length > 0) {
-            const urlsToDelete = blobs.map(b => b.url);
-            const delOpts = {};
-            if (token) delOpts.token = token;
-            await del(urlsToDelete, delOpts);
-            console.log(`[StudentFile] Deleted blobs from Vercel Blob:`, urlsToDelete);
+            const urlsToDelete = [];
+            for (const b of blobs) {
+              const filename = b.pathname.split('/').pop().replace(/\.[^.]+$/i, '');
+              if (matchesDocGroup(filename, docType)) {
+                urlsToDelete.push(b.url);
+              }
+            }
+            if (urlsToDelete.length > 0) {
+              const delOpts = {};
+              if (token) delOpts.token = token;
+              await del(urlsToDelete, delOpts);
+              console.log(`[StudentFile] Permanently deleted ${urlsToDelete.length} matching blobs from Vercel Blob:`, urlsToDelete);
+            }
           }
         }
       } catch (blobDelErr) {
