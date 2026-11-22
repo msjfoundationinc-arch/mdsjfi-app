@@ -581,8 +581,111 @@ function resolveAssetUrl(url) {
 }
 window.resolveAssetUrl = resolveAssetUrl;
 
+function isPhotoDeleted(s) {
+    if (!s) return false;
+    if (s._deletedPhoto) return true;
+    try {
+        const lookupKeys = getStudentLookupKeys(s);
+        for (const k of lookupKeys) {
+            if (localStorage.getItem('mdsj_deleted_photo_' + k) === '1') {
+                s._deletedPhoto = true;
+                return true;
+            }
+        }
+    } catch(e) {}
+    return false;
+}
+window.isPhotoDeleted = isPhotoDeleted;
+
+function enforceDeletedPhoto(s) {
+    if (!s) return;
+    if (isPhotoDeleted(s)) {
+        s.photo = '';
+    }
+}
+window.enforceDeletedPhoto = enforceDeletedPhoto;
+
+function markPhotoDeleted(s) {
+    if (!s) return;
+    s.photo = '';
+    s._deletedPhoto = true;
+    const lookupKeys = getStudentLookupKeys(s);
+
+    // Save persistent deletion flags across all student lookup keys
+    try {
+        for (const k of lookupKeys) {
+            localStorage.setItem('mdsj_deleted_photo_' + k, '1');
+        }
+    } catch(e) {}
+
+    // Purge from mdsj_student_photos in localStorage
+    try {
+        const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
+        if (storedPhotos && typeof storedPhotos === 'object') {
+            for (const k of lookupKeys) {
+                delete storedPhotos[k];
+            }
+            for (const k of Object.keys(storedPhotos)) {
+                const kClean = k.trim().toLowerCase();
+                const kRaw = kClean.replace(/^stu-/i, '');
+                for (const targetKey of lookupKeys) {
+                    const tClean = targetKey.toLowerCase();
+                    const tRaw = tClean.replace(/^stu-/i, '');
+                    if (kClean === tClean || kRaw === tRaw || kRaw === tClean || kClean === tRaw) {
+                        delete storedPhotos[k];
+                    }
+                }
+            }
+            localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
+        }
+    } catch(e) {}
+
+    // Clear from FaceEngine if registered
+    try {
+        if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
+            for (const k of lookupKeys) {
+                const enroll = window.MDSJ_FaceEngine.findEnrollmentByPersonId(k);
+                if (enroll) {
+                    enroll.facePhoto = '';
+                    enroll.sampleImage = '';
+                }
+            }
+        }
+    } catch(e) {}
+
+    // Send DELETE to server API
+    try {
+        if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+            const origin = getAppOrigin();
+            const endpoint = (origin ? origin : '') + '/api/student-photo';
+            const sParam = encodeURIComponent(s.id || s.studentNumber || s.lrn || '');
+            const lrnParam = encodeURIComponent(s.lrn || '');
+            const stuNumParam = encodeURIComponent(s.studentNumber || '');
+            fetch(`${endpoint}?id=${sParam}&lrn=${lrnParam}&studentNumber=${stuNumParam}`, { method: 'DELETE' })
+                .catch(err => console.error('[StudentPhoto] Remote delete error:', err));
+        }
+    } catch(e) {}
+}
+window.markPhotoDeleted = markPhotoDeleted;
+
+function unmarkPhotoDeleted(s) {
+    if (!s) return;
+    delete s._deletedPhoto;
+    try {
+        const lookupKeys = getStudentLookupKeys(s);
+        for (const k of lookupKeys) {
+            localStorage.removeItem('mdsj_deleted_photo_' + k);
+        }
+    } catch(e) {}
+}
+window.unmarkPhotoDeleted = unmarkPhotoDeleted;
+
 function getStudentPhoto(s) {
     if (!s) return '';
+    if (isPhotoDeleted(s)) {
+        s.photo = '';
+        return '';
+    }
     if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) return s.photo.trim();
 
     const lookupKeys = getStudentLookupKeys(s);
@@ -617,27 +720,7 @@ function getStudentPhoto(s) {
         }
     } catch(e) {}
 
-    // 2. Check localStorage mdsj_students
-    try {
-        const raw = localStorage.getItem('mdsj_students');
-        if (raw) {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-                for (const x of list) {
-                    if (!x || !x.photo || typeof x.photo !== 'string' || x.photo.trim().length <= 10) continue;
-                    const xKeys = getStudentLookupKeys(x);
-                    const hasCommonKey = lookupKeys.some(lk => xKeys.includes(lk));
-                    if (hasCommonKey) {
-                        s.photo = x.photo.trim();
-                        persistStudentPhoto(s, s.photo);
-                        return s.photo;
-                    }
-                }
-            }
-        }
-    } catch(e) {}
-
-    // 3. Check MDSJ_FaceEngine enrollment photos
+    // 2. Check MDSJ_FaceEngine enrollment photos
     try {
         if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
             for (const k of lookupKeys) {
@@ -657,19 +740,19 @@ window.getStudentPhoto = getStudentPhoto;
 
 function persistStudentPhoto(student, dataUrl) {
     if (!student) return;
+    if (!dataUrl) {
+        markPhotoDeleted(student);
+        return;
+    }
+
+    unmarkPhotoDeleted(student);
     const lookupKeys = getStudentLookupKeys(student);
 
     // Save locally
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
-        if (dataUrl) {
-            for (const k of lookupKeys) {
-                storedPhotos[k] = dataUrl;
-            }
-        } else {
-            for (const k of lookupKeys) {
-                delete storedPhotos[k];
-            }
+        for (const k of lookupKeys) {
+            storedPhotos[k] = dataUrl;
         }
         localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
     } catch(e) {
@@ -684,45 +767,36 @@ function persistStudentPhoto(student, dataUrl) {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
             const origin = getAppOrigin();
             const endpoint = (origin ? origin : '') + '/api/student-photo';
-            if (dataUrl) {
-                fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: student.id,
-                        lrn: student.lrn,
-                        studentNumber: student.studentNumber,
-                        photo: dataUrl,
-                        timestamp: Date.now()
-                    })
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: student.id,
+                    lrn: student.lrn,
+                    studentNumber: student.studentNumber,
+                    photo: dataUrl,
+                    timestamp: Date.now()
                 })
-                .then(res => {
-                    if (!res.ok) console.warn('[StudentPhoto] Remote persist status:', res.status);
-                    return res.json().catch(() => null);
-                })
-                .then(data => {
-                    if (data && (data.success || data.ok)) {
-                        console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn, data.blobUrl || data.url);
-                        if (data.blobUrl) {
-                            student.photo = data.blobUrl;
-                            saveStudents();
-                        } else if (data.url) {
-                            student.photo = data.url;
-                            saveStudents();
-                        }
+            })
+            .then(res => {
+                if (!res.ok) console.warn('[StudentPhoto] Remote persist status:', res.status);
+                return res.json().catch(() => null);
+            })
+            .then(data => {
+                if (data && (data.success || data.ok)) {
+                    console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn, data.blobUrl || data.url);
+                    if (data.blobUrl) {
+                        student.photo = data.blobUrl;
+                        saveStudents();
+                    } else if (data.url) {
+                        student.photo = data.url;
+                        saveStudents();
                     }
-                })
-                .catch(err => {
-                    console.error('[StudentPhoto] Remote persist network error:', err);
-                });
-            } else {
-                const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
-                const lrnParam = encodeURIComponent(student.lrn || '');
-                const stuNumParam = encodeURIComponent(student.studentNumber || '');
-                fetch(`${endpoint}?id=${sParam}&lrn=${lrnParam}&studentNumber=${stuNumParam}`, { method: 'DELETE' }).catch(err => {
-                    console.error('[StudentPhoto] Remote delete error:', err);
-                });
-            }
+                }
+            })
+            .catch(err => {
+                console.error('[StudentPhoto] Remote persist network error:', err);
+            });
         }
     } catch(e) {
         console.error('[StudentPhoto] Push error:', e);
@@ -731,7 +805,7 @@ function persistStudentPhoto(student, dataUrl) {
 window.persistStudentPhoto = persistStudentPhoto;
 
 function fetchRemoteStudentPhoto(s, callback) {
-    if (!s) return;
+    if (!s || isPhotoDeleted(s)) return;
     const studentKey = s.id || s.studentNumber || s.lrn;
     if (!studentKey) return;
     try {
@@ -741,6 +815,7 @@ function fetchRemoteStudentPhoto(s, callback) {
             fetch(endpoint)
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
+                    if (isPhotoDeleted(s)) return;
                     if (data && data.photo && typeof data.photo === 'string' && data.photo.length > 10) {
                         s.photo = data.photo;
                         persistStudentPhoto(s, data.photo);
@@ -1279,9 +1354,14 @@ function loadStudents() {
                     if (ex.payments && (!s.payments || s.payments.length === 0)) s.payments = ex.payments;
                 }
                 enforceDeletedDocs(s);
-                const photoFromStore = getStudentPhoto(s);
-                if (photoFromStore && !s.photo) s.photo = photoFromStore;
-                if (s.photo) persistStudentPhoto(s, s.photo);
+                enforceDeletedPhoto(s);
+                if (!isPhotoDeleted(s)) {
+                    const photoFromStore = getStudentPhoto(s);
+                    if (photoFromStore && !s.photo) s.photo = photoFromStore;
+                    if (s.photo) persistStudentPhoto(s, s.photo);
+                } else {
+                    s.photo = '';
+                }
 
                 if (s.studentNumber === '2026-07001' || s.lrn === '110253190313') {
                     if (!s.signature) s.signature = SAMPLE_SIG_DATA;
@@ -1294,13 +1374,17 @@ function loadStudents() {
 
     students.forEach(s => {
         enforceDeletedDocs(s);
+        enforceDeletedPhoto(s);
         syncStudentDocsFromStore(s);
         enforceDeletedDocs(s);
-        if (!s.photo || s.photo.length < 10) {
+        enforceDeletedPhoto(s);
+        if (!isPhotoDeleted(s) && (!s.photo || s.photo.length < 10)) {
             const p = getStudentPhoto(s);
             if (p) {
                 s.photo = p;
             }
+        } else if (isPhotoDeleted(s)) {
+            s.photo = '';
         }
         if (!s.schoolYear || s.schoolYear === '2025-2026') {
             s.schoolYear = '2026-2027';
@@ -2498,14 +2582,21 @@ function getStudentInitials(s) {
 
 function getStudentThumbHtml(s) {
     if (!s) return '';
-    const photo = s.photo || getStudentPhoto(s);
+    enforceDeletedPhoto(s);
     const initials = getStudentInitials(s);
+    if (isPhotoDeleted(s)) {
+        return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><span>${escHtml(initials)}</span></div>`;
+    }
+    const photo = (s.photo && s.photo.length > 10) ? s.photo : getStudentPhoto(s);
+    if (isPhotoDeleted(s)) {
+        return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><span>${escHtml(initials)}</span></div>`;
+    }
     const origin = getAppOrigin();
     const studentIdParam = encodeURIComponent(s.id || s.lrn || s.studentNumber || '');
     const serverPhotoUrl = `${origin}/api/student-photo?id=${studentIdParam}&img=1`;
     const photoSrc = (photo && photo.length > 10) ? resolveAssetUrl(photo) : serverPhotoUrl;
 
-    return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><img src="${photoSrc}" alt="${escHtml(s.lastName)}" loading="lazy" onload="if(!this.getAttribute('data-cached')){this.setAttribute('data-cached','1');const sid=this.parentElement.getAttribute('data-student-id');const st=typeof findStudent==='function'?findStudent(sid):null;if(st&&!st.photo){st.photo=this.src;}}" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(initials)}</span>';"></div>`;
+    return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><img src="${photoSrc}" alt="${escHtml(s.lastName)}" loading="lazy" onload="if(!this.getAttribute('data-cached')){this.setAttribute('data-cached','1');const sid=this.parentElement.getAttribute('data-student-id');const st=typeof findStudent==='function'?findStudent(sid):null;if(st&&!st.photo&&!isPhotoDeleted(st)){st.photo=this.src;}}" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(initials)}</span>';"></div>`;
 }
 
 function getDocBadgesHtml(s) {
@@ -3604,30 +3695,41 @@ function viewStudent(id) {
                                (typeof getCurrentUser === 'function' && !getCurrentUser());
 
     if (avatar) {
+        enforceDeletedPhoto(s);
         let photoSrc = getStudentPhoto(s);
-        if (photoSrc && !s.photo) s.photo = photoSrc;
+        if (isPhotoDeleted(s)) {
+            photoSrc = '';
+            s.photo = '';
+        } else if (photoSrc && !s.photo) {
+            s.photo = photoSrc;
+        }
 
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
         const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
-        const origin = getAppOrigin();
-        const serverPhotoUrl = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
-        const displayPhoto = photoSrc ? resolveAssetUrl(photoSrc) : serverPhotoUrl;
+        let displayPhoto = defaultAvatarUrl;
+        if (photoSrc) {
+            displayPhoto = resolveAssetUrl(photoSrc);
+        } else if (!isPhotoDeleted(s)) {
+            const origin = getAppOrigin();
+            displayPhoto = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
+        }
 
         avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         if (photoDelBtn) photoDelBtn.style.display = (isGuestProfileView || !photoSrc) ? 'none' : 'inline-block';
-        if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
+        if (photoEnlargeBtn) photoEnlargeBtn.style.display = (photoSrc && photoSrc.length > 10) ? 'inline-block' : 'none';
 
-        // Seamless remote fetch for scanned QR view on external/mobile devices
-        if (typeof fetchRemoteStudentPhoto === 'function') {
+        // Seamless remote fetch for scanned QR view on external/mobile devices ONLY if NOT deleted
+        if (!isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
-                if (window.currentViewId === s.id) {
+                if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
                     const currentImg = avatar.querySelector('.student-avatar-img');
                     if (currentImg && remotePhoto) {
                         currentImg.src = remotePhoto;
                     }
                     if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
+                    if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
                 }
             });
         }
@@ -4604,13 +4706,17 @@ window.deletePhotoFromProfile = function() {
     requestAdminAuth(() => {
         if (!confirm('Are you sure you want to delete this Student Profile Picture?')) return;
 
-        s.photo = '';
-        persistStudentPhoto(s, '');
+        markPhotoDeleted(s);
+        enforceDeletedPhoto(s);
         saveStudents();
+
+        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+        const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
+        const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
         const avatar = document.getElementById('viewAvatar');
         if (avatar) {
-            avatar.innerHTML = `<i class="fas fa-user-graduate"></i>`;
+            avatar.innerHTML = `<img src="${defaultAvatarUrl}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img">`;
         }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'none';
@@ -4684,13 +4790,7 @@ function enlargeStudentProfilePhoto(event) {
         } catch(e) {}
     }
     const s = (typeof currentViewId !== 'undefined' && currentViewId) ? findStudent(currentViewId) : null;
-    let photo = (s ? getStudentPhoto(s) : null) || (s && s.photo);
-    if (!photo) {
-        const img = document.querySelector('#viewAvatar img') || document.querySelector('#mobilePassAvatar img');
-        if (img && img.src && img.src.length > 20) {
-            photo = img.src;
-        }
-    }
+    let photo = (!s || isPhotoDeleted(s)) ? null : ((s ? getStudentPhoto(s) : null) || (s && s.photo));
     if (!photo && s) {
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         photo = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
@@ -4757,7 +4857,7 @@ function renderPrintableStudentProfile(s) {
     const fullAddress = s.address || `${s.addressBarangay || 'Poblacion'}, ${s.addressMunicipality || 'San Jose'}, ${s.addressProvince || 'Batangas'}`;
 
     let avatarHtml = `<div class="print-profile-avatar-fallback"><i class="fas fa-user-graduate"></i></div>`;
-    const printablePhoto = s.photo || (typeof getStudentPhoto === 'function' ? getStudentPhoto(s) : null);
+    const printablePhoto = isPhotoDeleted(s) ? null : (s.photo || (typeof getStudentPhoto === 'function' ? getStudentPhoto(s) : null));
     if (printablePhoto) {
         avatarHtml = `<img src="${printablePhoto}" alt="Student Photo" class="print-profile-avatar-img">`;
     }
@@ -7385,7 +7485,13 @@ function initForm() {
                 }
                 const updated = { ...prev, ...formData, id: prev.id, dateModified: new Date().toISOString() };
                 students[index] = updated;
-                try { if (updated.photo) persistStudentPhoto(updated, updated.photo); } catch(e){}
+                if (updated.photo) {
+                    unmarkPhotoDeleted(updated);
+                    persistStudentPhoto(updated, updated.photo);
+                } else if (prev.photo) {
+                    markPhotoDeleted(updated);
+                }
+                enforceDeletedPhoto(updated);
                 if (updated.birthCertDoc) {
                     persistStudentDoc(updated, 'birthcert', updated.birthCertDoc);
                 } else if (prev.birthCertDoc) {

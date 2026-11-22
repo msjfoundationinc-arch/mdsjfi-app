@@ -121,13 +121,52 @@
                 });
             }
 
-            function findStoredPhoto(sId, sLrn, sNum) {
+            function isPhotoDeletedEarly(sId, sLrn, sNum, sName) {
                 var sIdClean = sId ? String(sId).trim() : '';
                 var sIdRaw = sIdClean.replace(/^STU-/i, '');
                 var sLrnClean = sLrn ? String(sLrn).trim() : '';
                 var sNumClean = sNum ? String(sNum).trim() : '';
+                var sNameClean = sName ? String(sName).trim() : '';
+                var targetKeys = [
+                    sIdClean, sIdClean.toLowerCase(), sIdClean.toUpperCase(),
+                    sIdRaw, sIdRaw.toLowerCase(),
+                    'STU-' + sIdRaw, 'stu-' + sIdRaw.toLowerCase(),
+                    sLrnClean, 'lrn-' + sLrnClean,
+                    sNumClean, 'num-' + sNumClean,
+                    sNameClean, sNameClean.toLowerCase()
+                ];
+                for (var j = 0; j < targetKeys.length; j++) {
+                    var tk = targetKeys[j];
+                    if (!tk) continue;
+                    try {
+                        if (localStorage.getItem('mdsj_deleted_photo_' + tk) === '1') {
+                            if (storedPhotos && storedPhotos[tk]) {
+                                delete storedPhotos[tk];
+                                try { localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos)); } catch(e){}
+                            }
+                            return true;
+                        }
+                    } catch(e){}
+                }
+                return false;
+            }
 
-                var targetKeys = [sIdClean, sIdClean.toLowerCase(), sIdRaw, sIdRaw.toLowerCase(), 'STU-' + sIdRaw, 'stu-' + sIdRaw.toLowerCase(), sLrnClean, sNumClean];
+            function findStoredPhoto(sId, sLrn, sNum, sName) {
+                if (isPhotoDeletedEarly(sId, sLrn, sNum, sName)) return null;
+                var sIdClean = sId ? String(sId).trim() : '';
+                var sIdRaw = sIdClean.replace(/^STU-/i, '');
+                var sLrnClean = sLrn ? String(sLrn).trim() : '';
+                var sNumClean = sNum ? String(sNum).trim() : '';
+                var sNameClean = sName ? String(sName).trim() : '';
+
+                var targetKeys = [
+                    sIdClean, sIdClean.toLowerCase(), sIdClean.toUpperCase(),
+                    sIdRaw, sIdRaw.toLowerCase(),
+                    'STU-' + sIdRaw, 'stu-' + sIdRaw.toLowerCase(),
+                    sLrnClean, 'lrn-' + sLrnClean,
+                    sNumClean, 'num-' + sNumClean,
+                    sNameClean, sNameClean.toLowerCase()
+                ];
 
                 for (var j = 0; j < targetKeys.length; j++) {
                     var tk = targetKeys[j];
@@ -184,6 +223,7 @@
                 var sIdRaw = sId.replace(/^STU-/i, '');
                 var sLrn = m.lrn ? String(m.lrn).trim() : '';
                 var sNum = m.studentNumber ? String(m.studentNumber).trim() : '';
+                var sName = m.name || ((m.firstName || '') + ' ' + (m.lastName || '')).trim();
 
                 var dDocs = findDeletedDocs(sId, sLrn, sNum);
                 var isBirthDel = dDocs.birthcert || dDocs.psa || dDocs.viewBirthCert || dDocs.birth_cert;
@@ -191,10 +231,11 @@
                 var isCardDel = dDocs.card || dDocs.studentcard || dDocs.viewCard || dDocs.form138 || dDocs.reportcard;
                 var isAnnexDDel = dDocs.escannexd || dDocs.annexd || dDocs.viewEscAnnexD;
                 var isAnnexFDel = dDocs.escannexf || dDocs.annexf || dDocs.viewEscAnnexF;
+                var isPhotoDel = isPhotoDeletedEarly(sId, sLrn, sNum, sName);
 
                 var ex = existMap[sId] || (sIdRaw ? existMap[sIdRaw] : null) || (sLrn ? existMap[sLrn] : null) || (sNum ? existMap[sNum] : null);
                 if (ex) {
-                    if (ex.photo) m.photo = ex.photo;
+                    if (ex.photo && !isPhotoDel) m.photo = ex.photo;
                     if (ex.signature) m.signature = ex.signature;
                     if (ex.birthCertDoc && !isBirthDel) m.birthCertDoc = ex.birthCertDoc;
                     if (ex.torDoc && !isTorDel) m.torDoc = ex.torDoc;
@@ -202,9 +243,13 @@
                     if (ex.escAnnexDDoc && !isAnnexDDel) m.escAnnexDDoc = ex.escAnnexDDoc;
                     if (ex.escAnnexFDoc && !isAnnexFDel) m.escAnnexFDoc = ex.escAnnexFDoc;
                 }
-                var pPhoto = findStoredPhoto(sId, sLrn, sNum);
-                if (pPhoto && (!m.photo || m.photo.length < 10)) {
-                    m.photo = pPhoto;
+                if (!isPhotoDel) {
+                    var pPhoto = findStoredPhoto(sId, sLrn, sNum, sName);
+                    if (pPhoto && (!m.photo || m.photo.length < 10)) {
+                        m.photo = pPhoto;
+                    }
+                } else {
+                    m.photo = '';
                 }
             });
 
@@ -217,6 +262,8 @@
                     var sIdRaw = sId.replace(/^STU-/i, '');
                     var sLrn = es.lrn ? String(es.lrn).trim() : '';
                     var sNum = es.studentNumber ? String(es.studentNumber).trim() : '';
+                    var sName = es.name || ((es.firstName || '') + ' ' + (es.lastName || '')).trim();
+
                     var dDocs = findDeletedDocs(sId, sLrn, sNum);
 
                     if (es.birthCertDoc && (dDocs.birthcert || dDocs.psa || dDocs.viewBirthCert || dDocs.birth_cert)) { es.birthCertDoc = null; updated = true; }
@@ -225,10 +272,18 @@
                     if (es.escAnnexDDoc && (dDocs.escannexd || dDocs.annexd || dDocs.viewEscAnnexD)) { es.escAnnexDDoc = null; updated = true; }
                     if (es.escAnnexFDoc && (dDocs.escannexf || dDocs.annexf || dDocs.viewEscAnnexF)) { es.escAnnexFDoc = null; updated = true; }
 
-                    var pPhoto = findStoredPhoto(sId, sLrn, sNum);
-                    if (pPhoto && (!es.photo || es.photo.length < 10)) {
-                        es.photo = pPhoto;
-                        updated = true;
+                    var isPhotoDel = isPhotoDeletedEarly(sId, sLrn, sNum, sName);
+                    if (isPhotoDel) {
+                        if (es.photo) {
+                            es.photo = '';
+                            updated = true;
+                        }
+                    } else {
+                        var pPhoto = findStoredPhoto(sId, sLrn, sNum, sName);
+                        if (pPhoto && (!es.photo || es.photo.length < 10)) {
+                            es.photo = pPhoto;
+                            updated = true;
+                        }
                     }
                 });
                 if (updated) {
@@ -9179,7 +9234,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261122_01"></script>
+    <script src="app.js?v=20261122_02"></script>
 </body>
 </html>
 

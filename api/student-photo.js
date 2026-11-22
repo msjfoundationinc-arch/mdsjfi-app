@@ -99,6 +99,19 @@ function savePhotosToDisk(keys, dataUrl) {
     }
   }
 
+  // If deleting, purge across all memory keys that match any lookup alias
+  if (!dataUrl) {
+    for (const storeKey of Array.from(memoryPhotoStore.keys())) {
+      const cleanStoreKey = storeKey.replace(/^STU-/i, '').toLowerCase();
+      for (const k of keys) {
+        const cleanK = String(k).trim().replace(/^STU-/i, '').toLowerCase();
+        if (cleanStoreKey === cleanK) {
+          memoryPhotoStore.delete(storeKey);
+        }
+      }
+    }
+  }
+
   const paths = getStoragePaths();
   for (const p of paths) {
     try {
@@ -116,8 +129,24 @@ function savePhotosToDisk(keys, dataUrl) {
           currentDisk[cleanK] = dataUrl;
         } else {
           delete currentDisk[cleanK];
+          delete currentDisk[cleanK.toLowerCase()];
+          delete currentDisk['STU-' + cleanK.replace(/^STU-/i, '')];
         }
       }
+
+      // If deleting, purge across all disk keys that match any lookup alias
+      if (!dataUrl) {
+        for (const diskKey of Object.keys(currentDisk)) {
+          const cleanDiskKey = diskKey.replace(/^STU-/i, '').toLowerCase();
+          for (const k of keys) {
+            const cleanK = String(k).trim().replace(/^STU-/i, '').toLowerCase();
+            if (cleanDiskKey === cleanK) {
+              delete currentDisk[diskKey];
+            }
+          }
+        }
+      }
+
       fs.writeFileSync(p, JSON.stringify(currentDisk), 'utf8');
     } catch (e) {}
   }
@@ -341,18 +370,27 @@ module.exports = async function handler(req, res) {
           prefixes.add(`student-photos/${sk}.`);
           prefixes.add(`student-photos/STU-${sk}.`);
           prefixes.add(`student-photos/${testKey}.`);
+          prefixes.add(`student-photos/${sk}`);
+          prefixes.add(`student-photos/STU-${sk}`);
+          prefixes.add(`student-photos/${testKey}`);
         }
+        const urlsToDelete = new Set();
         for (const pfx of prefixes) {
           const listOpts = { prefix: pfx };
           if (token) listOpts.token = token;
           const { blobs } = await list(listOpts);
           if (blobs && blobs.length > 0) {
-            const urlsToDelete = blobs.map(b => b.url);
-            const delOpts = {};
-            if (token) delOpts.token = token;
-            await del(urlsToDelete, delOpts);
-            console.log(`[StudentPhoto] Deleted photo blobs from Vercel Blob:`, urlsToDelete);
+            for (const b of blobs) {
+              urlsToDelete.add(b.url);
+            }
           }
+        }
+        if (urlsToDelete.size > 0) {
+          const urlList = Array.from(urlsToDelete);
+          const delOpts = {};
+          if (token) delOpts.token = token;
+          await del(urlList, delOpts);
+          console.log(`[StudentPhoto] Deleted ${urlList.length} photo blobs from Vercel Blob:`, urlList);
         }
       } catch (blobDelErr) {
         console.error('[StudentPhoto] Vercel Blob del error:', blobDelErr.message);
