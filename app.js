@@ -295,7 +295,7 @@ const DASHBOARD_QUICK_ACTIONS = [
         keywords: 'enroll new student register admission encode learner profile photo upload',
         icon: 'fas fa-user-plus',
         color: '#15803d',
-        action: () => navigateTo('add-student')
+        action: () => openEnrollStudentTab()
     },
     {
         id: 'activities',
@@ -1428,7 +1428,17 @@ function navigateTo(pageId) {
     else if (pageId === 'promote') initPromotePage();
     else if (pageId === 'alumni') refreshAlumniPage();
     else if (pageId === 'add-student') {
-        if (!document.getElementById('editStudentId').value) resetForm();
+        if (!document.getElementById('editStudentId')?.value) {
+            resetForm();
+            const titleEl = document.getElementById('formTitle');
+            if (titleEl) titleEl.textContent = 'Enroll New Student';
+            const descEl = document.getElementById('formDesc');
+            if (descEl) descEl.textContent = 'Fill out all required fields to register a new student.';
+            const btnSubmit = document.getElementById('btnSubmitForm');
+            if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Save Student Record';
+            const btnCancel = document.getElementById('btnCancelEdit');
+            if (btnCancel) btnCancel.style.display = 'none';
+        }
     }
 
     window.scrollTo(0, 0);
@@ -1632,9 +1642,30 @@ function registerCustomSchoolYear(sy) {
 }
 window.registerCustomSchoolYear = registerCustomSchoolYear;
 
-function enrollForCurrentSY() {
-    navigateTo('add-student');
+function openEnrollStudentTab() {
+    const editId = document.getElementById('editStudentId');
+    if (editId) editId.value = '';
     resetForm();
+    const titleEl = document.getElementById('formTitle');
+    if (titleEl) titleEl.textContent = 'Enroll New Student';
+    const descEl = document.getElementById('formDesc');
+    if (descEl) descEl.textContent = 'Fill out all required fields to register a new student.';
+    const btnSubmit = document.getElementById('btnSubmitForm');
+    if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Save Student Record';
+    const btnCancel = document.getElementById('btnCancelEdit');
+    if (btnCancel) btnCancel.style.display = 'none';
+    const formSy = document.getElementById('formSchoolYear');
+    if (formSy) formSy.value = (typeof currentSchoolYear !== 'undefined' && currentSchoolYear) ? currentSchoolYear : '2026-2027';
+    navigateTo('add-student');
+    const breadcrumbEl = document.getElementById('topUtilityPageTitle');
+    if (breadcrumbEl) breadcrumbEl.textContent = 'Enroll Student';
+    window.scrollTo(0, 0);
+}
+window.openEnrollStudentTab = openEnrollStudentTab;
+window.realOpenEnrollStudentTab = openEnrollStudentTab;
+
+function enrollForCurrentSY() {
+    openEnrollStudentTab();
     const sySelect = document.getElementById('formSchoolYear');
     if (sySelect) {
         sySelect.value = currentSchoolYear || '2026-2027';
@@ -6938,191 +6969,200 @@ function initForm() {
     }
 
     form.onsubmit = (e) => {
-        e.preventDefault();
-        const lrnEl = document.getElementById('lrn');
-        const lrnVal = (lrnEl ? lrnEl.value : '').trim();
-        const lastName = (document.getElementById('lastName')?.value || '').trim();
-        const firstName = (document.getElementById('firstName')?.value || '').trim();
-        const gradeLevel = document.getElementById('gradeLevel')?.value || '7';
-        const section = (document.getElementById('section')?.value || (GRADE_SECTIONS[document.getElementById('gradeLevel')?.value] || 'Jade')).trim();
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        try {
+            const lrnEl = document.getElementById('lrn');
+            const lrnVal = (lrnEl ? lrnEl.value : '').trim();
+            const lastName = (document.getElementById('lastName')?.value || '').trim();
+            const firstName = (document.getElementById('firstName')?.value || '').trim();
+            const gradeLevel = document.getElementById('gradeLevel')?.value || '7';
+            const section = (document.getElementById('section')?.value || (GRADE_SECTIONS[document.getElementById('gradeLevel')?.value] || 'Jade')).trim();
 
-        if (!lrnVal || !lastName || !firstName) {
-            showToast('Please fill out LRN, Last Name, and First Name.', 'error');
-            return;
-        }
-
-        const editId = (document.getElementById('editStudentId')?.value || '').trim();
-        let targetStudent = null;
-        let index = -1;
-
-        if (editId) {
-            targetStudent = findStudent(editId);
-            if (targetStudent) {
-                index = students.indexOf(targetStudent);
+            if (!lrnVal || !lastName || !firstName) {
+                showToast('Please fill out LRN, Last Name, and First Name.', 'error');
+                return false;
             }
-        }
 
-        // Resilient fallback: If editStudentId was not set or mismatched, verify via form state and LRN
-        if (index === -1) {
-            const btnSubmit = document.getElementById('btnSubmitForm');
-            const isEditMode = (btnSubmit && btnSubmit.textContent.includes('Update')) || 
-                               (document.getElementById('formTitle')?.textContent.includes('Edit'));
-            if (isEditMode && lrnVal) {
-                targetStudent = findStudent(lrnVal);
+            const editId = (document.getElementById('editStudentId')?.value || '').trim();
+            let targetStudent = null;
+            let index = -1;
+
+            if (editId) {
+                targetStudent = findStudent(editId);
                 if (targetStudent) {
                     index = students.indexOf(targetStudent);
                 }
             }
-        }
 
-        if (index !== -1 && targetStudent) {
-            const prev = students[index];
-            const formData = collectFormData();
-            if (prev.isJhsFinisher && !formData.isJhsFinisher && String(formData.gradeLevel) === '10' && ['graduated', 'completed', 'alumni'].includes((formData.enrollmentStatus || '').toLowerCase())) {
-                formData.isJhsFinisher = true;
-                formData.completionSchoolYear = prev.completionSchoolYear || formData.schoolYear;
-            }
-            const updated = { ...prev, ...formData, id: prev.id, dateModified: new Date().toISOString() };
-            students[index] = updated;
-            if (updated.photo) persistStudentPhoto(updated, updated.photo);
-            if (updated.birthCertDoc) persistStudentDoc(updated, 'birthcert', updated.birthCertDoc);
-            if (updated.torDoc) persistStudentDoc(updated, 'tor', updated.torDoc);
-            if (updated.studentCardDoc) persistStudentDoc(updated, 'card', updated.studentCardDoc);
-            if (updated.escAnnexDDoc) persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc);
-            if (updated.escAnnexFDoc) persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc);
-            saveStudents();
-            showToast('Student record updated successfully!', 'success');
-            if (typeof logActivity === 'function') {
-                logActivity('Student Updated', `Updated profile records for ${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`, updated);
-            }
-
-            // Instant email notification to ADMIN_EMAIL via nodemailer
-            sendNewDataEmailAlert({
-                category: 'Student Information System',
-                action: 'Student Record Updated',
-                title: `${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`,
-                details: {
-                    'Student LRN': updated.lrn,
-                    'Full Name': `${updated.lastName}, ${updated.firstName} ${updated.middleName || ''} ${updated.extension || ''}`.trim(),
-                    'Grade Level': `Grade ${updated.gradeLevel}`,
-                    'Section': updated.section || 'N/A',
-                    'School Year': updated.schoolYear || currentSchoolYear || '2026-2027',
-                    'Enrollment Status': updated.enrollmentStatus || 'Active',
-                    'Gender': updated.gender || 'N/A',
-                    'Date of Birth': updated.dateOfBirth || 'N/A',
-                    'Age': updated.age || 'N/A',
-                    'Permanent Address': updated.address || 'N/A',
-                    'Contact Number': updated.contactNumber || 'N/A',
-                    'Email Address': updated.email || 'N/A',
-                    'Mother Name': updated.motherName || 'N/A',
-                    'Father Name': updated.fatherName || 'N/A',
-                    'Guardian Name': updated.guardianName || 'N/A',
-                    'Guardian Contact': updated.guardianContact || 'N/A',
-                    'Assessed Base Tuition': updated.tuitionFee,
-                    'Discount Status': updated.isDiscounted === 'YES' ? `Yes (₱${updated.discountAmount})` : 'None',
-                    'Net Assessed Tuition': updated.netTuition,
-                    'ESC Grantee': updated.escGrantee || 'NO',
-                    'ESC Number': updated.escNumber || 'N/A'
+            // Resilient fallback: If editStudentId was not set or mismatched, verify via form state and LRN
+            if (index === -1) {
+                const btnSubmit = document.getElementById('btnSubmitForm');
+                const isEditMode = (btnSubmit && btnSubmit.textContent.includes('Update')) || 
+                                   (document.getElementById('formTitle')?.textContent.includes('Edit'));
+                if (isEditMode && lrnVal) {
+                    targetStudent = findStudent(lrnVal);
+                    if (targetStudent) {
+                        index = students.indexOf(targetStudent);
+                    }
                 }
-            });
-
-            // Keep editStudentId set to the updated student ID so subsequent updates work continuously
-            const editIdEl = document.getElementById('editStudentId');
-            if (editIdEl) editIdEl.value = updated.id;
-
-            // Stay in the current tab and keep the form in Edit Student Record mode
-            const titleEl = document.getElementById('formTitle');
-            if (titleEl) titleEl.textContent = 'Edit Student Record';
-            const descEl = document.getElementById('formDesc');
-            if (descEl) descEl.textContent = `Editing: ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`;
-            const btnSubmit = document.getElementById('btnSubmitForm');
-            if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
-            const btnCancel = document.getElementById('btnCancelEdit');
-            if (btnCancel) btnCancel.style.display = 'inline-block';
-            const breadcrumbEl = document.getElementById('topUtilityPageTitle');
-            if (breadcrumbEl) breadcrumbEl.textContent = 'Edit Student Record';
-
-            // Ensure page-add-student stays active and visible
-            const targetPage = document.getElementById('page-add-student');
-            if (targetPage) {
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                targetPage.classList.add('active');
-                targetPage.style.display = 'block';
-            }
-            const navItem = document.querySelector('.nav-item[data-page="add-student"]');
-            if (navItem) {
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                navItem.classList.add('active');
             }
 
-            refreshAll();
-            return;
-        } else if (editId) {
-            showToast('Student record not found for update.', 'error');
-            return;
-        } else {
-            const newStudent = { ...collectFormData(), id: generateId(), dateCreated: new Date().toISOString(), dateModified: new Date().toISOString() };
-            students.unshift(newStudent);
-            if (newStudent.photo) persistStudentPhoto(newStudent, newStudent.photo);
-            if (newStudent.birthCertDoc) persistStudentDoc(newStudent, 'birthcert', newStudent.birthCertDoc);
-            if (newStudent.torDoc) persistStudentDoc(newStudent, 'tor', newStudent.torDoc);
-            if (newStudent.studentCardDoc) persistStudentDoc(newStudent, 'card', newStudent.studentCardDoc);
-            if (newStudent.escAnnexDDoc) persistStudentDoc(newStudent, 'escannexd', newStudent.escAnnexDDoc);
-            if (newStudent.escAnnexFDoc) persistStudentDoc(newStudent, 'escannexf', newStudent.escAnnexFDoc);
-            saveStudents();
-            showToast(`Student ${newStudent.firstName} ${newStudent.lastName} enrolled successfully! Generated dedicated Mobile QR Pass.`, 'success');
-            if (typeof logActivity === 'function') {
-                logActivity('Student Enrolled', `New student ${newStudent.firstName} ${newStudent.lastName} (LRN: ${newStudent.lrn}) enrolled in Grade ${newStudent.gradeLevel} - ${newStudent.section || 'General'}`, newStudent);
-            }
-
-            // Instant email notification to ADMIN_EMAIL via nodemailer
-            sendNewDataEmailAlert({
-                category: 'Student Information System',
-                action: 'New Student Enrolled',
-                title: `${newStudent.lastName}, ${newStudent.firstName} (LRN: ${newStudent.lrn})`,
-                details: {
-                    'Student LRN': newStudent.lrn,
-                    'Full Name': `${newStudent.lastName}, ${newStudent.firstName} ${newStudent.middleName || ''} ${newStudent.extension || ''}`.trim(),
-                    'Grade Level': `Grade ${newStudent.gradeLevel}`,
-                    'Section': newStudent.section || 'N/A',
-                    'School Year': newStudent.schoolYear || currentSchoolYear || '2026-2027',
-                    'Enrollment Status': newStudent.enrollmentStatus || 'Active',
-                    'Gender': newStudent.gender || 'N/A',
-                    'Date of Birth': newStudent.dateOfBirth || 'N/A',
-                    'Age': newStudent.age || 'N/A',
-                    'Place of Birth': newStudent.placeOfBirth || 'N/A',
-                    'Religion': newStudent.religion || 'N/A',
-                    'Permanent Address': newStudent.address || 'N/A',
-                    'Contact Number': newStudent.contactNumber || 'N/A',
-                    'Email Address': newStudent.email || 'N/A',
-                    'Mother Name': newStudent.motherName || 'N/A',
-                    'Mother Contact': newStudent.motherContact || 'N/A',
-                    'Father Name': newStudent.fatherName || 'N/A',
-                    'Father Contact': newStudent.fatherContact || 'N/A',
-                    'Guardian Name': newStudent.guardianName || 'N/A',
-                    'Guardian Contact': newStudent.guardianContact || 'N/A',
-                    'Base Tuition Fee': newStudent.tuitionFee,
-                    'Discount Applied': newStudent.isDiscounted === 'YES' ? `₱${newStudent.discountAmount}` : 'None',
-                    'Net Tuition Payable': newStudent.netTuition,
-                    'ESC Grantee': newStudent.escGrantee || 'NO',
-                    'ESC Number': newStudent.escNumber || 'N/A',
-                    'Enrolled Date': newStudent.dateCreated
+            if (index !== -1 && targetStudent) {
+                const prev = students[index];
+                const formData = collectFormData();
+                if (prev.isJhsFinisher && !formData.isJhsFinisher && String(formData.gradeLevel) === '10' && ['graduated', 'completed', 'alumni'].includes((formData.enrollmentStatus || '').toLowerCase())) {
+                    formData.isJhsFinisher = true;
+                    formData.completionSchoolYear = prev.completionSchoolYear || formData.schoolYear;
                 }
-            });
+                const updated = { ...prev, ...formData, id: prev.id, dateModified: new Date().toISOString() };
+                students[index] = updated;
+                try { if (updated.photo) persistStudentPhoto(updated, updated.photo); } catch(e){}
+                try { if (updated.birthCertDoc) persistStudentDoc(updated, 'birthcert', updated.birthCertDoc); } catch(e){}
+                try { if (updated.torDoc) persistStudentDoc(updated, 'tor', updated.torDoc); } catch(e){}
+                try { if (updated.studentCardDoc) persistStudentDoc(updated, 'card', updated.studentCardDoc); } catch(e){}
+                try { if (updated.escAnnexDDoc) persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc); } catch(e){}
+                try { if (updated.escAnnexFDoc) persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc); } catch(e){}
+                saveStudents();
+                showToast('Student record updated successfully!', 'success');
+                if (typeof logActivity === 'function') {
+                    try { logActivity('Student Updated', `Updated profile records for ${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`, updated); } catch(e){}
+                }
 
-            resetForm();
-            refreshAll();
-            navigateTo('students');
-            setTimeout(() => {
-                openLearnerMobilePass(newStudent.id);
-            }, 300);
-            return;
+                // Instant email notification to ADMIN_EMAIL via nodemailer
+                try {
+                    sendNewDataEmailAlert({
+                        category: 'Student Information System',
+                        action: 'Student Record Updated',
+                        title: `${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`,
+                        details: {
+                            'Student LRN': updated.lrn,
+                            'Full Name': `${updated.lastName}, ${updated.firstName} ${updated.middleName || ''} ${updated.extension || ''}`.trim(),
+                            'Grade Level': `Grade ${updated.gradeLevel}`,
+                            'Section': updated.section || 'N/A',
+                            'School Year': updated.schoolYear || currentSchoolYear || '2026-2027',
+                            'Enrollment Status': updated.enrollmentStatus || 'Active',
+                            'Gender': updated.gender || 'N/A',
+                            'Date of Birth': updated.dateOfBirth || 'N/A',
+                            'Age': updated.age || 'N/A',
+                            'Permanent Address': updated.address || 'N/A',
+                            'Contact Number': updated.contactNumber || 'N/A',
+                            'Email Address': updated.email || 'N/A',
+                            'Mother Name': updated.motherName || 'N/A',
+                            'Father Name': updated.fatherName || 'N/A',
+                            'Guardian Name': updated.guardianName || 'N/A',
+                            'Guardian Contact': updated.guardianContact || 'N/A',
+                            'Assessed Base Tuition': updated.tuitionFee,
+                            'Discount Status': updated.isDiscounted === 'YES' ? `Yes (₱${updated.discountAmount})` : 'None',
+                            'Net Assessed Tuition': updated.netTuition,
+                            'ESC Grantee': updated.escGrantee || 'NO',
+                            'ESC Number': updated.escNumber || 'N/A'
+                        }
+                    });
+                } catch(e) {}
+
+                // Keep editStudentId set to the updated student ID so subsequent updates work continuously
+                const editIdEl = document.getElementById('editStudentId');
+                if (editIdEl) editIdEl.value = updated.id;
+
+                // Stay in the current tab and keep the form in Edit Student Record mode
+                const titleEl = document.getElementById('formTitle');
+                if (titleEl) titleEl.textContent = 'Edit Student Record';
+                const descEl = document.getElementById('formDesc');
+                if (descEl) descEl.textContent = `Editing: ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`;
+                const btnSubmit = document.getElementById('btnSubmitForm');
+                if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Update Student Record';
+                const btnCancel = document.getElementById('btnCancelEdit');
+                if (btnCancel) btnCancel.style.display = 'inline-block';
+                const breadcrumbEl = document.getElementById('topUtilityPageTitle');
+                if (breadcrumbEl) breadcrumbEl.textContent = 'Edit Student Record';
+
+                // Ensure page-add-student stays active and visible
+                const targetPage = document.getElementById('page-add-student');
+                if (targetPage) {
+                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                    targetPage.classList.add('active');
+                    targetPage.style.display = 'block';
+                }
+                const navItem = document.querySelector('.nav-item[data-page="add-student"]');
+                if (navItem) {
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    navItem.classList.add('active');
+                }
+
+                try { refreshAll(); } catch(e) {}
+                return false;
+            } else if (editId) {
+                showToast('Student record not found for update.', 'error');
+                return false;
+            } else {
+                const newStudent = { ...collectFormData(), id: generateId(), dateCreated: new Date().toISOString(), dateModified: new Date().toISOString() };
+                students.unshift(newStudent);
+                if (newStudent.photo) persistStudentPhoto(newStudent, newStudent.photo);
+                if (newStudent.birthCertDoc) persistStudentDoc(newStudent, 'birthcert', newStudent.birthCertDoc);
+                if (newStudent.torDoc) persistStudentDoc(newStudent, 'tor', newStudent.torDoc);
+                if (newStudent.studentCardDoc) persistStudentDoc(newStudent, 'card', newStudent.studentCardDoc);
+                if (newStudent.escAnnexDDoc) persistStudentDoc(newStudent, 'escannexd', newStudent.escAnnexDDoc);
+                if (newStudent.escAnnexFDoc) persistStudentDoc(newStudent, 'escannexf', newStudent.escAnnexFDoc);
+                saveStudents();
+                showToast(`Student ${newStudent.firstName} ${newStudent.lastName} enrolled successfully! Generated dedicated Mobile QR Pass.`, 'success');
+                if (typeof logActivity === 'function') {
+                    logActivity('Student Enrolled', `New student ${newStudent.firstName} ${newStudent.lastName} (LRN: ${newStudent.lrn}) enrolled in Grade ${newStudent.gradeLevel} - ${newStudent.section || 'General'}`, newStudent);
+                }
+
+                // Instant email notification to ADMIN_EMAIL via nodemailer
+                sendNewDataEmailAlert({
+                    category: 'Student Information System',
+                    action: 'New Student Enrolled',
+                    title: `${newStudent.lastName}, ${newStudent.firstName} (LRN: ${newStudent.lrn})`,
+                    details: {
+                        'Student LRN': newStudent.lrn,
+                        'Full Name': `${newStudent.lastName}, ${newStudent.firstName} ${newStudent.middleName || ''} ${newStudent.extension || ''}`.trim(),
+                        'Grade Level': `Grade ${newStudent.gradeLevel}`,
+                        'Section': newStudent.section || 'N/A',
+                        'School Year': newStudent.schoolYear || currentSchoolYear || '2026-2027',
+                        'Enrollment Status': newStudent.enrollmentStatus || 'Active',
+                        'Gender': newStudent.gender || 'N/A',
+                        'Date of Birth': newStudent.dateOfBirth || 'N/A',
+                        'Age': newStudent.age || 'N/A',
+                        'Place of Birth': newStudent.placeOfBirth || 'N/A',
+                        'Religion': newStudent.religion || 'N/A',
+                        'Permanent Address': newStudent.address || 'N/A',
+                        'Contact Number': newStudent.contactNumber || 'N/A',
+                        'Email Address': newStudent.email || 'N/A',
+                        'Mother Name': newStudent.motherName || 'N/A',
+                        'Mother Contact': newStudent.motherContact || 'N/A',
+                        'Father Name': newStudent.fatherName || 'N/A',
+                        'Father Contact': newStudent.fatherContact || 'N/A',
+                        'Guardian Name': newStudent.guardianName || 'N/A',
+                        'Guardian Contact': newStudent.guardianContact || 'N/A',
+                        'Base Tuition Fee': newStudent.tuitionFee,
+                        'Discount Applied': newStudent.isDiscounted === 'YES' ? `₱${newStudent.discountAmount}` : 'None',
+                        'Net Tuition Payable': newStudent.netTuition,
+                        'ESC Grantee': newStudent.escGrantee || 'NO',
+                        'ESC Number': newStudent.escNumber || 'N/A',
+                        'Enrolled Date': newStudent.dateCreated
+                    }
+                });
+
+                resetForm();
+                refreshAll();
+                navigateTo('students');
+                setTimeout(() => {
+                    openLearnerMobilePass(newStudent.id);
+                }, 300);
+                return false;
+            }
+        } catch (err) {
+            console.error('Error submitting student form:', err);
+            return false;
         }
 
         resetForm();
         refreshAll();
         navigateTo('students');
+        return false;
     };
+    window.handleStudentFormSubmit = form.onsubmit;
 }
 
 function collectFormData() {

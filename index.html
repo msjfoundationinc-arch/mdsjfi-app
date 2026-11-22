@@ -423,6 +423,30 @@
         if (typeof window.realOpenSOAModal === 'function') return window.realOpenSOAModal(id);
         if (typeof openSOAModal === 'function' && openSOAModal !== window.openSOAModal) return openSOAModal(id);
     };
+    window.openEnrollStudentTab = function() {
+        if (typeof window.realOpenEnrollStudentTab === 'function') return window.realOpenEnrollStudentTab();
+        var editId = document.getElementById('editStudentId');
+        if (editId) editId.value = '';
+        if (typeof resetForm === 'function') resetForm();
+        var form = document.getElementById('studentForm');
+        if (form) form.reset();
+        var titleEl = document.getElementById('formTitle');
+        if (titleEl) titleEl.textContent = 'Enroll New Student';
+        var descEl = document.getElementById('formDesc');
+        if (descEl) descEl.textContent = 'Fill out all required fields to register a new student.';
+        var btnSubmit = document.getElementById('btnSubmitForm');
+        if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-save"></i> Save Student Record';
+        var btnCancel = document.getElementById('btnCancelEdit');
+        if (btnCancel) btnCancel.style.display = 'none';
+        var breadcrumbEl = document.getElementById('topUtilityPageTitle');
+        if (breadcrumbEl) breadcrumbEl.textContent = 'Enroll Student';
+        if (typeof navigateTo === 'function') navigateTo('add-student');
+        if (breadcrumbEl) breadcrumbEl.textContent = 'Enroll Student';
+    };
+    window.handleStudentFormSubmit = function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        return false;
+    };
     window.editStudent = function(id) {
         if (typeof window.realEditStudent === 'function') return window.realEditStudent(id);
         if (typeof editStudent === 'function' && editStudent !== window.editStudent) return editStudent(id);
@@ -1914,7 +1938,7 @@
                     </a>
                 </div>
             </div>
-            <a href="javascript:void(0)" class="nav-item" data-page="add-student" onclick="navigateTo('add-student')" title="Enroll Student">
+            <a href="javascript:void(0)" class="nav-item" data-page="add-student" onclick="openEnrollStudentTab()" title="Enroll Student">
                 <i class="fas fa-user-plus"></i>
                 <span>Enroll Student</span>
             </a>
@@ -2562,7 +2586,7 @@
                 <a href="#secFormDocs" class="form-nav-pill"><i class="fas fa-folder-open"></i> Docs &amp; Signature</a>
             </div>
 
-            <form id="studentForm" class="student-form" novalidate>
+            <form id="studentForm" class="student-form" novalidate onsubmit="if (typeof window.handleStudentFormSubmit === 'function') { return window.handleStudentFormSubmit(event); } return false;">
                 <input type="hidden" id="editStudentId" value="">
 
                 <!-- Section: Student Photo -->
