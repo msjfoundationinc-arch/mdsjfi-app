@@ -12374,7 +12374,19 @@ html.direct-profile-view:not(.user-logged-in) #btnDeleteFromView,
 html.guest-qr-view:not(.user-logged-in) #btnArchiveFromView,
 html.direct-profile-view:not(.user-logged-in) #btnArchiveFromView,
 html.guest-qr-view:not(.user-logged-in) #btnEditFromView,
-html.direct-profile-view:not(.user-logged-in) #btnEditFromView {
+html.direct-profile-view:not(.user-logged-in) #btnEditFromView,
+#viewModal #btnTakePhotoFromProfile,
+#viewModal #btnUploadPhotoFromProfile,
+#viewModal #btnDeletePhotoFromProfile,
+#viewModal #profileDirectPhotoInput,
+#viewModal #profileDirectDocInput,
+#viewModal button[onclick*="openFaceEnrollmentForCurrentStudent"],
+#viewModal #btnDeleteFromView,
+#viewModal #btnArchiveFromView,
+#viewModal #btnEditFromView,
+#viewModal button[onclick*="deleteDocFromProfile"],
+#viewModal button[onclick*="triggerDocUploadFromProfile"],
+#viewModal button[onclick*="triggerDirectDocUpload"] {
     display: none !important;
 }
 

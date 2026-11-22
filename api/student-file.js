@@ -311,11 +311,21 @@ module.exports = async function handler(req, res) {
         if (list) {
           try {
             const prefixes = new Set();
+            const typeVariants = new Set([docType]);
+            if (matchesDocGroup(docType, 'birthcert')) ['birthcert', 'birthcertificate', 'psa', 'birth_cert'].forEach(t => typeVariants.add(t));
+            if (matchesDocGroup(docType, 'tor')) ['tor', 'transcript', 'form137'].forEach(t => typeVariants.add(t));
+            if (matchesDocGroup(docType, 'card')) ['card', 'reportcard', 'form138'].forEach(t => typeVariants.add(t));
+            if (matchesDocGroup(docType, 'escannexd')) ['escannexd', 'annexd', 'esc_annex_d'].forEach(t => typeVariants.add(t));
+            if (matchesDocGroup(docType, 'escannexf')) ['escannexf', 'annexf', 'esc_annex_f'].forEach(t => typeVariants.add(t));
+            if (matchesDocGroup(docType, 'signature')) ['signature', 'sig'].forEach(t => typeVariants.add(t));
+
             for (const testKey of [key, ...lookupKeys]) {
               const sk = normalizeKey(testKey);
-              prefixes.add(`student-files/${sk}/${docType}`);
-              prefixes.add(`student-files/STU-${sk}/${docType}`);
-              prefixes.add(`student-files/${testKey}/${docType}`);
+              for (const tVar of typeVariants) {
+                prefixes.add(`student-files/${sk}/${tVar}`);
+                prefixes.add(`student-files/STU-${sk}/${tVar}`);
+                prefixes.add(`student-files/${testKey}/${tVar}`);
+              }
             }
             for (const pfx of prefixes) {
               const listOpts = { prefix: pfx };

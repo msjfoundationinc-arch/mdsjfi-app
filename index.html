@@ -7990,23 +7990,12 @@
                             <span id="viewAvatarFallback"><i class="fas fa-user-graduate"></i></span>
                         </div>
                         <div class="avatar-action-btns" style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
-                            <button type="button" class="btn-xs btn-outline-info" id="btnEnlargeProfilePhoto" onclick="enlargeStudentProfilePhoto()" title="View Profile Photo" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; border:1px solid #0284c7; background:#e0f2fe; color:#0369a1; cursor:pointer; font-weight:600; display:none;">
+                            <button type="button" class="btn-xs btn-outline-info" id="btnEnlargeProfilePhoto" onclick="enlargeStudentProfilePhoto()" title="View Profile Photo" style="padding:4px 10px; font-size:0.75rem; border-radius:6px; border:1px solid #0284c7; background:#e0f2fe; color:#0369a1; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
                                 <i class="fas fa-search-plus"></i> View Profile Photo
                             </button>
-                            <button type="button" class="btn-xs btn-outline-success" id="btnTakePhotoFromProfile" onclick="takePhotoFromProfile()" title="Take photo using camera" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; border:1px solid #16a34a; background:#f0fdf4; color:#15803d; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:3px;">
-                                <i class="fas fa-camera"></i> Take Photo
-                            </button>
-                            <button type="button" class="btn-xs btn-outline-primary" id="btnUploadPhotoFromProfile" onclick="uploadPhotoFromProfile()" title="Choose photo file from device" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:3px;">
-                                <i class="fas fa-folder-open"></i> Upload
-                            </button>
-                            <button type="button" class="btn-xs btn-outline-danger" id="btnDeletePhotoFromProfile" onclick="deletePhotoFromProfile()" title="Delete photo" style="padding:2px 6px; font-size:0.72rem; border-radius:4px; border:1px solid #ef4444; background:#fef2f2; color:#b91c1c; cursor:pointer;">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
                         </div>
-                        <div id="viewPhotoLoading" style="display:none; font-size:0.72rem; color:#2563eb; font-weight:600;"><i class="fas fa-spinner fa-spin"></i> Uploading...</div>
+                        <div id="viewPhotoLoading" style="display:none; font-size:0.72rem; color:#2563eb; font-weight:600;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
                     </div>
-                    <input type="file" id="profileDirectPhotoInput" accept="image/*" style="display:none;" onchange="handleDirectPhotoUpload(event)">
-                    <input type="file" id="profileDirectDocInput" accept=".pdf,application/pdf" style="display:none;" onchange="handleDirectDocUpload(event)">
                     <div>
                         <h2 id="viewFullName">—</h2>
                         <p id="viewGradeSection">—</p>
@@ -8017,9 +8006,6 @@
                     </div>
                 </div>
                 <div class="view-header-right-actions" style="display: flex; align-items: center; gap: 14px;">
-                    <button type="button" class="btn-sm btn-primary" onclick="openFaceEnrollmentForCurrentStudent()" title="Register or Update Webcam Face Biometrics" style="display:inline-flex; align-items:center; gap:6px; background:#0284c7; border:none; padding:6px 12px; font-weight:600; border-radius:8px; color:#fff;">
-                        <i class="fas fa-camera"></i> Face Biometrics
-                    </button>
                     <!-- Learner Mobile View QR Code Widget -->
                     <div class="view-learner-qr-box" id="viewLearnerQrBox" onclick="openLearnerMobilePass(currentViewId)" title="Click to view full-size QR code & mobile pass" style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 5px 12px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
                         <div id="viewQrMini" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 6px; overflow: hidden; flex-shrink: 0;"></div>
@@ -8198,7 +8184,7 @@
                         <div class="view-sig-wrapper" style="justify-content: center; align-items: center; width: 100%; margin: 8px auto 16px auto;">
                             <div class="view-sig-card" style="margin: 0 auto;">
                                 <div class="view-sig-img-box" id="viewSigImgBox">
-                                    <img id="viewSigImg" src="" alt="Student Signature" style="display:none;">
+                                    <img id="viewSigImg" src="" alt="Student Signature" style="display:none;" onerror="this.style.display='none'; const nb=document.getElementById('viewNoSigBox'); if(nb) nb.style.display='flex';">
                                     <div id="viewNoSigBox" class="view-no-sig-msg">
                                         <i class="fas fa-pen-fancy"></i>
                                         <span>No digital signature recorded</span>
@@ -8239,13 +8225,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-danger" id="btnDeleteFromView" onclick="if (typeof currentViewId !== 'undefined' && currentViewId) { confirmDelete(currentViewId); }" style="background: #dc2626; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; margin-right: auto;" title="Delete this student record (Admin credentials required)">
-                    <i class="fas fa-trash-alt"></i> Delete Record
-                </button>
-                <button type="button" class="btn-secondary" id="btnArchiveFromView" onclick="if (typeof currentViewId !== 'undefined' && currentViewId) { const s = findStudent(currentViewId); if (isStudentArchived(s)) { restoreStudent(currentViewId); } else { archiveStudent(currentViewId); } closeModal('viewModal'); }" title="Archive or restore this student record">
-                    <i class="fas fa-archive"></i> <span id="btnArchiveFromViewText">Archive</span>
-                </button>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; align-items:center; gap:10px;">
                 <button type="button" class="btn-secondary" id="btnViewMobileQr" onclick="openLearnerMobilePass()" title="Open full-screen Mobile QR Pass for smartphone scanning">
                     <i class="fas fa-qrcode"></i> Mobile QR Pass
                 </button>
@@ -8255,8 +8235,8 @@
                 <button type="button" class="btn-secondary" id="btnExportProfilePdf" onclick="exportActiveProfilePdf()" title="Save / Export Learner Profile as PDF">
                     <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Export PDF
                 </button>
-                <button class="btn-primary" id="btnEditFromView" onclick="const editTargetId = (typeof currentViewId !== 'undefined' && currentViewId) || window.currentViewId; if (editTargetId) { if (typeof closeModal === 'function') closeModal('viewModal', true); editStudent(editTargetId); }">
-                    <i class="fas fa-edit"></i> Edit Record
+                <button type="button" class="btn-secondary" onclick="closeModal('viewModal')" style="display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-times"></i> Close
                 </button>
             </div>
         </div>
@@ -9272,7 +9252,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261122_06"></script>
+    <script src="app.js?v=20261122_07"></script>
 </body>
 </html>
 

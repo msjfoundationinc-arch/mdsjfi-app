@@ -444,7 +444,17 @@ window.handleGradeLevelChange = handleGradeLevelChange;
 
 // Sample document placeholders
 const SAMPLE_DOC_DATA = 'data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwKL0ZpbHRlciAvRmxhdGVEZWNvZGUKL0xlbmd0aCA0Mg==Cj4+CnN0cmVhbQp4nGNgYGBkYGdgYWBiYAgAQwEAADoAPQplbmRzdHJlYW0KZW5kb2JqCg==';
-const SAMPLE_SIG_DATA = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60"><path d="M 10 35 Q 40 10 70 30 T 130 25 T 190 35" stroke="%231e3a8a" stroke-width="2.5" fill="none"/></svg>';
+const SAMPLE_SIG_DATA = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iNjAiPjxwYXRoIGQ9Ik0gMTAgMzUgUSA0MCAxMCA3MCAzMCBUIDEzMCAyNSBUIDE5MCAzNSIgc3Ryb2tlPSIjMWUzYThhIiBzdHJva2Utd2lkdGg9IjIuNSIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==';
+
+function isValidSignatureString(sig) {
+    if (!sig || typeof sig !== 'string') return false;
+    const clean = sig.trim();
+    if (!clean || clean === 'null' || clean === 'undefined' || clean === '[object Object]') return false;
+    if (clean.startsWith('data:image/')) return true;
+    if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('/api/') || clean.startsWith('blob:') || clean.startsWith('.')) return true;
+    return false;
+}
+window.isValidSignatureString = isValidSignatureString;
 
 function getCurrentUser() {
     if (currentUser && currentUser.username) return currentUser;
@@ -1310,54 +1320,56 @@ function fetchRemoteStudentDocs(s, callback) {
 
                         const isBirthDel = deleted.birthcert || deleted.psa || deleted.viewBirthCert || deleted.birth_cert;
                         const bc = docs.birthcert || docs.birth_cert || docs.psa || docs.birthCert;
-                        if (!isBirthDel && bc) {
+                        if (isBirthDel) {
+                            if (s.birthCertDoc) { s.birthCertDoc = null; updated = true; }
+                        } else if (bc) {
                             s.birthCertDoc = makeDocObj(bc, 'PSA_Birth_Certificate.pdf');
                             updated = true;
-                        } else {
-                            if (s.birthCertDoc) { s.birthCertDoc = null; updated = true; }
                         }
 
                         const isTorDel = deleted.tor || deleted.form137 || deleted.viewTor || deleted.sf10;
                         const tor = docs.tor || docs.form137 || docs.form_137 || docs.sf10;
-                        if (!isTorDel && tor) {
+                        if (isTorDel) {
+                            if (s.torDoc) { s.torDoc = null; updated = true; }
+                        } else if (tor) {
                             s.torDoc = makeDocObj(tor, 'Transcript_Of_Records.pdf');
                             updated = true;
-                        } else {
-                            if (s.torDoc) { s.torDoc = null; updated = true; }
                         }
 
                         const isCardDel = deleted.card || deleted.studentcard || deleted.viewCard || deleted.form138 || deleted.reportcard;
                         const card = docs.card || docs.studentcard || docs.reportcard || docs.form138 || docs.form_138 || docs.sf9;
-                        if (!isCardDel && card) {
+                        if (isCardDel) {
+                            if (s.studentCardDoc) { s.studentCardDoc = null; updated = true; }
+                        } else if (card) {
                             s.studentCardDoc = makeDocObj(card, 'Report_Card.pdf');
                             updated = true;
-                        } else {
-                            if (s.studentCardDoc) { s.studentCardDoc = null; updated = true; }
                         }
 
                         const isEscDDel = deleted.escannexd || deleted.annexd || deleted.viewEscAnnexD;
                         const escD = docs.escannexd || docs.esc_annex_d || docs.annexd || docs.annex_d;
-                        if (!isEscDDel && escD) {
+                        if (isEscDDel) {
+                            if (s.escAnnexDDoc) { s.escAnnexDDoc = null; updated = true; }
+                        } else if (escD) {
                             s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf');
                             updated = true;
-                        } else {
-                            if (s.escAnnexDDoc) { s.escAnnexDDoc = null; updated = true; }
                         }
 
                         const isEscFDel = deleted.escannexf || deleted.annexf || deleted.viewEscAnnexF;
                         const escF = docs.escannexf || docs.esc_annex_f || docs.annexf || docs.annex_f;
-                        if (!isEscFDel && escF) {
+                        if (isEscFDel) {
+                            if (s.escAnnexFDoc) { s.escAnnexFDoc = null; updated = true; }
+                        } else if (escF) {
                             s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf');
                             updated = true;
-                        } else {
-                            if (s.escAnnexFDoc) { s.escAnnexFDoc = null; updated = true; }
                         }
 
                         const isSigDel = deleted.signature || deleted.sig;
                         const sig = docs.signature || docs.sig;
-                        if (!isSigDel && sig) {
+                        if (isSigDel) {
+                            if (s.signature) { s.signature = null; updated = true; }
+                        } else if (sig) {
                             let sigRaw = typeof sig === 'string' ? sig : (sig.data || sig.url || '');
-                            if (sigRaw && sigRaw.length > 10) {
+                            if (sigRaw && sigRaw.length > 10 && isValidSignatureString(sigRaw)) {
                                 s.signature = resolveAssetUrl(sigRaw);
                                 updated = true;
                             }
@@ -2759,6 +2771,9 @@ function previewDocFromTable(studentId, docType) {
         showToast('Student record not found.', 'error');
         return;
     }
+    if (typeof syncStudentDocsFromStore === 'function') {
+        syncStudentDocsFromStore(s);
+    }
     enforceDeletedDocs(s);
 
     let doc = null;
@@ -2785,7 +2800,7 @@ function previewDocFromTable(studentId, docType) {
         title = "Affidavit of Family’s Financial Capacity - Annex F";
         cleanType = 'escannexf';
     } else if (docType === 'signature' || docType === 'viewSig') {
-        doc = s.signature ? { name: 'student_signature.png', type: 'image/png', data: s.signature, url: s.signature } : null;
+        doc = (s.signature && isValidSignatureString(s.signature)) ? { name: 'student_signature.png', type: 'image/png', data: s.signature, url: s.signature } : null;
         title = 'Student E-Signature';
         cleanType = 'signature';
     }
@@ -3895,12 +3910,19 @@ function viewStudent(id) {
                 }
                 const liveSigImg = document.getElementById('viewSigImg');
                 const liveNoSigBox = document.getElementById('viewNoSigBox');
-                if (updatedStudent.signature) {
+                if (updatedStudent.signature && isValidSignatureString(updatedStudent.signature)) {
                     if (liveSigImg) {
+                        liveSigImg.onerror = function() {
+                            this.style.display = 'none';
+                            if (liveNoSigBox) liveNoSigBox.style.display = 'flex';
+                        };
                         liveSigImg.src = resolveAssetUrl(updatedStudent.signature);
                         liveSigImg.style.display = 'block';
                     }
                     if (liveNoSigBox) liveNoSigBox.style.display = 'none';
+                } else {
+                    if (liveSigImg) liveSigImg.style.display = 'none';
+                    if (liveNoSigBox) liveNoSigBox.style.display = 'flex';
                 }
                 try { refreshStudentsTable(); } catch(e){}
                 try { refreshGradeTable(s.gradeLevel); } catch(e){}
@@ -3914,9 +3936,13 @@ function viewStudent(id) {
     const sigStudentName = document.getElementById('viewSigStudentName');
     if (sigStudentName) sigStudentName.textContent = `${s.firstName} ${s.lastName}`;
 
-    if (s.signature) {
+    if (s.signature && isValidSignatureString(s.signature)) {
         if (sigImg) {
-            sigImg.src = s.signature;
+            sigImg.onerror = function() {
+                this.style.display = 'none';
+                if (noSigBox) noSigBox.style.display = 'flex';
+            };
+            sigImg.src = resolveAssetUrl(s.signature);
             sigImg.style.display = 'block';
         }
         if (noSigBox) noSigBox.style.display = 'none';
@@ -4034,6 +4060,11 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         return;
     }
 
+    if (typeof syncStudentDocsFromStore === 'function') {
+        syncStudentDocsFromStore(s);
+    }
+    enforceDeletedDocs(s);
+
     currentViewId = s.id;
     window.currentViewId = s.id;
 
@@ -4115,8 +4146,12 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         const sigImg = document.getElementById('mobilePassSigImg');
         const noSig = document.getElementById('mobilePassNoSig');
         const sigVal = student.signature;
-        if (sigVal && sigVal.length > 10) {
+        if (sigVal && isValidSignatureString(sigVal)) {
             if (sigImg) {
+                sigImg.onerror = function() {
+                    this.style.display = 'none';
+                    if (noSig) noSig.style.display = 'inline';
+                };
                 sigImg.src = resolveAssetUrl(sigVal);
                 sigImg.style.display = 'block';
             }
@@ -4138,8 +4173,7 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
             const color = hasDoc ? '#15803d' : '#991b1b';
             const border = hasDoc ? '#86efac' : '#fca5a5';
             const icon = hasDoc ? 'fa-check-circle' : 'fa-times-circle';
-            const click = hasDoc ? `onclick="previewDocFromTable('${student.id}', '${type}')" style="cursor:pointer; background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Click to view ${label}"` : `style="background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.72rem; font-weight:600; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; opacity:0.85;" title="${label}: Not uploaded"`;
-            return `<span ${click}><i class="fas ${icon}"></i> ${label}</span>`;
+            return `<span onclick="previewDocFromTable('${student.id}', '${type}')" style="cursor:pointer; background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Click to view ${label}"><i class="fas ${icon}"></i> ${label}</span>`;
         };
         let pills = '';
         pills += makePill(student.birthCertDoc, 'PSA', 'birthCert');
@@ -4149,7 +4183,7 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
             pills += makePill(student.escAnnexDDoc, 'ANNEX-D', 'escAnnexD');
             pills += makePill(student.escAnnexFDoc, 'ANNEX-F', 'escAnnexF');
         }
-        if (student.signature && student.signature.length > 10) {
+        if (student.signature && isValidSignatureString(student.signature)) {
             pills += `<span onclick="previewDocFromTable('${student.id}', 'signature')" style="cursor:pointer; background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Click to view Student E-Signature"><i class="fas fa-file-signature"></i> SIGNATURE</span>`;
         }
         wrap.innerHTML = pills;
@@ -4574,29 +4608,13 @@ function renderDocPreview(prefix, doc) {
                 <small style="color:#64748b; font-size:0.75rem;">Size: ${doc.size || 'Attached'}</small>
             </div>
         `;
-        if (isGuestProfileView) {
-            btnWrap.innerHTML = `
-                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%;">
-                    <button type="button" class="btn-sm btn-info" onclick="previewDocData('${prefix}')" title="Click to view uploaded file">
-                        <i class="fas fa-eye"></i> View File
-                    </button>
-                </div>
-            `;
-        } else {
-            btnWrap.innerHTML = `
-                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%;">
-                    <button type="button" class="btn-sm btn-info" onclick="previewDocData('${prefix}')" title="Click to view uploaded file">
-                        <i class="fas fa-eye"></i> View File
-                    </button>
-                    <button type="button" class="btn-sm btn-danger" onclick="deleteDocFromProfile('${prefix}')" title="Delete or replace this file">
-                        <i class="fas fa-trash-alt"></i> Delete
-                    </button>
-                    <button type="button" class="btn-sm btn-secondary" onclick="triggerDocUploadFromProfile('${prefix}')" title="Replace with another file">
-                        <i class="fas fa-sync-alt"></i> Replace
-                    </button>
-                </div>
-            `;
-        }
+        btnWrap.innerHTML = `
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%;">
+                <button type="button" class="btn-sm btn-info" onclick="previewDocData('${prefix}')" title="Click to view uploaded file">
+                    <i class="fas fa-eye"></i> View File
+                </button>
+            </div>
+        `;
     } else {
         details.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:2px;">
@@ -4606,15 +4624,7 @@ function renderDocPreview(prefix, doc) {
                 <span style="color:#94a3b8; font-size:0.8rem; font-style:italic;">No official document on file</span>
             </div>
         `;
-        if (isGuestProfileView) {
-            btnWrap.innerHTML = '';
-        } else {
-            btnWrap.innerHTML = `
-                <button type="button" class="btn-sm btn-primary" onclick="triggerDocUploadFromProfile('${prefix}')" title="Upload official file">
-                    <i class="fas fa-upload"></i> Upload File
-                </button>
-            `;
-        }
+        btnWrap.innerHTML = '';
     }
 }
 
@@ -5028,36 +5038,80 @@ function viewDocumentInModal(title, subtitle, doc) {
         if (!doc.url && doc.data) doc.url = doc.data;
     }
     const rawSrc = doc && (doc.data || doc.url) ? (doc.data || doc.url) : '';
-    const assetUrl = resolveAssetUrl(rawSrc);
+    let assetUrl = resolveAssetUrl(rawSrc);
 
-    if (btnDl && assetUrl) {
-        btnDl.href = assetUrl;
-        btnDl.download = (doc && doc.name) ? doc.name : 'document_download';
+    const docTypeStr = String(doc && doc.type ? doc.type : '').toLowerCase();
+    const docNameStr = String(doc && doc.name ? doc.name : '').toLowerCase();
+    const titleStr = String(title || '').toLowerCase();
+
+    const isImage = docTypeStr.includes('image') || 
+                    docTypeStr.includes('png') || 
+                    docTypeStr.includes('jpeg') || 
+                    docTypeStr.includes('jpg') || 
+                    docTypeStr.includes('svg') ||
+                    titleStr.includes('signature') || 
+                    titleStr.includes('photo') || 
+                    docNameStr.endsWith('.png') || 
+                    docNameStr.endsWith('.jpg') || 
+                    docNameStr.endsWith('.jpeg') || 
+                    docNameStr.endsWith('.svg') ||
+                    assetUrl.startsWith('data:image/');
+
+    let viewerUrl = assetUrl;
+    // For base64 PDFs, convert to Blob URL so mobile browsers won't block opening or downloading
+    if (!isImage && assetUrl.startsWith('data:application/pdf;base64,')) {
+        try {
+            const b64 = assetUrl.replace('data:application/pdf;base64,', '');
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) {
+                bytes[i] = bin.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            viewerUrl = URL.createObjectURL(blob);
+        } catch(e) {
+            viewerUrl = assetUrl;
+        }
     }
 
-    if (container && assetUrl) {
-        const isPdf = (doc && doc.type && doc.type.includes('pdf')) || 
-                      (doc && doc.name && doc.name.toLowerCase().endsWith('.pdf')) || 
-                      assetUrl.includes('application/pdf') || 
-                      assetUrl.toLowerCase().includes('.pdf') || 
-                      assetUrl.includes('/api/student-file');
+    if (btnDl && viewerUrl) {
+        btnDl.href = viewerUrl;
+        btnDl.download = (doc && doc.name) ? doc.name : (isImage ? 'document.png' : 'document.pdf');
+    }
 
-        if (isPdf) {
+    if (container && viewerUrl) {
+        if (isImage) {
             container.innerHTML = `
-                <iframe src="${assetUrl}" title="${escHtml(title)}" style="width:100%; height:70vh; border:none; border-radius:6px; background:#fff;"></iframe>
-                <div style="margin-top:10px; text-align:center;">
-                    <a href="${assetUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-weight:600; text-decoration:none; border-radius:6px;">
-                        <i class="fas fa-external-link-alt"></i> Open / Download Full Document
-                    </a>
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:10px 0; min-height:280px;">
+                    <img src="${viewerUrl}" alt="${escHtml(title)}" style="max-width:100%; max-height:65vh; object-fit:contain; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,0.15); background:#fff; padding:12px;" onerror="this.onerror=null; this.src='${SAMPLE_SIG_DATA}';">
+                    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+                        <a href="${viewerUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; font-weight:600; text-decoration:none; border-radius:6px;">
+                            <i class="fas fa-external-link-alt"></i> Open Full View
+                        </a>
+                        <a href="${viewerUrl}" download="${escHtml((doc && doc.name) ? doc.name : 'image.png')}" class="btn btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; font-weight:600; text-decoration:none; border-radius:6px;">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </div>
                 </div>
             `;
         } else {
             container.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
-                    <img src="${assetUrl}" alt="${escHtml(title)}" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,0.5); background:#fff;">
-                    <a href="${assetUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-weight:600; text-decoration:none; border-radius:6px;">
-                        <i class="fas fa-external-link-alt"></i> Open Full Image
-                    </a>
+                <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div style="font-size:0.85rem; color:#475569; display:inline-flex; align-items:center; gap:6px;">
+                            <i class="fas fa-file-pdf" style="color:#ef4444; font-size:1.1rem;"></i>
+                            <strong>${escHtml((doc && doc.name) ? doc.name : 'Official Document')}</strong>
+                        </div>
+                        <div style="display:inline-flex; gap:8px;">
+                            <a href="${viewerUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-weight:600; font-size:0.82rem; text-decoration:none; border-radius:6px;">
+                                <i class="fas fa-external-link-alt"></i> Open PDF in New Tab
+                            </a>
+                            <a href="${viewerUrl}" download="${escHtml((doc && doc.name) ? doc.name : 'document.pdf')}" class="btn btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-weight:600; font-size:0.82rem; text-decoration:none; border-radius:6px;">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <iframe src="${viewerUrl}" title="${escHtml(title)}" style="width:100%; height:68vh; border:1px solid #e2e8f0; border-radius:8px; background:#fff;"></iframe>
                 </div>
             `;
         }
