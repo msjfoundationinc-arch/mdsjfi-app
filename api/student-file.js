@@ -211,31 +211,18 @@ module.exports = async function handler(req, res) {
         // Tier 1: Try Vercel Blob if available and token exists
         if (list && process.env.BLOB_READ_WRITE_TOKEN) {
           try {
+            const prefixes = new Set();
             for (const testKey of [key, ...lookupKeys]) {
-              const strippedKey = normalizeKey(testKey);
-              const { blobs } = await list({ prefix: `student-files/${strippedKey}/${docType}` });
+              const sk = normalizeKey(testKey);
+              prefixes.add(`student-files/${sk}/${docType}`);
+              prefixes.add(`student-files/STU-${sk}/${docType}`);
+              prefixes.add(`student-files/${testKey}/${docType}`);
+            }
+            for (const pfx of prefixes) {
+              const { blobs } = await list({ prefix: pfx });
               if (blobs && blobs.length > 0) {
-                let fileRes = null;
-                try {
-                  fileRes = await fetch(blobs[0].url, {
-                    headers: { authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
-                  });
-                } catch (e) {}
-
-                if (!fileRes || !fileRes.ok) {
-                  try {
-                    fileRes = await fetch(blobs[0].url);
-                  } catch (e) {}
-                }
-
-                if (fileRes && fileRes.ok) {
-                  const arrayBuffer = await fileRes.arrayBuffer();
-                  const blobContentType = fileRes.headers.get('content-type') || 'application/pdf';
-                  res.setHeader('Content-Type', blobContentType);
-                  res.setHeader('Content-Disposition', `inline; filename="${docType}.pdf"`);
-                  res.setHeader('Cache-Control', 'public, max-age=3600');
-                  return res.send(Buffer.from(arrayBuffer));
-                }
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                return res.redirect(302, blobs[0].url);
               }
             }
           } catch (blobErr) {
@@ -282,15 +269,21 @@ module.exports = async function handler(req, res) {
       // Check Vercel Blob
       if (list && process.env.BLOB_READ_WRITE_TOKEN) {
         try {
+          const prefixes = new Set();
           for (const testKey of [key, ...lookupKeys]) {
-            const strippedKey = normalizeKey(testKey);
-            const { blobs } = await list({ prefix: `student-files/${strippedKey}/` });
+            const sk = normalizeKey(testKey);
+            prefixes.add(`student-files/${sk}/`);
+            prefixes.add(`student-files/STU-${sk}/`);
+            prefixes.add(`student-files/${testKey}/`);
+          }
+          for (const pfx of prefixes) {
+            const { blobs } = await list({ prefix: pfx });
             if (blobs && blobs.length > 0) {
               for (const blob of blobs) {
                 const filename = blob.pathname.split('/').pop().replace(/\.[^.]+$/i, '');
                 const cleanName = normalizeDocType(filename);
                 if (cleanName && !files[cleanName]) {
-                  files[cleanName] = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
+                  files[cleanName] = blob.url || `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
                 }
               }
             }
@@ -359,23 +352,13 @@ module.exports = async function handler(req, res) {
     // Tier 1: Upload to Vercel Blob if available and token present
     if (put && process.env.BLOB_READ_WRITE_TOKEN) {
       try {
-        try {
-          const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
-            access: 'private',
-            contentType,
-            addRandomSuffix: false,
-            allowOverwrite: true,
-          });
-          blobUrl = blob.url;
-        } catch (privErr) {
-          const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
-            access: 'public',
-            contentType,
-            addRandomSuffix: false,
-            allowOverwrite: true,
-          });
-          blobUrl = blob.url;
-        }
+        const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
+          access: 'public',
+          contentType,
+          addRandomSuffix: false,
+          allowOverwrite: true,
+        });
+        blobUrl = blob.url;
       } catch (blobPutErr) {
         console.warn('[StudentFile] Vercel Blob put warning (falling back to disk):', blobPutErr.message);
       }

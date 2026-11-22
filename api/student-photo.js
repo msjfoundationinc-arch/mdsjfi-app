@@ -194,9 +194,15 @@ module.exports = async function handler(req, res) {
       // Tier 1: Try Vercel Blob if available and token exists
       if (list && process.env.BLOB_READ_WRITE_TOKEN) {
         try {
+          const prefixes = new Set();
           for (const testKey of [key, ...lookupKeys]) {
-            const strippedKey = normalizeKey(testKey);
-            const { blobs } = await list({ prefix: `student-photos/${strippedKey}.` });
+            const sk = normalizeKey(testKey);
+            prefixes.add(`student-photos/${sk}.`);
+            prefixes.add(`student-photos/STU-${sk}.`);
+            prefixes.add(`student-photos/${testKey}.`);
+          }
+          for (const pfx of prefixes) {
+            const { blobs } = await list({ prefix: pfx });
             if (blobs && blobs.length > 0) {
               res.setHeader('Cache-Control', 'public, max-age=3600');
               return res.redirect(302, blobs[0].url);

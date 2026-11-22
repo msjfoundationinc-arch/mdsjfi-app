@@ -2187,49 +2187,51 @@ function getStudentInitials(s) {
 function getStudentThumbHtml(s) {
     if (!s) return '';
     const photo = s.photo || getStudentPhoto(s);
-    if (photo && photo.length > 10) {
-        return `<div class="student-table-thumb"><img src="${resolveAssetUrl(photo)}" alt="${escHtml(s.lastName)}" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(getStudentInitials(s))}</span>';"></div>`;
-    }
     const initials = getStudentInitials(s);
-    return `<div class="student-table-thumb"><span>${escHtml(initials)}</span></div>`;
+    const origin = getAppOrigin();
+    const studentIdParam = encodeURIComponent(s.id || s.lrn || s.studentNumber || '');
+    const serverPhotoUrl = `${origin}/api/student-photo?id=${studentIdParam}&img=1`;
+    const photoSrc = (photo && photo.length > 10) ? resolveAssetUrl(photo) : serverPhotoUrl;
+
+    return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><img src="${photoSrc}" alt="${escHtml(s.lastName)}" loading="lazy" onload="if(!this.getAttribute('data-cached')){this.setAttribute('data-cached','1');const sid=this.parentElement.getAttribute('data-student-id');const st=typeof findStudent==='function'?findStudent(sid):null;if(st&&!st.photo){st.photo=this.src;}}" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(initials)}</span>';"></div>`;
 }
 
 function getDocBadgesHtml(s) {
-    const hasBirthCert = s.birthCertDoc && s.birthCertDoc.data;
-    const hasTor = s.torDoc && s.torDoc.data;
-    const hasCard = s.studentCardDoc && s.studentCardDoc.data;
+    const hasBirthCert = Boolean(s.birthCertDoc && (s.birthCertDoc.data || s.birthCertDoc.url));
+    const hasTor = Boolean(s.torDoc && (s.torDoc.data || s.torDoc.url));
+    const hasCard = Boolean(s.studentCardDoc && (s.studentCardDoc.data || s.studentCardDoc.url));
 
     let mainBadges = [];
     if (hasBirthCert) {
         mainBadges.push(`<span class="doc-badge ready" title="PSA Birth Certificate on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'birthCert')"><i class="fas fa-check"></i> PSA</span>`);
     } else {
-        mainBadges.push(`<span class="doc-badge missing" title="No PSA Birth Certificate on file"><i class="fas fa-times"></i> PSA</span>`);
+        mainBadges.push(`<span class="doc-badge missing" title="No PSA Birth Certificate on file" onclick="previewDocFromTable('${s.id}', 'birthCert')"><i class="fas fa-times"></i> PSA</span>`);
     }
 
     if (hasTor) {
         mainBadges.push(`<span class="doc-badge ready" title="Form 137 / TOR on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'tor')"><i class="fas fa-check"></i> TOR</span>`);
     } else {
-        mainBadges.push(`<span class="doc-badge missing" title="No Form 137 / TOR on file"><i class="fas fa-times"></i> TOR</span>`);
+        mainBadges.push(`<span class="doc-badge missing" title="No Form 137 / TOR on file" onclick="previewDocFromTable('${s.id}', 'tor')"><i class="fas fa-times"></i> TOR</span>`);
     }
 
     if (hasCard) {
         mainBadges.push(`<span class="doc-badge ready" title="Report Card on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'card')"><i class="fas fa-check"></i> CARD</span>`);
     } else {
-        mainBadges.push(`<span class="doc-badge missing" title="No Report Card / Form 138 on file"><i class="fas fa-times"></i> CARD</span>`);
+        mainBadges.push(`<span class="doc-badge missing" title="No Report Card / Form 138 on file" onclick="previewDocFromTable('${s.id}', 'card')"><i class="fas fa-times"></i> CARD</span>`);
     }
 
     const isEsc = (s.escGrantee || '').toUpperCase() === 'YES';
     let escBadges = [];
     if (isEsc) {
-        if (s.escAnnexDDoc && s.escAnnexDDoc.data) {
+        if (s.escAnnexDDoc && (s.escAnnexDDoc.data || s.escAnnexDDoc.url)) {
             escBadges.push(`<span class="doc-badge ready" title="ESC Annex D on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'escAnnexD')"><i class="fas fa-check"></i> ANNEX-D</span>`);
         } else {
-            escBadges.push(`<span class="doc-badge missing" title="No ESC Annex D on file"><i class="fas fa-times"></i> ANNEX-D</span>`);
+            escBadges.push(`<span class="doc-badge missing" title="No ESC Annex D on file" onclick="previewDocFromTable('${s.id}', 'escAnnexD')"><i class="fas fa-times"></i> ANNEX-D</span>`);
         }
-        if (s.escAnnexFDoc && s.escAnnexFDoc.data) {
+        if (s.escAnnexFDoc && (s.escAnnexFDoc.data || s.escAnnexFDoc.url)) {
             escBadges.push(`<span class="doc-badge ready" title="ESC Annex F on file (Click to preview)" onclick="previewDocFromTable('${s.id}', 'escAnnexF')"><i class="fas fa-check"></i> ANNEX-F</span>`);
         } else {
-            escBadges.push(`<span class="doc-badge missing" title="No ESC Annex F on file"><i class="fas fa-times"></i> ANNEX-F</span>`);
+            escBadges.push(`<span class="doc-badge missing" title="No ESC Annex F on file" onclick="previewDocFromTable('${s.id}', 'escAnnexF')"><i class="fas fa-times"></i> ANNEX-F</span>`);
         }
     }
 
@@ -2248,21 +2250,27 @@ function previewDocFromTable(studentId, docType) {
 
     let doc = null;
     let title = 'Document Preview';
+    let cleanType = '';
     if (docType === 'birthCert') {
         doc = s.birthCertDoc;
         title = 'PSA / NSO Birth Certificate';
+        cleanType = 'birthcert';
     } else if (docType === 'tor') {
         doc = s.torDoc;
         title = 'Transcript of Records (SF10 / Form 137)';
+        cleanType = 'tor';
     } else if (docType === 'card') {
         doc = s.studentCardDoc;
         title = 'Report Card (SF9 / Form 138)';
+        cleanType = 'card';
     } else if (docType === 'escAnnexD') {
         doc = s.escAnnexDDoc;
         title = 'ESC Application Form - Annex D';
+        cleanType = 'escannexd';
     } else if (docType === 'escAnnexF') {
         doc = s.escAnnexFDoc;
         title = "Affidavit of Family’s Financial Capacity - Annex F";
+        cleanType = 'escannexf';
     }
 
     if (doc) {
@@ -2270,11 +2278,17 @@ function previewDocFromTable(studentId, docType) {
         if (!doc.url && doc.data) doc.url = doc.data;
     }
 
-    if (doc && (doc.data || doc.url)) {
-        viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
-    } else {
-        showToast(`${title} is not yet uploaded for this student.`, 'info');
+    if (!doc || (!doc.data && !doc.url)) {
+        if (cleanType) {
+            const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=${encodeURIComponent(cleanType)}&raw=1`;
+            doc = { name: `${cleanType}.pdf`, type: 'application/pdf', data: serverUrl, url: serverUrl };
+        } else {
+            showToast(`${title} is not yet uploaded for this student.`, 'info');
+            return;
+        }
     }
+
+    viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
 }
 window.previewDocFromTable = previewDocFromTable;
 
@@ -4276,22 +4290,28 @@ function previewDocData(prefix) {
 
     let doc = null;
     let title = 'Document Preview';
+    let cleanType = '';
 
     if (prefix === 'viewBirthCert') {
         doc = s.birthCertDoc;
         title = 'PSA / NSO Birth Certificate';
+        cleanType = 'birthcert';
     } else if (prefix === 'viewTor') {
         doc = s.torDoc;
         title = 'Transcript of Records (SF10 / Form 137)';
+        cleanType = 'tor';
     } else if (prefix === 'viewCard') {
         doc = s.studentCardDoc;
         title = 'Student Report Card (SF9 / Form 138)';
+        cleanType = 'card';
     } else if (prefix === 'viewEscAnnexD') {
         doc = s.escAnnexDDoc;
         title = 'ESC Application Form - Annex D';
+        cleanType = 'escannexd';
     } else if (prefix === 'viewEscAnnexF') {
         doc = s.escAnnexFDoc;
         title = "Affidavit of Family’s Financial Capacity - Annex F";
+        cleanType = 'escannexf';
     }
 
     if (doc) {
@@ -4300,8 +4320,13 @@ function previewDocData(prefix) {
     }
 
     if (!doc || (!doc.data && !doc.url)) {
-        showToast('No document attached for this record.', 'warning');
-        return;
+        if (cleanType) {
+            const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=${encodeURIComponent(cleanType)}&raw=1`;
+            doc = { name: `${cleanType}.pdf`, type: 'application/pdf', data: serverUrl, url: serverUrl };
+        } else {
+            showToast('No document attached for this record.', 'warning');
+            return;
+        }
     }
 
     viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
