@@ -317,8 +317,15 @@ module.exports = async function handler(req, res) {
               if (token) listOpts.token = token;
               const { blobs } = await list(listOpts);
               if (blobs && blobs.length > 0) {
-                res.setHeader('Cache-Control', 'public, max-age=3600');
-                return res.redirect(302, blobs[0].url);
+                blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+                const latestBlob = blobs[0];
+                const cacheBustUrl = latestBlob.url.includes('?') 
+                  ? `${latestBlob.url}&v=${Date.now()}` 
+                  : `${latestBlob.url}?v=${Date.now()}`;
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+                return res.redirect(302, cacheBustUrl);
               }
             }
           } catch (blobErr) {
@@ -465,11 +472,25 @@ module.exports = async function handler(req, res) {
     if (put) {
       try {
         const token = getBlobToken();
+
+        // Pre-delete previous blobs for this student document to avoid stale entries
+        const { list, del } = await getBlobHelpers();
+        if (del && list) {
+          try {
+            const listOpts = { prefix: `student-files/${key}/${docType}` };
+            if (token) listOpts.token = token;
+            const { blobs: oldBlobs } = await list(listOpts);
+            if (oldBlobs && oldBlobs.length > 0) {
+              const delOpts = token ? { token } : undefined;
+              await del(oldBlobs.map(b => b.url), delOpts).catch(e => console.warn('[StudentFile] Pre-delete warning:', e.message));
+            }
+          } catch(e) {}
+        }
+
         const putOpts = {
           access: 'public',
           contentType,
-          addRandomSuffix: false,
-          allowOverwrite: true,
+          addRandomSuffix: true,
         };
         if (token) putOpts.token = token;
         const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, putOpts);

@@ -832,6 +832,50 @@ function fetchRemoteStudentPhoto(s, callback) {
 }
 window.fetchRemoteStudentPhoto = fetchRemoteStudentPhoto;
 
+// Cross-tab real-time sync for student photos and documents
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', function(e) {
+        if (!e.key) return;
+        if (e.key === 'mdsj_students' || e.key === 'mdsj_student_photos' || (typeof e.key === 'string' && e.key.indexOf('mdsj_deleted_photo_') === 0)) {
+            try {
+                if (typeof loadStudents === 'function') loadStudents();
+                const sid = typeof currentViewId !== 'undefined' ? currentViewId : null;
+                if (sid) {
+                    const s = typeof findStudent === 'function' ? findStudent(sid) : null;
+                    if (s) {
+                        enforceDeletedPhoto(s);
+                        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+                        const defaultAvatarUrl = resolveAssetUrl(isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg');
+                        const currentPhoto = isPhotoDeleted(s) ? '' : getStudentPhoto(s);
+
+                        // Update Mobile Pass QR view avatar if open
+                        const mobileImg = document.querySelector('#mobilePassAvatar img');
+                        if (mobileImg) {
+                            if (currentPhoto) {
+                                mobileImg.removeAttribute('data-failed');
+                                mobileImg.src = resolveAssetUrl(currentPhoto);
+                            } else {
+                                mobileImg.src = defaultAvatarUrl;
+                            }
+                        }
+
+                        // Update Student Profile view avatar if open
+                        const viewImg = document.querySelector('#viewAvatar .student-avatar-img');
+                        if (viewImg) {
+                            if (currentPhoto) {
+                                viewImg.removeAttribute('data-failed');
+                                viewImg.src = resolveAssetUrl(currentPhoto);
+                            } else {
+                                viewImg.src = defaultAvatarUrl;
+                            }
+                        }
+                    }
+                }
+            } catch(syncErr) {}
+        }
+    });
+}
+
 function isDocTypeMatch(k, cleanType) {
     if (!k || !cleanType) return false;
     const a = String(k).toLowerCase().replace(/^view/, '');
@@ -3726,7 +3770,8 @@ function viewStudent(id) {
                 if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
                     const currentImg = avatar.querySelector('.student-avatar-img');
                     if (currentImg && remotePhoto) {
-                        currentImg.src = remotePhoto;
+                        currentImg.removeAttribute('data-failed');
+                        currentImg.src = resolveAssetUrl(remotePhoto);
                     }
                     if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
                     if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
@@ -3931,24 +3976,36 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
 
     const avatarEl = document.getElementById('mobilePassAvatar');
     if (avatarEl) {
+        enforceDeletedPhoto(s);
         let photoSrc = getStudentPhoto(s);
-        if (photoSrc && !s.photo) s.photo = photoSrc;
+        if (isPhotoDeleted(s)) {
+            photoSrc = '';
+            s.photo = '';
+        } else if (photoSrc && !s.photo) {
+            s.photo = photoSrc;
+        }
+
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         const defaultAvatar = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
         const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
-        const origin = getAppOrigin();
-        const serverPhotoUrl = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
-        const displayPhoto = photoSrc ? resolveAssetUrl(photoSrc) : serverPhotoUrl;
+        let displayPhoto = defaultAvatarUrl;
+        if (photoSrc) {
+            displayPhoto = resolveAssetUrl(photoSrc);
+        } else if (!isPhotoDeleted(s)) {
+            const origin = getAppOrigin();
+            displayPhoto = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
+        }
 
         avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
 
-        if (typeof fetchRemoteStudentPhoto === 'function') {
+        if (!isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
-                if (window.currentViewId === s.id) {
+                if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
                     const mobileImg = avatarEl.querySelector('img');
                     if (mobileImg && remotePhoto) {
-                        mobileImg.src = remotePhoto;
+                        mobileImg.removeAttribute('data-failed');
+                        mobileImg.src = resolveAssetUrl(remotePhoto);
                     }
                 }
             });
@@ -4584,6 +4641,11 @@ window.handleDirectPhotoUpload = function(event) {
         if (avatar) {
             avatar.innerHTML = `<img src="${dataUrl}" alt="Student Photo" class="student-avatar-img">`;
         }
+        const mobilePassImg = document.querySelector('#mobilePassAvatar img');
+        if (mobilePassImg) {
+            mobilePassImg.removeAttribute('data-failed');
+            mobilePassImg.src = dataUrl;
+        }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'inline-block';
         const enlBtn = document.getElementById('btnEnlargeProfilePhoto');
@@ -4687,6 +4749,11 @@ window.captureProfileDirectPhoto = function() {
         if (avatar) {
             avatar.innerHTML = `<img src="${dataUrl}" alt="Student Photo" class="student-avatar-img">`;
         }
+        const mobilePassImg = document.querySelector('#mobilePassAvatar img');
+        if (mobilePassImg) {
+            mobilePassImg.removeAttribute('data-failed');
+            mobilePassImg.src = dataUrl;
+        }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'inline-block';
         const enlBtn = document.getElementById('btnEnlargeProfilePhoto');
@@ -4717,6 +4784,10 @@ window.deletePhotoFromProfile = function() {
         const avatar = document.getElementById('viewAvatar');
         if (avatar) {
             avatar.innerHTML = `<img src="${defaultAvatarUrl}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img">`;
+        }
+        const mobilePassImg = document.querySelector('#mobilePassAvatar img');
+        if (mobilePassImg) {
+            mobilePassImg.src = defaultAvatarUrl;
         }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'none';

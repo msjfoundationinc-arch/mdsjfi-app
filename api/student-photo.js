@@ -246,14 +246,41 @@ module.exports = async function handler(req, res) {
             prefixes.add(`student-photos/${sk}.`);
             prefixes.add(`student-photos/STU-${sk}.`);
             prefixes.add(`student-photos/${testKey}.`);
+            prefixes.add(`student-photos/${sk}-`);
+            prefixes.add(`student-photos/STU-${sk}-`);
+            prefixes.add(`student-photos/${testKey}-`);
+            prefixes.add(`student-photos/${sk}`);
+            prefixes.add(`student-photos/STU-${sk}`);
+            prefixes.add(`student-photos/${testKey}`);
           }
           for (const pfx of prefixes) {
             const listOpts = { prefix: pfx };
             if (token) listOpts.token = token;
             const { blobs } = await list(listOpts);
             if (blobs && blobs.length > 0) {
-              res.setHeader('Cache-Control', 'public, max-age=3600');
-              return res.redirect(302, blobs[0].url);
+              blobs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+              const latestBlob = blobs[0];
+              const cacheBustUrl = latestBlob.url.includes('?') 
+                ? `${latestBlob.url}&v=${Date.now()}` 
+                : `${latestBlob.url}?v=${Date.now()}`;
+
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+              res.setHeader('Pragma', 'no-cache');
+              res.setHeader('Expires', '0');
+
+              if (req.query.img === '1' || req.query.raw === '1') {
+                return res.redirect(302, cacheBustUrl);
+              }
+
+              return res.status(200).json({
+                ok: true,
+                success: true,
+                id: key,
+                photo: latestBlob.url,
+                url: latestBlob.url,
+                isBlob: true,
+                uploadedAt: latestBlob.uploadedAt
+              });
             }
           }
         } catch (blobErr) {
@@ -266,13 +293,15 @@ module.exports = async function handler(req, res) {
       for (const testKey of lookupKeys) {
         const storedPhoto = memoryPhotoStore.get(testKey) || memoryPhotoStore.get(testKey.toLowerCase());
         if (storedPhoto && typeof storedPhoto === 'string' && storedPhoto.length > 20) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
           if (req.query.img === '1' || req.query.raw === '1') {
             const match = storedPhoto.match(/^data:(image\/\w+);base64,(.+)$/);
             const contentType = match ? match[1] : 'image/jpeg';
             const base64Data = match ? match[2] : storedPhoto;
             const buf = Buffer.from(base64Data, 'base64');
             res.setHeader('Content-Type', contentType);
-            res.setHeader('Cache-Control', 'public, max-age=3600');
             return res.send(buf);
           }
           return res.status(200).json({ ok: true, success: true, id: key, photo: storedPhoto, url: `/api/student-photo?id=${encodeURIComponent(rawId)}&img=1` });
@@ -325,11 +354,25 @@ module.exports = async function handler(req, res) {
         const buffer = Buffer.from(base64Data, 'base64');
 
         const token = getBlobToken();
+
+        // Pre-delete previous blobs for this student to keep storage clean and avoid stale entries
+        const { list, del } = await getBlobHelpers();
+        if (del && list) {
+          try {
+            const listOpts = { prefix: `student-photos/${key}` };
+            if (token) listOpts.token = token;
+            const { blobs: oldBlobs } = await list(listOpts);
+            if (oldBlobs && oldBlobs.length > 0) {
+              const delOpts = token ? { token } : undefined;
+              await del(oldBlobs.map(b => b.url), delOpts).catch(e => console.warn('[StudentPhoto] Pre-delete warning:', e.message));
+            }
+          } catch (e) {}
+        }
+
         const opts = {
           access: 'public',
           contentType,
-          addRandomSuffix: false,
-          allowOverwrite: true,
+          addRandomSuffix: true,
         };
         if (token) opts.token = token;
 
