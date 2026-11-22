@@ -680,6 +680,19 @@ function unmarkPhotoDeleted(s) {
 }
 window.unmarkPhotoDeleted = unmarkPhotoDeleted;
 
+function isValidPhotoString(str) {
+    if (!str || typeof str !== 'string') return false;
+    const clean = str.trim();
+    if (clean.length < 20) return false;
+    if (clean.includes('/api/student-photo')) return false;
+    if (clean.includes('undefined') || clean.includes('null')) return false;
+    if (clean.startsWith('data:image/')) return clean.length > 50;
+    if (clean.startsWith('blob:')) return clean.length > 15;
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return true;
+    return false;
+}
+window.isValidPhotoString = isValidPhotoString;
+
 function getStudentPhoto(s) {
     if (!s) return '';
     if (isPhotoDeleted(s)) {
@@ -694,8 +707,9 @@ function getStudentPhoto(s) {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
         if (storedPhotos && typeof storedPhotos === 'object') {
             for (const k of lookupKeys) {
-                if (storedPhotos[k] && typeof storedPhotos[k] === 'string' && storedPhotos[k].trim().length > 10) {
-                    s.photo = storedPhotos[k].trim();
+                const val = storedPhotos[k];
+                if (isValidPhotoString(val)) {
+                    s.photo = val.trim();
                     return s.photo;
                 }
             }
@@ -709,7 +723,7 @@ function getStudentPhoto(s) {
                     const tRaw = tClean.replace(/^stu-/i, '');
                     if (kClean === tClean || kRaw === tRaw || kRaw === tClean || kClean === tRaw) {
                         const found = storedPhotos[k];
-                        if (found && typeof found === 'string' && found.trim().length > 10) {
+                        if (isValidPhotoString(found)) {
                             s.photo = found.trim();
                             return s.photo;
                         }
@@ -719,12 +733,11 @@ function getStudentPhoto(s) {
         }
     } catch(e) {}
 
-    // 2. If s.photo is already a valid base64 data URL or external blob URL (not an internal /api/ URL that might 404)
-    if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) {
-        const cleanP = s.photo.trim();
-        if (cleanP.startsWith('data:image') || cleanP.startsWith('blob:') || (cleanP.startsWith('https://') && !cleanP.includes('/api/student-photo'))) {
-            return cleanP;
-        }
+    // 2. If s.photo is already a valid base64 data URL or external blob URL
+    if (isValidPhotoString(s.photo)) {
+        return s.photo.trim();
+    } else if (s.photo) {
+        s.photo = '';
     }
 
     // 3. Check MDSJ_FaceEngine enrollment photos
@@ -733,7 +746,7 @@ function getStudentPhoto(s) {
             for (const k of lookupKeys) {
                 const enroll = window.MDSJ_FaceEngine.findEnrollmentByPersonId(k);
                 const facePhoto = enroll && (enroll.facePhoto || enroll.sampleImage);
-                if (facePhoto && typeof facePhoto === 'string' && facePhoto.length > 10) {
+                if (isValidPhotoString(facePhoto)) {
                     s.photo = facePhoto.trim();
                     return s.photo;
                 }
@@ -747,7 +760,7 @@ window.getStudentPhoto = getStudentPhoto;
 
 function persistStudentPhoto(student, dataUrl) {
     if (!student) return;
-    if (!dataUrl) {
+    if (!dataUrl || !isValidPhotoString(dataUrl)) {
         markPhotoDeleted(student);
         return;
     }
@@ -767,7 +780,7 @@ function persistStudentPhoto(student, dataUrl) {
     }
 
     // Sync student.photo in-memory
-    student.photo = dataUrl || '';
+    student.photo = dataUrl;
 
     // Asynchronously push to server storage for cross-device mobile QR scanning
     try {
@@ -792,14 +805,17 @@ function persistStudentPhoto(student, dataUrl) {
             .then(data => {
                 if (data && (data.success || data.ok)) {
                     console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn, data.blobUrl || data.url);
-                    if (data.blobUrl && typeof data.blobUrl === 'string' && data.blobUrl.startsWith('http')) {
-                        // Store blobUrl in mdsj_student_photos so getStudentPhoto() can find it cross-device
+                    if (data.blobUrl && isValidPhotoString(data.blobUrl)) {
+                        student.blobPhoto = data.blobUrl;
                         try {
                             const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
-                            for (const k of lookupKeys) { storedPhotos[k] = data.blobUrl; }
+                            for (const k of lookupKeys) {
+                                if (!storedPhotos[k] || !storedPhotos[k].startsWith('data:image')) {
+                                    storedPhotos[k] = data.blobUrl;
+                                }
+                            }
                             localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
                         } catch(e) {}
-                        student.photo = data.blobUrl;
                         saveStudents();
                     }
                 }
@@ -826,12 +842,10 @@ function fetchRemoteStudentPhoto(s, callback) {
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
                     if (isPhotoDeleted(s)) return;
-                    if (data && data.photo && typeof data.photo === 'string' && data.photo.length > 10) {
-                        if (data.photo.includes('/api/student-photo')) {
-                            const existingLocal = getStudentPhoto(s);
-                            if (existingLocal && existingLocal.startsWith('data:image')) {
-                                return;
-                            }
+                    if (data && data.photo && isValidPhotoString(data.photo)) {
+                        const existingLocal = getStudentPhoto(s);
+                        if (existingLocal && existingLocal.startsWith('data:image')) {
+                            return;
                         }
                         s.photo = data.photo;
                         try {
@@ -1442,9 +1456,14 @@ function loadStudents() {
                 enforceDeletedDocs(s);
                 enforceDeletedPhoto(s);
                 if (!isPhotoDeleted(s)) {
-                    const photoFromStore = getStudentPhoto(s);
-                    if (photoFromStore && (!s.photo || s.photo.length < 10 || s.photo.indexOf('/api/student-photo') !== -1)) {
-                        s.photo = photoFromStore;
+                    if (s.photo && !isValidPhotoString(s.photo)) {
+                        s.photo = '';
+                    }
+                    if (!s.photo) {
+                        const photoFromStore = getStudentPhoto(s);
+                        if (photoFromStore && isValidPhotoString(photoFromStore)) {
+                            s.photo = photoFromStore;
+                        }
                     }
                 } else {
                     s.photo = '';
@@ -1465,12 +1484,17 @@ function loadStudents() {
         syncStudentDocsFromStore(s);
         enforceDeletedDocs(s);
         enforceDeletedPhoto(s);
-        if (!isPhotoDeleted(s) && (!s.photo || s.photo.length < 10 || s.photo.indexOf('/api/student-photo') !== -1)) {
-            const p = getStudentPhoto(s);
-            if (p) {
-                s.photo = p;
+        if (!isPhotoDeleted(s)) {
+            if (s.photo && !isValidPhotoString(s.photo)) {
+                s.photo = '';
             }
-        } else if (isPhotoDeleted(s)) {
+            if (!s.photo) {
+                const p = getStudentPhoto(s);
+                if (p && isValidPhotoString(p)) {
+                    s.photo = p;
+                }
+            }
+        } else {
             s.photo = '';
         }
         if (!s.schoolYear || s.schoolYear === '2025-2026') {
@@ -2674,8 +2698,8 @@ function getStudentThumbHtml(s) {
     if (isPhotoDeleted(s)) {
         return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><span>${escHtml(initials)}</span></div>`;
     }
-    const photo = (s.photo && s.photo.length > 10 && s.photo.indexOf('/api/student-photo') === -1) ? s.photo : getStudentPhoto(s);
-    if (isPhotoDeleted(s) || !photo || photo.length <= 10 || photo.indexOf('/api/student-photo') !== -1) {
+    const photo = isValidPhotoString(s.photo) ? s.photo : (typeof getStudentPhoto === 'function' ? getStudentPhoto(s) : '');
+    if (isPhotoDeleted(s) || !isValidPhotoString(photo)) {
         return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><span>${escHtml(initials)}</span></div>`;
     }
     const photoSrc = resolveAssetUrl(photo);
@@ -3797,7 +3821,7 @@ function viewStudent(id) {
     if (avatar) {
         enforceDeletedPhoto(s);
         let photoSrc = getStudentPhoto(s);
-        if (isPhotoDeleted(s)) {
+        if (isPhotoDeleted(s) || !isValidPhotoString(photoSrc)) {
             photoSrc = '';
             s.photo = '';
         } else if (photoSrc && !s.photo) {
@@ -3809,26 +3833,31 @@ function viewStudent(id) {
         const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
         let displayPhoto = defaultAvatarUrl;
-        if (photoSrc && photoSrc.length > 10 && photoSrc.indexOf('/api/student-photo') === -1) {
+        if (isValidPhotoString(photoSrc)) {
             displayPhoto = resolveAssetUrl(photoSrc);
         }
 
-        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
+        avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatarUrl}';" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         if (photoDelBtn) photoDelBtn.style.display = (isGuestProfileView || !photoSrc) ? 'none' : 'inline-block';
-        if (photoEnlargeBtn) photoEnlargeBtn.style.display = (photoSrc && photoSrc.length > 10) ? 'inline-block' : 'none';
+        if (photoEnlargeBtn) photoEnlargeBtn.style.display = (photoSrc && isValidPhotoString(photoSrc)) ? 'inline-block' : 'none';
 
         // Seamless remote fetch for scanned QR view on external/mobile devices ONLY if NOT deleted
-        const hasValidLocalPhoto = photoSrc && (photoSrc.startsWith('data:image') || photoSrc.startsWith('blob:'));
+        const hasValidLocalPhoto = isValidPhotoString(photoSrc) && (photoSrc.startsWith('data:image') || photoSrc.startsWith('blob:'));
         if ((!hasValidLocalPhoto || isGuestProfileView) && !isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
-                if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
-                    const currentImg = avatar.querySelector('.student-avatar-img');
-                    if (currentImg && remotePhoto) {
-                        currentImg.removeAttribute('data-failed');
-                        currentImg.src = resolveAssetUrl(remotePhoto);
-                    }
-                    if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
-                    if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
+                if (window.currentViewId === s.id && !isPhotoDeleted(s) && isValidPhotoString(remotePhoto)) {
+                    const testImg = new Image();
+                    testImg.onload = function() {
+                        if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
+                            const currentImg = avatar.querySelector('.student-avatar-img');
+                            if (currentImg) {
+                                currentImg.src = testImg.src;
+                            }
+                            if (photoDelBtn) photoDelBtn.style.display = isGuestProfileView ? 'none' : 'inline-block';
+                            if (photoEnlargeBtn) photoEnlargeBtn.style.display = 'inline-block';
+                        }
+                    };
+                    testImg.src = resolveAssetUrl(remotePhoto);
                 }
             });
         }
@@ -4041,7 +4070,7 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
     if (avatarEl) {
         enforceDeletedPhoto(s);
         let photoSrc = getStudentPhoto(s);
-        if (isPhotoDeleted(s)) {
+        if (isPhotoDeleted(s) || !isValidPhotoString(photoSrc)) {
             photoSrc = '';
             s.photo = '';
         } else if (photoSrc && !s.photo) {
@@ -4053,25 +4082,30 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
         let displayPhoto = defaultAvatarUrl;
-        if (photoSrc && photoSrc.length > 10 && photoSrc.indexOf('/api/student-photo') === -1) {
+        if (isValidPhotoString(photoSrc)) {
             displayPhoto = resolveAssetUrl(photoSrc);
         }
 
-        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
+        avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="this.onerror=null; this.src='${defaultAvatarUrl}';" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
 
         const isGuestProfileView = document.documentElement.classList.contains('guest-qr-view') || 
                                    document.documentElement.classList.contains('direct-profile-view') || 
                                    (typeof getCurrentUser === 'function' && !getCurrentUser());
-        const hasValidLocalPhoto = photoSrc && (photoSrc.startsWith('data:image') || photoSrc.startsWith('blob:'));
+        const hasValidLocalPhoto = isValidPhotoString(photoSrc) && (photoSrc.startsWith('data:image') || photoSrc.startsWith('blob:'));
 
         if ((!hasValidLocalPhoto || isGuestProfileView) && !isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
-                if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
-                    const mobileImg = avatarEl.querySelector('img');
-                    if (mobileImg && remotePhoto) {
-                        mobileImg.removeAttribute('data-failed');
-                        mobileImg.src = resolveAssetUrl(remotePhoto);
-                    }
+                if (window.currentViewId === s.id && !isPhotoDeleted(s) && isValidPhotoString(remotePhoto)) {
+                    const testImg = new Image();
+                    testImg.onload = function() {
+                        if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
+                            const mobileImg = avatarEl.querySelector('img');
+                            if (mobileImg) {
+                                mobileImg.src = testImg.src;
+                            }
+                        }
+                    };
+                    testImg.src = resolveAssetUrl(remotePhoto);
                 }
             });
         }
@@ -4962,7 +4996,7 @@ function enlargeStudentProfilePhoto(event) {
         } catch(e) {}
     }
     const s = (typeof currentViewId !== 'undefined' && currentViewId) ? findStudent(currentViewId) : null;
-    let photo = (!s || isPhotoDeleted(s)) ? null : ((s ? getStudentPhoto(s) : null) || (s && s.photo));
+    let photo = (!s || isPhotoDeleted(s)) ? null : (isValidPhotoString(s.photo) ? s.photo : (isValidPhotoString(getStudentPhoto(s)) ? getStudentPhoto(s) : null));
     if (!photo && s) {
         const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
         photo = isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg';
@@ -5044,10 +5078,12 @@ function renderPrintableStudentProfile(s) {
     const nowFormatted = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
     const fullAddress = s.address || `${s.addressBarangay || 'Poblacion'}, ${s.addressMunicipality || 'San Jose'}, ${s.addressProvince || 'Batangas'}`;
 
-    let avatarHtml = `<div class="print-profile-avatar-fallback"><i class="fas fa-user-graduate"></i></div>`;
-    const printablePhoto = isPhotoDeleted(s) ? null : (s.photo || (typeof getStudentPhoto === 'function' ? getStudentPhoto(s) : null));
+    const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+    const defaultAvatarUrl = resolveAssetUrl(isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg');
+    let avatarHtml = `<div class="print-profile-avatar-fallback"><img src="${defaultAvatarUrl}" alt="Student Avatar" class="print-profile-avatar-img"></div>`;
+    const printablePhoto = isPhotoDeleted(s) ? null : (isValidPhotoString(s.photo) ? s.photo : (isValidPhotoString(getStudentPhoto(s)) ? getStudentPhoto(s) : null));
     if (printablePhoto) {
-        avatarHtml = `<img src="${printablePhoto}" alt="Student Photo" class="print-profile-avatar-img">`;
+        avatarHtml = `<img src="${resolveAssetUrl(printablePhoto)}" alt="Student Photo" class="print-profile-avatar-img" onerror="this.onerror=null; this.src='${defaultAvatarUrl}';">`;
     }
 
     let sigContentHtml = `
@@ -6145,11 +6181,12 @@ function proceedEditStudent(s) {
     if (discGroup) discGroup.style.display = (s.isDiscounted === 'YES') ? 'block' : 'none';
 
     // Restore Student Photo
-    const photoToRestore = (s.photo && s.photo.length > 10) ? s.photo : getStudentPhoto(s);
-    if (photoToRestore) {
+    const photoToRestore = isValidPhotoString(s.photo) ? s.photo : getStudentPhoto(s);
+    if (isValidPhotoString(photoToRestore)) {
         s.photo = photoToRestore;
         setPhotoPreview(photoToRestore);
     } else {
+        s.photo = '';
         removeCurrentPhoto(false);
     }
 
@@ -7001,6 +7038,10 @@ function retakeStudentPhoto() {
 }
 
 function setPhotoPreview(dataUrl) {
+    if (!isValidPhotoString(dataUrl)) {
+        removeCurrentPhoto(false);
+        return;
+    }
     const hidden = document.getElementById('studentPhoto');
     if (hidden) hidden.value = dataUrl;
 
@@ -7017,7 +7058,11 @@ function setPhotoPreview(dataUrl) {
     if (indicator) indicator.style.display = 'none';
 
     if (img) {
-        img.src = dataUrl;
+        img.onerror = function() {
+            this.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+        };
+        img.src = resolveAssetUrl(dataUrl);
         img.style.display = 'block';
     }
     if (placeholder) placeholder.style.display = 'none';
@@ -7887,11 +7932,13 @@ function collectFormData() {
     const net = Math.max(0, tuition - discAmt);
 
     let photo = document.getElementById('studentPhoto')?.value || '';
+    if (!isValidPhotoString(photo)) photo = '';
     const editId = document.getElementById('editStudentId')?.value;
     if (!photo && editId) {
         const existingStudent = findStudent(editId);
         if (existingStudent) {
-            photo = existingStudent.photo || getStudentPhoto(existingStudent) || '';
+            const candidate = isValidPhotoString(existingStudent.photo) ? existingStudent.photo : getStudentPhoto(existingStudent);
+            photo = isValidPhotoString(candidate) ? candidate : '';
         }
     }
     const signature = document.getElementById('studentSignature')?.value || '';

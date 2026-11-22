@@ -342,48 +342,53 @@ module.exports = async function handler(req, res) {
     const lookupKeys = getLookupKeys(rawId, lrn, studentNumber);
     let blobUrl = null;
     let blobError = null;
-    const { put } = await getBlobHelpers();
 
-    // Tier 1: Try Vercel Blob
-    if (put) {
-      try {
-        const match = rawData.match(/^data:(image\/\w+);base64,(.+)$/);
-        const contentType = match ? match[1] : 'image/jpeg';
-        const ext = contentType === 'image/png' ? 'png' : 'jpg';
-        const base64Data = match ? match[2] : rawData.replace(/^data:[^;]+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
+    if (rawData.startsWith('http://') || rawData.startsWith('https://')) {
+      blobUrl = rawData;
+    } else {
+      const { put } = await getBlobHelpers();
 
-        const token = getBlobToken();
+      // Tier 1: Try Vercel Blob
+      if (put) {
+        try {
+          const match = rawData.match(/^data:(image\/\w+);base64,(.+)$/);
+          const contentType = match ? match[1] : 'image/jpeg';
+          const ext = contentType === 'image/png' ? 'png' : 'jpg';
+          const base64Data = match ? match[2] : rawData.replace(/^data:[^;]+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
 
-        // Pre-delete previous blobs for this student to keep storage clean and avoid stale entries
-        const { list, del } = await getBlobHelpers();
-        if (del && list) {
-          try {
-            const listOpts = { prefix: `student-photos/${key}` };
-            if (token) listOpts.token = token;
-            const { blobs: oldBlobs } = await list(listOpts);
-            if (oldBlobs && oldBlobs.length > 0) {
-              const delOpts = token ? { token } : undefined;
-              await del(oldBlobs.map(b => b.url), delOpts).catch(e => console.warn('[StudentPhoto] Pre-delete warning:', e.message));
-            }
-          } catch (e) {}
+          const token = getBlobToken();
+
+          // Pre-delete previous blobs for this student to keep storage clean and avoid stale entries
+          const { list, del } = await getBlobHelpers();
+          if (del && list) {
+            try {
+              const listOpts = { prefix: `student-photos/${key}` };
+              if (token) listOpts.token = token;
+              const { blobs: oldBlobs } = await list(listOpts);
+              if (oldBlobs && oldBlobs.length > 0) {
+                const delOpts = token ? { token } : undefined;
+                await del(oldBlobs.map(b => b.url), delOpts).catch(e => console.warn('[StudentPhoto] Pre-delete warning:', e.message));
+              }
+            } catch (e) {}
+          }
+
+          const opts = {
+            access: 'public',
+            contentType,
+            addRandomSuffix: true,
+          };
+          if (token) opts.token = token;
+
+          const blob = await put(`student-photos/${key}.${ext}`, buffer, opts);
+          if (blob && blob.url) {
+            blobUrl = blob.url;
+            console.log(`[StudentPhoto] Successfully uploaded photo to Vercel Blob:`, blobUrl);
+          }
+        } catch (blobErr) {
+          console.error('[StudentPhoto] Vercel Blob put error (falling back to disk):', blobErr.message);
+          blobError = blobErr.message;
         }
-
-        const opts = {
-          access: 'public',
-          contentType,
-          addRandomSuffix: true,
-        };
-        if (token) opts.token = token;
-
-        const blob = await put(`student-photos/${key}.${ext}`, buffer, opts);
-        if (blob && blob.url) {
-          blobUrl = blob.url;
-          console.log(`[StudentPhoto] Successfully uploaded photo to Vercel Blob:`, blobUrl);
-        }
-      } catch (blobErr) {
-        console.error('[StudentPhoto] Vercel Blob put error (falling back to disk):', blobErr.message);
-        blobError = blobErr.message;
       }
     }
 

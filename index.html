@@ -112,6 +112,32 @@
             var storedPhotos = {};
             try { storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}'); } catch(e){}
 
+            function isValidStoredPhoto(val) {
+                if (!val || typeof val !== 'string') return false;
+                var c = val.trim();
+                if (c.length < 20) return false;
+                if (c.indexOf('/api/student-photo') !== -1) return false;
+                if (c.indexOf('undefined') !== -1 || c.indexOf('null') !== -1) return false;
+                if (c.indexOf('data:image/') === 0) return c.length > 50;
+                if (c.indexOf('blob:') === 0) return c.length > 15;
+                if (c.indexOf('http://') === 0 || c.indexOf('https://') === 0) return true;
+                return false;
+            }
+
+            // Immediately purge corrupted or endpoint URLs from storedPhotos
+            if (storedPhotos && typeof storedPhotos === 'object') {
+                var cleanedAny = false;
+                for (var spk in storedPhotos) {
+                    if (!isValidStoredPhoto(storedPhotos[spk])) {
+                        delete storedPhotos[spk];
+                        cleanedAny = true;
+                    }
+                }
+                if (cleanedAny) {
+                    try { localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos)); } catch(e){}
+                }
+            }
+
             var existMap = {};
             if (existingStus && Array.isArray(existingStus)) {
                 existingStus.forEach(function(es){
@@ -170,7 +196,7 @@
 
                 for (var j = 0; j < targetKeys.length; j++) {
                     var tk = targetKeys[j];
-                    if (tk && storedPhotos[tk] && typeof storedPhotos[tk] === 'string' && storedPhotos[tk].length > 10) {
+                    if (tk && storedPhotos[tk] && isValidStoredPhoto(storedPhotos[tk])) {
                         return storedPhotos[tk];
                     }
                 }
@@ -188,7 +214,7 @@
                             var tRaw = tClean.replace(/^stu-/i, '');
                             if (kClean === tClean || kRaw === tRaw || kRaw === tClean || kClean === tRaw) {
                                 var val = storedPhotos[k];
-                                if (val && typeof val === 'string' && val.length > 10) return val;
+                                if (isValidStoredPhoto(val)) return val;
                             }
                         }
                     }
@@ -235,7 +261,7 @@
 
                 var ex = existMap[sId] || (sIdRaw ? existMap[sIdRaw] : null) || (sLrn ? existMap[sLrn] : null) || (sNum ? existMap[sNum] : null);
                 if (ex) {
-                    if (ex.photo && !isPhotoDel) m.photo = ex.photo;
+                    if (ex.photo && !isPhotoDel && isValidStoredPhoto(ex.photo)) m.photo = ex.photo;
                     if (ex.signature) m.signature = ex.signature;
                     if (ex.birthCertDoc && !isBirthDel) m.birthCertDoc = ex.birthCertDoc;
                     if (ex.torDoc && !isTorDel) m.torDoc = ex.torDoc;
@@ -245,8 +271,10 @@
                 }
                 if (!isPhotoDel) {
                     var pPhoto = findStoredPhoto(sId, sLrn, sNum, sName);
-                    if (pPhoto && (!m.photo || m.photo.length < 10 || m.photo.indexOf('/api/student-photo') !== -1)) {
+                    if (pPhoto) {
                         m.photo = pPhoto;
+                    } else if (m.photo && !isValidStoredPhoto(m.photo)) {
+                        m.photo = '';
                     }
                 } else {
                     m.photo = '';
@@ -280,8 +308,11 @@
                         }
                     } else {
                         var pPhoto = findStoredPhoto(sId, sLrn, sNum, sName);
-                        if (pPhoto && (!es.photo || es.photo.length < 10 || es.photo.indexOf('/api/student-photo') !== -1)) {
+                        if (pPhoto && es.photo !== pPhoto) {
                             es.photo = pPhoto;
+                            updated = true;
+                        } else if (es.photo && !isValidStoredPhoto(es.photo)) {
+                            es.photo = '';
                             updated = true;
                         }
                     }
@@ -9241,7 +9272,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261122_05"></script>
+    <script src="app.js?v=20261122_06"></script>
 </body>
 </html>
 
