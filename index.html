@@ -245,7 +245,7 @@
                 }
                 if (!isPhotoDel) {
                     var pPhoto = findStoredPhoto(sId, sLrn, sNum, sName);
-                    if (pPhoto && (!m.photo || m.photo.length < 10)) {
+                    if (pPhoto && (!m.photo || m.photo.length < 10 || m.photo.indexOf('/api/student-photo') !== -1)) {
                         m.photo = pPhoto;
                     }
                 } else {
@@ -280,7 +280,7 @@
                         }
                     } else {
                         var pPhoto = findStoredPhoto(sId, sLrn, sNum, sName);
-                        if (pPhoto && (!es.photo || es.photo.length < 10)) {
+                        if (pPhoto && (!es.photo || es.photo.length < 10 || es.photo.indexOf('/api/student-photo') !== -1)) {
                             es.photo = pPhoto;
                             updated = true;
                         }
@@ -9234,7 +9234,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261122_03"></script>
+    <script src="app.js?v=20261122_04"></script>
 </body>
 </html>
 

@@ -686,11 +686,10 @@ function getStudentPhoto(s) {
         s.photo = '';
         return '';
     }
-    if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) return s.photo.trim();
 
     const lookupKeys = getStudentLookupKeys(s);
 
-    // 1. Check localStorage mdsj_student_photos
+    // 1. Check localStorage mdsj_student_photos first (contains real base64 image data)
     try {
         const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
         if (storedPhotos && typeof storedPhotos === 'object') {
@@ -720,7 +719,15 @@ function getStudentPhoto(s) {
         }
     } catch(e) {}
 
-    // 2. Check MDSJ_FaceEngine enrollment photos
+    // 2. If s.photo is already a valid base64 data URL or external blob URL (not an internal /api/ URL that might 404)
+    if (s.photo && typeof s.photo === 'string' && s.photo.trim().length > 10) {
+        const cleanP = s.photo.trim();
+        if (cleanP.startsWith('data:image') || cleanP.startsWith('blob:') || (cleanP.startsWith('https://') && !cleanP.includes('/api/student-photo'))) {
+            return cleanP;
+        }
+    }
+
+    // 3. Check MDSJ_FaceEngine enrollment photos
     try {
         if (window.MDSJ_FaceEngine && typeof window.MDSJ_FaceEngine.findEnrollmentByPersonId === 'function') {
             for (const k of lookupKeys) {
@@ -785,11 +792,8 @@ function persistStudentPhoto(student, dataUrl) {
             .then(data => {
                 if (data && (data.success || data.ok)) {
                     console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn, data.blobUrl || data.url);
-                    if (data.blobUrl) {
+                    if (data.blobUrl && typeof data.blobUrl === 'string' && data.blobUrl.startsWith('http')) {
                         student.photo = data.blobUrl;
-                        saveStudents();
-                    } else if (data.url) {
-                        student.photo = data.url;
                         saveStudents();
                     }
                 }
@@ -1401,8 +1405,9 @@ function loadStudents() {
                 enforceDeletedPhoto(s);
                 if (!isPhotoDeleted(s)) {
                     const photoFromStore = getStudentPhoto(s);
-                    if (photoFromStore && !s.photo) s.photo = photoFromStore;
-                    if (s.photo) persistStudentPhoto(s, s.photo);
+                    if (photoFromStore && (!s.photo || s.photo.length < 10 || s.photo.indexOf('/api/student-photo') !== -1)) {
+                        s.photo = photoFromStore;
+                    }
                 } else {
                     s.photo = '';
                 }
@@ -1422,7 +1427,7 @@ function loadStudents() {
         syncStudentDocsFromStore(s);
         enforceDeletedDocs(s);
         enforceDeletedPhoto(s);
-        if (!isPhotoDeleted(s) && (!s.photo || s.photo.length < 10)) {
+        if (!isPhotoDeleted(s) && (!s.photo || s.photo.length < 10 || s.photo.indexOf('/api/student-photo') !== -1)) {
             const p = getStudentPhoto(s);
             if (p) {
                 s.photo = p;
@@ -2631,16 +2636,12 @@ function getStudentThumbHtml(s) {
     if (isPhotoDeleted(s)) {
         return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><span>${escHtml(initials)}</span></div>`;
     }
-    const photo = (s.photo && s.photo.length > 10) ? s.photo : getStudentPhoto(s);
-    if (isPhotoDeleted(s)) {
+    const photo = (s.photo && s.photo.length > 10 && s.photo.indexOf('/api/student-photo') === -1) ? s.photo : getStudentPhoto(s);
+    if (isPhotoDeleted(s) || !photo || photo.length <= 10 || photo.indexOf('/api/student-photo') !== -1) {
         return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><span>${escHtml(initials)}</span></div>`;
     }
-    const origin = getAppOrigin();
-    const studentIdParam = encodeURIComponent(s.id || s.lrn || s.studentNumber || '');
-    const serverPhotoUrl = `${origin}/api/student-photo?id=${studentIdParam}&img=1`;
-    const photoSrc = (photo && photo.length > 10) ? resolveAssetUrl(photo) : serverPhotoUrl;
-
-    return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><img src="${photoSrc}" alt="${escHtml(s.lastName)}" loading="lazy" onload="if(!this.getAttribute('data-cached')){this.setAttribute('data-cached','1');const sid=this.parentElement.getAttribute('data-student-id');const st=typeof findStudent==='function'?findStudent(sid):null;if(st&&!st.photo&&!isPhotoDeleted(st)){st.photo=this.src;}}" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(initials)}</span>';"></div>`;
+    const photoSrc = resolveAssetUrl(photo);
+    return `<div class="student-table-thumb" data-student-id="${escHtml(s.id)}"><img src="${photoSrc}" alt="${escHtml(s.lastName)}" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<span>${escHtml(initials)}</span>';"></div>`;
 }
 
 function getDocBadgesHtml(s) {
@@ -3753,11 +3754,8 @@ function viewStudent(id) {
         const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
         let displayPhoto = defaultAvatarUrl;
-        if (photoSrc) {
+        if (photoSrc && photoSrc.length > 10 && photoSrc.indexOf('/api/student-photo') === -1) {
             displayPhoto = resolveAssetUrl(photoSrc);
-        } else if (!isPhotoDeleted(s)) {
-            const origin = getAppOrigin();
-            displayPhoto = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
         }
 
         avatar.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
@@ -3990,11 +3988,8 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         const defaultAvatarUrl = resolveAssetUrl(defaultAvatar);
 
         let displayPhoto = defaultAvatarUrl;
-        if (photoSrc) {
+        if (photoSrc && photoSrc.length > 10 && photoSrc.indexOf('/api/student-photo') === -1) {
             displayPhoto = resolveAssetUrl(photoSrc);
-        } else if (!isPhotoDeleted(s)) {
-            const origin = getAppOrigin();
-            displayPhoto = `${origin}/api/student-photo?id=${encodeURIComponent(s.id || s.lrn || s.studentNumber)}&img=1&v=${Date.now()}`;
         }
 
         avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
