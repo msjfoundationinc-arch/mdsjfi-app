@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "node_modules/@vercel/blob/**"
+    }
+  },
   "rewrites": [
     { "source": "/student/:match*", "destination": "/index.html" },
     { "source": "/profile/:match*", "destination": "/index.html" }

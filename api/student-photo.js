@@ -8,25 +8,41 @@ const memoryPhotoStore = new Map();
 // Dynamic @vercel/blob loader
 let blobPut = null;
 let blobList = null;
+let blobDel = null;
 let blobLoaded = false;
 
+function getBlobToken() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN.trim();
+  if (process.env.VERCEL_BLOB_READ_WRITE_TOKEN) return process.env.VERCEL_BLOB_READ_WRITE_TOKEN.trim();
+  if (process.env.STORAGE_BLOB_READ_WRITE_TOKEN) return process.env.STORAGE_BLOB_READ_WRITE_TOKEN.trim();
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.toUpperCase().includes('BLOB') && k.toUpperCase().includes('TOKEN') && typeof v === 'string' && v.trim()) {
+      return v.trim();
+    }
+  }
+  return undefined;
+}
+
 async function getBlobHelpers() {
-  if (blobLoaded) return { put: blobPut, list: blobList };
-  blobLoaded = true;
+  if (blobLoaded && blobPut) return { put: blobPut, list: blobList, del: blobDel };
   try {
     const mod = await import('@vercel/blob');
     blobPut = mod.put || (mod.default && mod.default.put);
     blobList = mod.list || (mod.default && mod.default.list);
+    blobDel = mod.del || (mod.default && mod.default.del);
+    if (blobPut) blobLoaded = true;
   } catch (e) {
     try {
       const mod = require('@vercel/blob');
       blobPut = mod.put;
       blobList = mod.list;
+      blobDel = mod.del;
+      if (blobPut) blobLoaded = true;
     } catch (e2) {
       console.warn('[StudentPhoto] @vercel/blob not available, using disk/memory fallback:', e2.message);
     }
   }
-  return { put: blobPut, list: blobList };
+  return { put: blobPut, list: blobList, del: blobDel };
 }
 
 function getStoragePaths() {
@@ -191,8 +207,9 @@ module.exports = async function handler(req, res) {
     const { list } = await getBlobHelpers();
 
     try {
-      // Tier 1: Try Vercel Blob if available and token exists
-      if (list && process.env.BLOB_READ_WRITE_TOKEN) {
+      // Tier 1: Try Vercel Blob if available
+      const token = getBlobToken();
+      if (list) {
         try {
           const prefixes = new Set();
           for (const testKey of [key, ...lookupKeys]) {
@@ -202,7 +219,9 @@ module.exports = async function handler(req, res) {
             prefixes.add(`student-photos/${testKey}.`);
           }
           for (const pfx of prefixes) {
-            const { blobs } = await list({ prefix: pfx });
+            const listOpts = { prefix: pfx };
+            if (token) listOpts.token = token;
+            const { blobs } = await list(listOpts);
             if (blobs && blobs.length > 0) {
               res.setHeader('Cache-Control', 'public, max-age=3600');
               return res.redirect(302, blobs[0].url);
@@ -264,26 +283,35 @@ module.exports = async function handler(req, res) {
 
     const lookupKeys = getLookupKeys(rawId, lrn, studentNumber);
     let blobUrl = null;
+    let blobError = null;
     const { put } = await getBlobHelpers();
 
     // Tier 1: Try Vercel Blob
-    if (put && process.env.BLOB_READ_WRITE_TOKEN) {
+    if (put) {
       try {
         const match = rawData.match(/^data:(image\/\w+);base64,(.+)$/);
         const contentType = match ? match[1] : 'image/jpeg';
         const ext = contentType === 'image/png' ? 'png' : 'jpg';
-        const base64Data = match ? match[2] : rawData;
+        const base64Data = match ? match[2] : rawData.replace(/^data:[^;]+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
 
-        const blob = await put(`student-photos/${key}.${ext}`, buffer, {
+        const token = getBlobToken();
+        const opts = {
           access: 'public',
           contentType,
           addRandomSuffix: false,
           allowOverwrite: true,
-        });
-        blobUrl = blob.url;
+        };
+        if (token) opts.token = token;
+
+        const blob = await put(`student-photos/${key}.${ext}`, buffer, opts);
+        if (blob && blob.url) {
+          blobUrl = blob.url;
+          console.log(`[StudentPhoto] Successfully uploaded photo to Vercel Blob:`, blobUrl);
+        }
       } catch (blobErr) {
-        console.warn('[StudentPhoto] Vercel Blob put warning (falling back to disk):', blobErr.message);
+        console.error('[StudentPhoto] Vercel Blob put error (falling back to disk):', blobErr.message);
+        blobError = blobErr.message;
       }
     }
 
@@ -291,13 +319,47 @@ module.exports = async function handler(req, res) {
     savePhotosToDisk(lookupKeys, rawData);
 
     const publicUrl = blobUrl || `/api/student-photo?id=${encodeURIComponent(rawId)}&img=1`;
-    return res.status(200).json({ ok: true, success: true, url: publicUrl, blobUrl });
+    return res.status(200).json({ ok: true, success: true, url: publicUrl, blobUrl, isBlob: Boolean(blobUrl), blobError });
   }
 
   // 3. DELETE PHOTO
   if (req.method === 'DELETE') {
-    const rawId = req.query.id || req.query.studentId;
-    const lookupKeys = getLookupKeys(rawId);
+    const rawId = req.query.id || req.query.studentId || req.query.student || req.query.lrn;
+    const key = normalizeKey(rawId);
+    if (!key) return res.status(400).json({ error: 'Missing id' });
+
+    const lookupKeys = getLookupKeys(rawId, req.query.lrn, req.query.studentNumber);
+
+    // Tier 1: Delete from Vercel Blob
+    const { list, del } = await getBlobHelpers();
+    if (del && list) {
+      try {
+        const token = getBlobToken();
+        const prefixes = new Set();
+        for (const testKey of [key, ...lookupKeys]) {
+          const sk = normalizeKey(testKey);
+          prefixes.add(`student-photos/${sk}.`);
+          prefixes.add(`student-photos/STU-${sk}.`);
+          prefixes.add(`student-photos/${testKey}.`);
+        }
+        for (const pfx of prefixes) {
+          const listOpts = { prefix: pfx };
+          if (token) listOpts.token = token;
+          const { blobs } = await list(listOpts);
+          if (blobs && blobs.length > 0) {
+            const urlsToDelete = blobs.map(b => b.url);
+            const delOpts = {};
+            if (token) delOpts.token = token;
+            await del(urlsToDelete, delOpts);
+            console.log(`[StudentPhoto] Deleted photo blobs from Vercel Blob:`, urlsToDelete);
+          }
+        }
+      } catch (blobDelErr) {
+        console.error('[StudentPhoto] Vercel Blob del error:', blobDelErr.message);
+      }
+    }
+
+    // Tier 2: Delete from disk and memory store across all lookup keys
     savePhotosToDisk(lookupKeys, null);
     return res.status(200).json({ ok: true, message: 'Deleted' });
   }

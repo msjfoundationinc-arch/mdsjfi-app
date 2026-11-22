@@ -8,25 +8,41 @@ const memoryFileStore = new Map();
 // Dynamic @vercel/blob loader (avoids crash if package is missing or uninstalled)
 let blobPut = null;
 let blobList = null;
+let blobDel = null;
 let blobLoaded = false;
 
+function getBlobToken() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN.trim();
+  if (process.env.VERCEL_BLOB_READ_WRITE_TOKEN) return process.env.VERCEL_BLOB_READ_WRITE_TOKEN.trim();
+  if (process.env.STORAGE_BLOB_READ_WRITE_TOKEN) return process.env.STORAGE_BLOB_READ_WRITE_TOKEN.trim();
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.toUpperCase().includes('BLOB') && k.toUpperCase().includes('TOKEN') && typeof v === 'string' && v.trim()) {
+      return v.trim();
+    }
+  }
+  return undefined;
+}
+
 async function getBlobHelpers() {
-  if (blobLoaded) return { put: blobPut, list: blobList };
-  blobLoaded = true;
+  if (blobLoaded && blobPut) return { put: blobPut, list: blobList, del: blobDel };
   try {
     const mod = await import('@vercel/blob');
     blobPut = mod.put || (mod.default && mod.default.put);
     blobList = mod.list || (mod.default && mod.default.list);
+    blobDel = mod.del || (mod.default && mod.default.del);
+    if (blobPut) blobLoaded = true;
   } catch (e) {
     try {
       const mod = require('@vercel/blob');
       blobPut = mod.put;
       blobList = mod.list;
+      blobDel = mod.del;
+      if (blobPut) blobLoaded = true;
     } catch (e2) {
       console.warn('[StudentFile] @vercel/blob not available, using disk/memory fallback:', e2.message);
     }
   }
-  return { put: blobPut, list: blobList };
+  return { put: blobPut, list: blobList, del: blobDel };
 }
 
 function getStoragePaths() {
@@ -208,8 +224,9 @@ module.exports = async function handler(req, res) {
       if (req.query.type && req.query.raw === '1') {
         const docType = normalizeDocType(req.query.type);
 
-        // Tier 1: Try Vercel Blob if available and token exists
-        if (list && process.env.BLOB_READ_WRITE_TOKEN) {
+        // Tier 1: Try Vercel Blob if available
+        const token = getBlobToken();
+        if (list) {
           try {
             const prefixes = new Set();
             for (const testKey of [key, ...lookupKeys]) {
@@ -219,7 +236,9 @@ module.exports = async function handler(req, res) {
               prefixes.add(`student-files/${testKey}/${docType}`);
             }
             for (const pfx of prefixes) {
-              const { blobs } = await list({ prefix: pfx });
+              const listOpts = { prefix: pfx };
+              if (token) listOpts.token = token;
+              const { blobs } = await list(listOpts);
               if (blobs && blobs.length > 0) {
                 res.setHeader('Cache-Control', 'public, max-age=3600');
                 return res.redirect(302, blobs[0].url);
@@ -267,8 +286,9 @@ module.exports = async function handler(req, res) {
       const files = {};
 
       // Check Vercel Blob
-      if (list && process.env.BLOB_READ_WRITE_TOKEN) {
+      if (list) {
         try {
+          const token = getBlobToken();
           const prefixes = new Set();
           for (const testKey of [key, ...lookupKeys]) {
             const sk = normalizeKey(testKey);
@@ -277,7 +297,9 @@ module.exports = async function handler(req, res) {
             prefixes.add(`student-files/${testKey}/`);
           }
           for (const pfx of prefixes) {
-            const { blobs } = await list({ prefix: pfx });
+            const listOpts = { prefix: pfx };
+            if (token) listOpts.token = token;
+            const { blobs } = await list(listOpts);
             if (blobs && blobs.length > 0) {
               for (const blob of blobs) {
                 const filename = blob.pathname.split('/').pop().replace(/\.[^.]+$/i, '');
@@ -347,45 +369,85 @@ module.exports = async function handler(req, res) {
     const buffer = Buffer.from(base64Data, 'base64');
 
     let blobUrl = null;
+    let blobError = null;
     const { put } = await getBlobHelpers();
 
-    // Tier 1: Upload to Vercel Blob if available and token present
-    if (put && process.env.BLOB_READ_WRITE_TOKEN) {
+    // Tier 1: Upload to Vercel Blob if available
+    if (put) {
       try {
-        const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, {
+        const token = getBlobToken();
+        const putOpts = {
           access: 'public',
           contentType,
           addRandomSuffix: false,
           allowOverwrite: true,
-        });
-        blobUrl = blob.url;
+        };
+        if (token) putOpts.token = token;
+        const blob = await put(`student-files/${key}/${docType}.${ext}`, buffer, putOpts);
+        if (blob && blob.url) {
+          blobUrl = blob.url;
+          console.log(`[StudentFile] Successfully uploaded to Vercel Blob: ${blob.url}`);
+        }
       } catch (blobPutErr) {
-        console.warn('[StudentFile] Vercel Blob put warning (falling back to disk):', blobPutErr.message);
+        console.error('[StudentFile] Vercel Blob put error (falling back to disk):', blobPutErr.message);
+        blobError = blobPutErr.message;
       }
     }
 
     // Tier 2: Always persist to disk and memory storage across all identifier keys
-    const storedObj = typeof doc === 'object' && doc !== null ? { ...doc, data: rawData, type: contentType } : {
+    const storedObj = typeof doc === 'object' && doc !== null ? { ...doc, data: rawData, type: contentType, url: blobUrl } : {
       name: `${docType}.${ext}`,
       type: contentType,
       data: rawData,
+      url: blobUrl,
       size: 'Attached',
       dateUploaded: new Date().toISOString()
     };
     saveFilesToDisk(lookupKeys, docType, storedObj);
 
     const secureUrl = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(docType)}&raw=1`;
-    return res.status(200).json({ ok: true, url: secureUrl, blobUrl });
+    return res.status(200).json({ ok: true, url: blobUrl || secureUrl, blobUrl, isBlob: Boolean(blobUrl), blobError });
   }
 
   // 3. DELETE PDF / FILE
   if (req.method === 'DELETE') {
-    const rawId = req.query.id || req.query.studentId;
+    const rawId = req.query.id || req.query.studentId || req.query.student || req.query.lrn;
     const key = normalizeKey(rawId);
     const docType = normalizeDocType(req.query.type);
     if (!key || !docType) return res.status(400).json({ error: 'Missing id or type' });
 
-    const lookupKeys = getLookupKeys(rawId);
+    const lookupKeys = getLookupKeys(rawId, req.query.lrn, req.query.studentNumber);
+
+    // Tier 1: Delete from Vercel Blob
+    const { list, del } = await getBlobHelpers();
+    if (del && list) {
+      try {
+        const token = getBlobToken();
+        const prefixes = new Set();
+        for (const testKey of [key, ...lookupKeys]) {
+          const sk = normalizeKey(testKey);
+          prefixes.add(`student-files/${sk}/${docType}`);
+          prefixes.add(`student-files/STU-${sk}/${docType}`);
+          prefixes.add(`student-files/${testKey}/${docType}`);
+        }
+        for (const pfx of prefixes) {
+          const listOpts = { prefix: pfx };
+          if (token) listOpts.token = token;
+          const { blobs } = await list(listOpts);
+          if (blobs && blobs.length > 0) {
+            const urlsToDelete = blobs.map(b => b.url);
+            const delOpts = {};
+            if (token) delOpts.token = token;
+            await del(urlsToDelete, delOpts);
+            console.log(`[StudentFile] Deleted blobs from Vercel Blob:`, urlsToDelete);
+          }
+        }
+      } catch (blobDelErr) {
+        console.error('[StudentFile] Vercel Blob del error:', blobDelErr.message);
+      }
+    }
+
+    // Tier 2: Delete from disk and memory store across all lookup keys
     saveFilesToDisk(lookupKeys, docType, null);
     return res.status(200).json({ ok: true, message: 'Deleted' });
   }

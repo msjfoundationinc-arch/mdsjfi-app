@@ -702,9 +702,13 @@ function persistStudentPhoto(student, dataUrl) {
                 })
                 .then(data => {
                     if (data && (data.success || data.ok)) {
-                        console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn);
-                        if (data.url) {
+                        console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn, data.blobUrl || data.url);
+                        if (data.blobUrl) {
+                            student.photo = data.blobUrl;
+                            saveStudents();
+                        } else if (data.url) {
                             student.photo = data.url;
+                            saveStudents();
                         }
                     }
                 })
@@ -713,7 +717,9 @@ function persistStudentPhoto(student, dataUrl) {
                 });
             } else {
                 const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
-                fetch(`${endpoint}?id=${sParam}`, { method: 'DELETE' }).catch(err => {
+                const lrnParam = encodeURIComponent(student.lrn || '');
+                const stuNumParam = encodeURIComponent(student.studentNumber || '');
+                fetch(`${endpoint}?id=${sParam}&lrn=${lrnParam}&studentNumber=${stuNumParam}`, { method: 'DELETE' }).catch(err => {
                     console.error('[StudentPhoto] Remote delete error:', err);
                 });
             }
@@ -757,12 +763,17 @@ function persistStudentDoc(student, docType, docObj) {
     try {
         const rawFiles = localStorage.getItem('mdsj_student_files') || '{}';
         const parsedFiles = JSON.parse(rawFiles);
-        const sKey = (student.id || student.lrn || '').replace(/^STU-/i, '');
-        if (!parsedFiles[sKey]) parsedFiles[sKey] = {};
-        if (docObj) {
-            parsedFiles[sKey][cleanType] = docObj;
-        } else {
-            delete parsedFiles[sKey][cleanType];
+        const lookupKeys = [student.id, student.lrn, student.studentNumber].filter(Boolean);
+        for (const k of lookupKeys) {
+            const cleanK = String(k).trim().replace(/^STU-/i, '');
+            if (!parsedFiles[cleanK]) parsedFiles[cleanK] = {};
+            if (docObj) {
+                parsedFiles[cleanK][cleanType] = docObj;
+            } else {
+                delete parsedFiles[cleanK][cleanType];
+                delete parsedFiles[cleanK][docType];
+                delete parsedFiles[cleanK][cleanType.replace(/_/g, '')];
+            }
         }
         localStorage.setItem('mdsj_student_files', JSON.stringify(parsedFiles));
     } catch(e) {}
@@ -790,9 +801,16 @@ function persistStudentDoc(student, docType, docObj) {
                 .then(res => res.json().catch(() => null))
                 .then(data => {
                     if (data && (data.success || data.ok)) {
-                        console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}`);
-                        if (data.url && docObj) {
-                            docObj.url = data.url;
+                        console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}:`, data.blobUrl || data.url);
+                        if (docObj) {
+                            if (data.blobUrl) {
+                                docObj.url = data.blobUrl;
+                                docObj.blobUrl = data.blobUrl;
+                                saveStudents();
+                            } else if (data.url) {
+                                docObj.url = data.url;
+                                saveStudents();
+                            }
                         }
                     }
                 })
@@ -801,7 +819,9 @@ function persistStudentDoc(student, docType, docObj) {
                 });
             } else {
                 const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
-                fetch(`${endpoint}?id=${sParam}&type=${encodeURIComponent(cleanType)}`, { method: 'DELETE' })
+                const lrnParam = encodeURIComponent(student.lrn || '');
+                const stuNumParam = encodeURIComponent(student.studentNumber || '');
+                fetch(`${endpoint}?id=${sParam}&lrn=${lrnParam}&studentNumber=${stuNumParam}&type=${encodeURIComponent(cleanType)}`, { method: 'DELETE' })
                     .catch(err => console.error('[StudentDoc] Delete error:', err));
             }
         }
@@ -813,6 +833,7 @@ window.persistStudentDoc = persistStudentDoc;
 
 function syncStudentDocsFromStore(s) {
     if (!s) return;
+    const deleted = s._deletedDocs || {};
     try {
         const rawFiles = localStorage.getItem('mdsj_student_files');
         if (!rawFiles) return;
@@ -824,15 +845,25 @@ function syncStudentDocsFromStore(s) {
             const studentDocs = parsed[cleanKey] || parsed[cleanKey.toLowerCase()] || parsed[String(k).trim()];
             if (studentDocs && typeof studentDocs === 'object') {
                 const bc = studentDocs.birthcert || studentDocs.birthCert || studentDocs.psa;
-                if (bc && (!s.birthCertDoc || (s.birthCertDoc && s.birthCertDoc.data === SAMPLE_DOC_DATA))) s.birthCertDoc = bc;
+                if (!deleted.birthcert && !deleted.viewBirthCert) {
+                    if (bc && (!s.birthCertDoc || (s.birthCertDoc && s.birthCertDoc.data === SAMPLE_DOC_DATA))) s.birthCertDoc = bc;
+                }
                 const tor = studentDocs.tor || studentDocs.form137;
-                if (tor && (!s.torDoc || (s.torDoc && s.torDoc.data === SAMPLE_DOC_DATA))) s.torDoc = tor;
+                if (!deleted.tor && !deleted.viewTor) {
+                    if (tor && (!s.torDoc || (s.torDoc && s.torDoc.data === SAMPLE_DOC_DATA))) s.torDoc = tor;
+                }
                 const card = studentDocs.card || studentDocs.studentCard;
-                if (card && (!s.studentCardDoc || (s.studentCardDoc && s.studentCardDoc.data === SAMPLE_DOC_DATA))) s.studentCardDoc = card;
+                if (!deleted.card && !deleted.viewCard) {
+                    if (card && (!s.studentCardDoc || (s.studentCardDoc && s.studentCardDoc.data === SAMPLE_DOC_DATA))) s.studentCardDoc = card;
+                }
                 const escD = studentDocs.escannexd || studentDocs.escAnnexDDoc;
-                if (escD && !s.escAnnexDDoc) s.escAnnexDDoc = escD;
+                if (!deleted.escannexd && !deleted.viewEscAnnexD) {
+                    if (escD && !s.escAnnexDDoc) s.escAnnexDDoc = escD;
+                }
                 const escF = studentDocs.escannexf || studentDocs.escAnnexFDoc;
-                if (escF && !s.escAnnexFDoc) s.escAnnexFDoc = escF;
+                if (!deleted.escannexf && !deleted.viewEscAnnexF) {
+                    if (escF && !s.escAnnexFDoc) s.escAnnexFDoc = escF;
+                }
             }
         }
     } catch(e) {}
@@ -853,6 +884,7 @@ function fetchRemoteStudentDocs(s, callback) {
                     const docs = data && (data.files || data.docs);
                     if (docs && typeof docs === 'object') {
                         let updated = false;
+                        const deleted = s._deletedDocs || {};
                         const makeDocObj = (val, defaultName) => {
                             if (!val) return null;
                             let raw = typeof val === 'string' ? val : (val.data || val.url || '');
@@ -871,19 +903,19 @@ function fetchRemoteStudentDocs(s, callback) {
                         };
 
                         const bc = docs.birthcert || docs.birth_cert || docs.psa || docs.birthCert;
-                        if (bc) { s.birthCertDoc = makeDocObj(bc, 'PSA_Birth_Certificate.pdf'); updated = true; }
+                        if (bc && !deleted.birthcert && !deleted.viewBirthCert) { s.birthCertDoc = makeDocObj(bc, 'PSA_Birth_Certificate.pdf'); updated = true; }
 
                         const tor = docs.tor || docs.form137 || docs.form_137 || docs.sf10;
-                        if (tor) { s.torDoc = makeDocObj(tor, 'Transcript_Of_Records.pdf'); updated = true; }
+                        if (tor && !deleted.tor && !deleted.viewTor) { s.torDoc = makeDocObj(tor, 'Transcript_Of_Records.pdf'); updated = true; }
 
                         const card = docs.card || docs.studentcard || docs.reportcard || docs.form138 || docs.form_138 || docs.sf9;
-                        if (card) { s.studentCardDoc = makeDocObj(card, 'Report_Card.pdf'); updated = true; }
+                        if (card && !deleted.card && !deleted.viewCard) { s.studentCardDoc = makeDocObj(card, 'Report_Card.pdf'); updated = true; }
 
                         const escD = docs.escannexd || docs.esc_annex_d || docs.annexd || docs.annex_d;
-                        if (escD) { s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf'); updated = true; }
+                        if (escD && !deleted.escannexd && !deleted.viewEscAnnexD) { s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf'); updated = true; }
 
                         const escF = docs.escannexf || docs.esc_annex_f || docs.annexf || docs.annex_f;
-                        if (escF) { s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf'); updated = true; }
+                        if (escF && !deleted.escannexf && !deleted.viewEscAnnexF) { s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf'); updated = true; }
 
                         if (updated) {
                             try {
@@ -972,9 +1004,6 @@ function loadStudents() {
 
                 if (s.studentNumber === '2026-07001' || s.lrn === '110253190313') {
                     if (!s.signature) s.signature = SAMPLE_SIG_DATA;
-                    if (!s.birthCertDoc) s.birthCertDoc = { name: 'PSA_BirthCertificate.pdf', type: 'application/pdf', size: '156 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
-                    if (!s.torDoc) s.torDoc = { name: 'Form_137_TOR.pdf', type: 'application/pdf', size: '142 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
-                    if (!s.studentCardDoc) s.studentCardDoc = { name: 'Form_138_ReportCard.pdf', type: 'application/pdf', size: '118 KB', data: SAMPLE_DOC_DATA, dateUploaded: new Date().toISOString() };
                 }
             });
             students = [...officialCopy, ...retainedCustomStudents];
@@ -2279,7 +2308,8 @@ function previewDocFromTable(studentId, docType) {
     }
 
     if (!doc || (!doc.data && !doc.url)) {
-        if (cleanType) {
+        const isDeleted = s._deletedDocs && (s._deletedDocs[cleanType] || s._deletedDocs[docType]);
+        if (!isDeleted && cleanType) {
             const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=${encodeURIComponent(cleanType)}&raw=1`;
             doc = { name: `${cleanType}.pdf`, type: 'application/pdf', data: serverUrl, url: serverUrl };
         } else {
@@ -4055,6 +4085,11 @@ window.handleDirectDocUpload = function(event) {
         else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = docObj;
         else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = docObj;
 
+        if (s._deletedDocs) {
+            delete s._deletedDocs[prefix];
+            delete s._deletedDocs[String(prefix).replace(/^view/, '').toLowerCase()];
+        }
+
         persistStudentDoc(s, prefix, docObj);
         saveStudents();
         renderDocPreview(prefix, docObj);
@@ -4092,6 +4127,10 @@ window.deleteDocFromProfile = function(prefix) {
     else if (prefix === 'viewCard') s.studentCardDoc = null;
     else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = null;
     else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = null;
+
+    s._deletedDocs = s._deletedDocs || {};
+    s._deletedDocs[prefix] = true;
+    s._deletedDocs[String(prefix).replace(/^view/, '').toLowerCase()] = true;
 
     persistStudentDoc(s, prefix, null);
     saveStudents();
@@ -4320,7 +4359,8 @@ function previewDocData(prefix) {
     }
 
     if (!doc || (!doc.data && !doc.url)) {
-        if (cleanType) {
+        const isDeleted = s._deletedDocs && (s._deletedDocs[prefix] || s._deletedDocs[cleanType]);
+        if (!isDeleted && cleanType) {
             const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=${encodeURIComponent(cleanType)}&raw=1`;
             doc = { name: `${cleanType}.pdf`, type: 'application/pdf', data: serverUrl, url: serverUrl };
         } else {
