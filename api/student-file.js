@@ -117,6 +117,11 @@ function matchesDocGroup(filenameOrType, targetDocType) {
   const isAnnexFB = b.includes('annexf') || b.includes('annex_f');
   if (isAnnexFA && isAnnexFB) return true;
 
+  // Student E-Signature group
+  const isSigA = a.includes('sig') || a.includes('signature');
+  const isSigB = b.includes('sig') || b.includes('signature');
+  if (isSigA && isSigB) return true;
+
   return false;
 }
 
@@ -351,11 +356,13 @@ module.exports = async function handler(req, res) {
               const rawData = typeof docObj === 'string' ? docObj : (docObj.data || docObj.file || '');
               if (rawData) {
                 const mimeMatch = rawData.match(/^data:([^;]+);base64,(.+)$/);
-                const contentType = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                const isSig = docType.includes('sig');
+                const contentType = mimeMatch ? mimeMatch[1] : (isSig ? 'image/png' : 'application/pdf');
                 const base64Data = mimeMatch ? mimeMatch[2] : rawData.replace(/^data:[^;]+;base64,/, '');
                 const buf = Buffer.from(base64Data, 'base64');
+                const fileExt = contentType.includes('png') ? 'png' : (contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : (isSig ? 'png' : 'pdf'));
                 res.setHeader('Content-Type', contentType);
-                res.setHeader('Content-Disposition', `inline; filename="${docType}.pdf"`);
+                res.setHeader('Content-Disposition', `inline; filename="${docType}.${fileExt}"`);
                 res.setHeader('Cache-Control', 'public, max-age=3600');
                 return res.send(buf);
               }
@@ -397,6 +404,7 @@ module.exports = async function handler(req, res) {
                 if (matchesDocGroup(cleanName, 'card') && !files['card']) files['card'] = fileUrl;
                 if (matchesDocGroup(cleanName, 'escannexd') && !files['escannexd']) files['escannexd'] = fileUrl;
                 if (matchesDocGroup(cleanName, 'escannexf') && !files['escannexf']) files['escannexf'] = fileUrl;
+                if (matchesDocGroup(cleanName, 'signature') && !files['signature']) files['signature'] = fileUrl;
               }
             }
           }
@@ -421,6 +429,7 @@ module.exports = async function handler(req, res) {
             if (docVal && matchesDocGroup(cleanName, 'card') && !files['card']) files['card'] = fileUrl;
             if (docVal && matchesDocGroup(cleanName, 'escannexd') && !files['escannexd']) files['escannexd'] = fileUrl;
             if (docVal && matchesDocGroup(cleanName, 'escannexf') && !files['escannexf']) files['escannexf'] = fileUrl;
+            if (docVal && matchesDocGroup(cleanName, 'signature') && !files['signature']) files['signature'] = fileUrl;
           }
         }
       }
@@ -459,8 +468,8 @@ module.exports = async function handler(req, res) {
 
     const lookupKeys = getLookupKeys(rawId, lrn, studentNumber);
     const mimeMatch = rawData.match(/^data:([^;]+);base64,(.+)$/);
-    const contentType = mimeMatch ? mimeMatch[1] : 'application/pdf';
-    const ext = contentType.includes('png') ? 'png' : (contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'pdf');
+    const contentType = mimeMatch ? mimeMatch[1] : (docType === 'signature' ? 'image/png' : 'application/pdf');
+    const ext = contentType.includes('png') ? 'png' : (contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : (docType === 'signature' ? 'png' : 'pdf'));
     const base64Data = mimeMatch ? mimeMatch[2] : rawData.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 

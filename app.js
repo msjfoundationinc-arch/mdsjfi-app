@@ -793,6 +793,12 @@ function persistStudentPhoto(student, dataUrl) {
                 if (data && (data.success || data.ok)) {
                     console.log('[StudentPhoto] Successfully persisted to server for cross-device access:', student.id || student.lrn, data.blobUrl || data.url);
                     if (data.blobUrl && typeof data.blobUrl === 'string' && data.blobUrl.startsWith('http')) {
+                        // Store blobUrl in mdsj_student_photos so getStudentPhoto() can find it cross-device
+                        try {
+                            const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
+                            for (const k of lookupKeys) { storedPhotos[k] = data.blobUrl; }
+                            localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
+                        } catch(e) {}
                         student.photo = data.blobUrl;
                         saveStudents();
                     }
@@ -821,8 +827,20 @@ function fetchRemoteStudentPhoto(s, callback) {
                 .then(data => {
                     if (isPhotoDeleted(s)) return;
                     if (data && data.photo && typeof data.photo === 'string' && data.photo.length > 10) {
+                        if (data.photo.includes('/api/student-photo')) {
+                            const existingLocal = getStudentPhoto(s);
+                            if (existingLocal && existingLocal.startsWith('data:image')) {
+                                return;
+                            }
+                        }
                         s.photo = data.photo;
-                        persistStudentPhoto(s, data.photo);
+                        try {
+                            const storedPhotos = JSON.parse(localStorage.getItem('mdsj_student_photos') || '{}');
+                            const lookupKeys = getStudentLookupKeys(s);
+                            for (const k of lookupKeys) { storedPhotos[k] = data.photo; }
+                            localStorage.setItem('mdsj_student_photos', JSON.stringify(storedPhotos));
+                        } catch(e) {}
+                        saveStudents();
                         if (typeof callback === 'function') {
                             callback(data.photo);
                         }
@@ -1111,11 +1129,11 @@ function persistStudentDoc(student, docType, docObj) {
 
     unmarkDocDeleted(student, docType);
 
+    const docLookupKeys = [student.id, student.lrn, student.studentNumber].filter(Boolean);
     try {
         const rawFiles = localStorage.getItem('mdsj_student_files') || '{}';
         const parsedFiles = JSON.parse(rawFiles);
-        const lookupKeys = [student.id, student.lrn, student.studentNumber].filter(Boolean);
-        for (const k of lookupKeys) {
+        for (const k of docLookupKeys) {
             const cleanK = String(k).trim().replace(/^STU-/i, '');
             if (!parsedFiles[cleanK]) parsedFiles[cleanK] = {};
             parsedFiles[cleanK][cleanType] = docObj;
@@ -1147,12 +1165,21 @@ function persistStudentDoc(student, docType, docObj) {
                 if (data && (data.success || data.ok)) {
                     console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}:`, data.blobUrl || data.url);
                     if (docObj) {
-                        if (data.blobUrl) {
-                            docObj.url = data.blobUrl;
-                            docObj.blobUrl = data.blobUrl;
-                            saveStudents();
-                        } else if (data.url) {
-                            docObj.url = data.url;
+                        const finalUrl = data.blobUrl || data.url;
+                        if (finalUrl) {
+                            docObj.url = finalUrl;
+                            if (data.blobUrl) docObj.blobUrl = data.blobUrl;
+                            // Update mdsj_student_files with server URL so guest QR view can find it
+                            try {
+                                const rawF = localStorage.getItem('mdsj_student_files') || '{}';
+                                const parsedF = JSON.parse(rawF);
+                                for (const k of docLookupKeys) {
+                                    const cleanK = String(k).trim().replace(/^STU-/i, '');
+                                    if (!parsedF[cleanK]) parsedF[cleanK] = {};
+                                    parsedF[cleanK][cleanType] = docObj;
+                                }
+                                localStorage.setItem('mdsj_student_files', JSON.stringify(parsedF));
+                            } catch(e) {}
                             saveStudents();
                         }
                     }
@@ -1312,6 +1339,16 @@ function fetchRemoteStudentDocs(s, callback) {
                             if (s.escAnnexFDoc) { s.escAnnexFDoc = null; updated = true; }
                         }
 
+                        const isSigDel = deleted.signature || deleted.sig;
+                        const sig = docs.signature || docs.sig;
+                        if (!isSigDel && sig) {
+                            let sigRaw = typeof sig === 'string' ? sig : (sig.data || sig.url || '');
+                            if (sigRaw && sigRaw.length > 10) {
+                                s.signature = resolveAssetUrl(sigRaw);
+                                updated = true;
+                            }
+                        }
+
                         enforceDeletedDocs(s);
 
                         if (updated) {
@@ -1331,6 +1368,7 @@ function fetchRemoteStudentDocs(s, callback) {
                                     else delete parsedFiles[cleanK].escannexd;
                                     if (s.escAnnexFDoc) parsedFiles[cleanK].escannexf = s.escAnnexFDoc;
                                     else delete parsedFiles[cleanK].escannexf;
+                                    if (s.signature) parsedFiles[cleanK].signature = s.signature;
                                 }
                                 localStorage.setItem('mdsj_student_files', JSON.stringify(parsedFiles));
                             } catch(e) {}
@@ -2722,6 +2760,10 @@ function previewDocFromTable(studentId, docType) {
         doc = s.escAnnexFDoc;
         title = "Affidavit of Family’s Financial Capacity - Annex F";
         cleanType = 'escannexf';
+    } else if (docType === 'signature' || docType === 'viewSig') {
+        doc = s.signature ? { name: 'student_signature.png', type: 'image/png', data: s.signature, url: s.signature } : null;
+        title = 'Student E-Signature';
+        cleanType = 'signature';
     }
 
     if (doc) {
@@ -2736,12 +2778,16 @@ function previewDocFromTable(studentId, docType) {
                           (cleanType === 'tor' && (deleted.form137 || deleted.sf10 || deleted.viewTor)) ||
                           (cleanType === 'card' && (deleted.form138 || deleted.studentcard || deleted.viewCard || deleted.reportcard)) ||
                           (cleanType === 'escannexd' && (deleted.annexd || deleted.viewEscAnnexD)) ||
-                          (cleanType === 'escannexf' && (deleted.annexf || deleted.viewEscAnnexF));
+                          (cleanType === 'escannexf' && (deleted.annexf || deleted.viewEscAnnexF)) ||
+                          (cleanType === 'signature' && (deleted.signature || deleted.sig));
         if (isDeleted) {
             showToast(`${title} has been removed or is not on file.`, 'info');
             return;
         }
-        if (cleanType) {
+        if (cleanType === 'signature') {
+            const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=signature&raw=1`;
+            doc = { name: 'student_signature.png', type: 'image/png', data: serverUrl, url: serverUrl };
+        } else if (cleanType) {
             const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=${encodeURIComponent(cleanType)}&raw=1`;
             doc = { name: `${cleanType}.pdf`, type: 'application/pdf', data: serverUrl, url: serverUrl };
         } else {
@@ -2753,6 +2799,15 @@ function previewDocFromTable(studentId, docType) {
     viewDocumentInModal(title, `${s.lastName}, ${s.firstName} (LRN: ${s.lrn})`, doc);
 }
 window.previewDocFromTable = previewDocFromTable;
+
+window.previewStudentSignatureFromPass = function() {
+    const s = (typeof currentViewId !== 'undefined' && currentViewId) ? findStudent(currentViewId) : null;
+    if (!s) {
+        showToast('Student record not found.', 'error');
+        return;
+    }
+    previewDocFromTable(s.id, 'signature');
+};
 
 function renderRecentTable(cohort) {
     const tbody = document.querySelector('#recentTable tbody');
@@ -3763,7 +3818,8 @@ function viewStudent(id) {
         if (photoEnlargeBtn) photoEnlargeBtn.style.display = (photoSrc && photoSrc.length > 10) ? 'inline-block' : 'none';
 
         // Seamless remote fetch for scanned QR view on external/mobile devices ONLY if NOT deleted
-        if (!isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
+        const hasValidLocalPhoto = photoSrc && (photoSrc.startsWith('data:image') || photoSrc.startsWith('blob:'));
+        if ((!hasValidLocalPhoto || isGuestProfileView) && !isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
                 if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
                     const currentImg = avatar.querySelector('.student-avatar-img');
@@ -3807,6 +3863,15 @@ function viewStudent(id) {
                 if (isEsc) {
                     renderDocPreview('viewEscAnnexD', updatedStudent.escAnnexDDoc);
                     renderDocPreview('viewEscAnnexF', updatedStudent.escAnnexFDoc);
+                }
+                const liveSigImg = document.getElementById('viewSigImg');
+                const liveNoSigBox = document.getElementById('viewNoSigBox');
+                if (updatedStudent.signature) {
+                    if (liveSigImg) {
+                        liveSigImg.src = resolveAssetUrl(updatedStudent.signature);
+                        liveSigImg.style.display = 'block';
+                    }
+                    if (liveNoSigBox) liveNoSigBox.style.display = 'none';
                 }
                 try { refreshStudentsTable(); } catch(e){}
                 try { refreshGradeTable(s.gradeLevel); } catch(e){}
@@ -3994,7 +4059,12 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
 
         avatarEl.innerHTML = `<img src="${displayPhoto}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
 
-        if (!isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
+        const isGuestProfileView = document.documentElement.classList.contains('guest-qr-view') || 
+                                   document.documentElement.classList.contains('direct-profile-view') || 
+                                   (typeof getCurrentUser === 'function' && !getCurrentUser());
+        const hasValidLocalPhoto = photoSrc && (photoSrc.startsWith('data:image') || photoSrc.startsWith('blob:'));
+
+        if ((!hasValidLocalPhoto || isGuestProfileView) && !isPhotoDeleted(s) && typeof fetchRemoteStudentPhoto === 'function') {
             fetchRemoteStudentPhoto(s, function(remotePhoto) {
                 if (window.currentViewId === s.id && !isPhotoDeleted(s)) {
                     const mobileImg = avatarEl.querySelector('img');
@@ -4006,6 +4076,23 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
             });
         }
     }
+
+    const renderPassSig = (student) => {
+        const sigImg = document.getElementById('mobilePassSigImg');
+        const noSig = document.getElementById('mobilePassNoSig');
+        const sigVal = student.signature;
+        if (sigVal && sigVal.length > 10) {
+            if (sigImg) {
+                sigImg.src = resolveAssetUrl(sigVal);
+                sigImg.style.display = 'block';
+            }
+            if (noSig) noSig.style.display = 'none';
+        } else {
+            if (sigImg) sigImg.style.display = 'none';
+            if (noSig) noSig.style.display = 'inline';
+        }
+    };
+    renderPassSig(s);
 
     const renderPassDocs = (student) => {
         const wrap = document.getElementById('mobilePassDocsWrap');
@@ -4028,6 +4115,9 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
             pills += makePill(student.escAnnexDDoc, 'ANNEX-D', 'escAnnexD');
             pills += makePill(student.escAnnexFDoc, 'ANNEX-F', 'escAnnexF');
         }
+        if (student.signature && student.signature.length > 10) {
+            pills += `<span onclick="previewDocFromTable('${student.id}', 'signature')" style="cursor:pointer; background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Click to view Student E-Signature"><i class="fas fa-file-signature"></i> SIGNATURE</span>`;
+        }
         wrap.innerHTML = pills;
     };
     renderPassDocs(s);
@@ -4035,6 +4125,7 @@ function openLearnerMobilePass(studentId, isDirectScan = false) {
         fetchRemoteStudentDocs(s, function(updated) {
             if (window.currentViewId === s.id) {
                 renderPassDocs(updated);
+                renderPassSig(updated);
             }
         });
     }
@@ -4627,19 +4718,27 @@ window.handleDirectPhotoUpload = function(event) {
     if (loader) loader.style.display = 'block';
 
     optimizeImage(file, 400, 400, 0.82, function(dataUrl) {
+        if (!dataUrl) {
+            if (loader) loader.style.display = 'none';
+            showToast('Unable to process image. Please try a different photo.', 'error');
+            return;
+        }
+        unmarkPhotoDeleted(s);
         s.photo = dataUrl;
         persistStudentPhoto(s, dataUrl);
         saveStudents();
         if (loader) loader.style.display = 'none';
 
+        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+        const defaultAvatarUrl = resolveAssetUrl(isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg');
+
         const avatar = document.getElementById('viewAvatar');
         if (avatar) {
-            avatar.innerHTML = `<img src="${dataUrl}" alt="Student Photo" class="student-avatar-img">`;
+            avatar.innerHTML = `<img src="${dataUrl}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         }
-        const mobilePassImg = document.querySelector('#mobilePassAvatar img');
-        if (mobilePassImg) {
-            mobilePassImg.removeAttribute('data-failed');
-            mobilePassImg.src = dataUrl;
+        const mobilePassAvatar = document.getElementById('mobilePassAvatar');
+        if (mobilePassAvatar) {
+            mobilePassAvatar.innerHTML = `<img src="${dataUrl}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
         }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'inline-block';
@@ -4735,19 +4834,26 @@ window.captureProfileDirectPhoto = function() {
     }
 
     compressAndResizeImage(video, 400, 400, 0.82, function(dataUrl) {
+        if (!dataUrl) {
+            showToast('Unable to capture photo. Please try again.', 'error');
+            return;
+        }
+        unmarkPhotoDeleted(s);
         s.photo = dataUrl;
         persistStudentPhoto(s, dataUrl);
         saveStudents();
         closeProfilePhotoCamera();
 
+        const isFemale = String(s.gender || '').trim().toLowerCase() === 'female';
+        const defaultAvatarUrl = resolveAssetUrl(isFemale ? 'student-avatar-female.svg' : 'student-avatar-male.svg');
+
         const avatar = document.getElementById('viewAvatar');
         if (avatar) {
-            avatar.innerHTML = `<img src="${dataUrl}" alt="Student Photo" class="student-avatar-img">`;
+            avatar.innerHTML = `<img src="${dataUrl}" alt="${escHtml(s.lastName || 'Student')}" class="student-avatar-img" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" style="cursor:pointer;" title="Click to enlarge profile photo">`;
         }
-        const mobilePassImg = document.querySelector('#mobilePassAvatar img');
-        if (mobilePassImg) {
-            mobilePassImg.removeAttribute('data-failed');
-            mobilePassImg.src = dataUrl;
+        const mobilePassAvatar = document.getElementById('mobilePassAvatar');
+        if (mobilePassAvatar) {
+            mobilePassAvatar.innerHTML = `<img src="${dataUrl}" alt="${escHtml(s.lastName || 'Student')}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; cursor:pointer;" onerror="if (this.getAttribute('data-failed') !== '1') { this.setAttribute('data-failed', '1'); this.onerror = null; this.src = '${defaultAvatarUrl}'; }" onclick="enlargeStudentProfilePhoto(event)" title="Click to enlarge profile photo">`;
         }
         const delBtn = document.getElementById('btnDeletePhotoFromProfile');
         if (delBtn) delBtn.style.display = 'inline-block';
@@ -4903,12 +5009,28 @@ function viewDocumentInModal(title, subtitle, doc) {
                       assetUrl.includes('/api/student-file');
 
         if (isPdf) {
-            container.innerHTML = `<iframe src="${assetUrl}" title="${escHtml(title)}" style="width:100%; height:75vh; border:none; border-radius:6px; background:#fff;"></iframe>`;
+            container.innerHTML = `
+                <iframe src="${assetUrl}" title="${escHtml(title)}" style="width:100%; height:70vh; border:none; border-radius:6px; background:#fff;"></iframe>
+                <div style="margin-top:10px; text-align:center;">
+                    <a href="${assetUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-weight:600; text-decoration:none; border-radius:6px;">
+                        <i class="fas fa-external-link-alt"></i> Open / Download Full Document
+                    </a>
+                </div>
+            `;
         } else {
-            container.innerHTML = `<img src="${assetUrl}" alt="${escHtml(title)}" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,0.5); background:#fff;">`;
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                    <img src="${assetUrl}" alt="${escHtml(title)}" style="max-width:100%; max-height:70vh; object-fit:contain; border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,0.5); background:#fff;">
+                    <a href="${assetUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; font-weight:600; text-decoration:none; border-radius:6px;">
+                        <i class="fas fa-external-link-alt"></i> Open Full Image
+                    </a>
+                </div>
+            `;
         }
     }
 
+    const modalEl = document.getElementById('docViewerModal');
+    if (modalEl) modalEl.style.zIndex = '100005';
     openModal('docViewerModal');
 }
 
@@ -7588,6 +7710,12 @@ function initForm() {
                     markDocDeleted(updated, 'escannexf');
                 }
 
+                if (updated.signature) {
+                    persistStudentDoc(updated, 'signature', { data: updated.signature, name: 'signature.png', type: 'image/png', size: 'Attached', dateUploaded: new Date().toISOString() });
+                } else if (prev.signature) {
+                    markDocDeleted(updated, 'signature');
+                }
+
                 enforceDeletedDocs(updated);
                 saveStudents();
                 showToast('Student record updated successfully!', 'success');
@@ -7670,6 +7798,7 @@ function initForm() {
                 if (newStudent.studentCardDoc) persistStudentDoc(newStudent, 'card', newStudent.studentCardDoc);
                 if (newStudent.escAnnexDDoc) persistStudentDoc(newStudent, 'escannexd', newStudent.escAnnexDDoc);
                 if (newStudent.escAnnexFDoc) persistStudentDoc(newStudent, 'escannexf', newStudent.escAnnexFDoc);
+                if (newStudent.signature) persistStudentDoc(newStudent, 'signature', { data: newStudent.signature, name: 'signature.png', type: 'image/png', size: 'Attached', dateUploaded: new Date().toISOString() });
                 saveStudents();
                 showToast(`Student ${newStudent.firstName} ${newStudent.lastName} enrolled successfully! Generated dedicated Mobile QR Pass.`, 'success');
                 if (typeof logActivity === 'function') {
