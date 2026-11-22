@@ -775,15 +775,26 @@ function getDeletedDocs(s) {
     if (!s) return {};
     let deleted = (s._deletedDocs && typeof s._deletedDocs === 'object') ? { ...s._deletedDocs } : {};
     try {
-        const keys = [s.id, s.lrn, s.studentNumber].filter(Boolean);
+        const idStr = String(s.id || '').trim();
+        const lrnStr = String(s.lrn || '').trim();
+        const numStr = String(s.studentNumber || '').trim();
+        const rawId = idStr.replace(/^STU-/i, '');
+        const keys = [
+            idStr, idStr.toLowerCase(), idStr.toUpperCase(),
+            rawId, rawId.toLowerCase(), rawId.toUpperCase(),
+            'STU-' + rawId, 'stu-' + rawId.toLowerCase(),
+            lrnStr, numStr
+        ].filter(Boolean);
+
         for (const k of keys) {
-            const cleanK = String(k).replace(/^STU-/i, '');
-            const raw = localStorage.getItem('mdsj_deleted_docs_' + k) || localStorage.getItem('mdsj_deleted_docs_' + cleanK);
+            const raw = localStorage.getItem('mdsj_deleted_docs_' + k);
             if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') {
-                    deleted = { ...deleted, ...parsed };
-                }
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        deleted = { ...deleted, ...parsed };
+                    }
+                } catch(e) {}
             }
         }
     } catch(e) {}
@@ -792,22 +803,103 @@ function getDeletedDocs(s) {
 }
 window.getDeletedDocs = getDeletedDocs;
 
-function persistStudentDoc(student, docType, docObj) {
-    if (!student || !docType) return;
+function enforceDeletedDocs(s) {
+    if (!s) return;
+    const deleted = getDeletedDocs(s);
+    if (!deleted || typeof deleted !== 'object') return;
+
+    if (deleted.birthcert || deleted.psa || deleted.viewBirthCert || deleted.birth_cert) {
+        s.birthCertDoc = null;
+    }
+    if (deleted.tor || deleted.form137 || deleted.viewTor || deleted.sf10) {
+        s.torDoc = null;
+    }
+    if (deleted.card || deleted.studentcard || deleted.viewCard || deleted.form138 || deleted.reportcard) {
+        s.studentCardDoc = null;
+    }
+    if (deleted.escannexd || deleted.annexd || deleted.viewEscAnnexD || deleted.annex_d) {
+        s.escAnnexDDoc = null;
+    }
+    if (deleted.escannexf || deleted.annexf || deleted.viewEscAnnexF || deleted.annex_f) {
+        s.escAnnexFDoc = null;
+    }
+}
+window.enforceDeletedDocs = enforceDeletedDocs;
+
+function markDocDeleted(s, docType) {
+    if (!s || !docType) return;
     const cleanType = String(docType).replace(/^view/, '').toLowerCase();
+    s._deletedDocs = s._deletedDocs || {};
+    s._deletedDocs[docType] = true;
+    s._deletedDocs[cleanType] = true;
+
+    if (cleanType.includes('birth') || cleanType.includes('psa')) {
+        s.birthCertDoc = null;
+        s._deletedDocs['birthcert'] = true;
+        s._deletedDocs['birth_cert'] = true;
+        s._deletedDocs['psa'] = true;
+        s._deletedDocs['viewBirthCert'] = true;
+    }
+    if (cleanType.includes('tor') || cleanType.includes('137') || cleanType.includes('sf10')) {
+        s.torDoc = null;
+        s._deletedDocs['tor'] = true;
+        s._deletedDocs['form137'] = true;
+        s._deletedDocs['sf10'] = true;
+        s._deletedDocs['viewTor'] = true;
+    }
+    if (cleanType.includes('card') || cleanType.includes('138') || cleanType.includes('sf9') || cleanType.includes('report')) {
+        s.studentCardDoc = null;
+        s._deletedDocs['card'] = true;
+        s._deletedDocs['form138'] = true;
+        s._deletedDocs['studentcard'] = true;
+        s._deletedDocs['reportcard'] = true;
+        s._deletedDocs['viewCard'] = true;
+    }
+    if (cleanType.includes('annexd') || cleanType.includes('annex_d')) {
+        s.escAnnexDDoc = null;
+        s._deletedDocs['escannexd'] = true;
+        s._deletedDocs['annexd'] = true;
+        s._deletedDocs['annex_d'] = true;
+        s._deletedDocs['viewEscAnnexD'] = true;
+    }
+    if (cleanType.includes('annexf') || cleanType.includes('annex_f')) {
+        s.escAnnexFDoc = null;
+        s._deletedDocs['escannexf'] = true;
+        s._deletedDocs['annexf'] = true;
+        s._deletedDocs['annex_f'] = true;
+        s._deletedDocs['viewEscAnnexF'] = true;
+    }
+
+    try {
+        const idStr = String(s.id || '').trim();
+        const lrnStr = String(s.lrn || '').trim();
+        const numStr = String(s.studentNumber || '').trim();
+        const rawId = idStr.replace(/^STU-/i, '');
+        const keys = [
+            idStr, idStr.toLowerCase(), idStr.toUpperCase(),
+            rawId, rawId.toLowerCase(), rawId.toUpperCase(),
+            'STU-' + rawId, 'stu-' + rawId.toLowerCase(),
+            lrnStr, numStr
+        ].filter(Boolean);
+
+        for (const k of keys) {
+            localStorage.setItem('mdsj_deleted_docs_' + k, JSON.stringify(s._deletedDocs));
+        }
+    } catch(e) {}
+
     try {
         const rawFiles = localStorage.getItem('mdsj_student_files') || '{}';
         const parsedFiles = JSON.parse(rawFiles);
-        const lookupKeys = [student.id, student.lrn, student.studentNumber].filter(Boolean);
-        for (const k of lookupKeys) {
-            const cleanK = String(k).trim().replace(/^STU-/i, '');
-            if (!parsedFiles[cleanK]) parsedFiles[cleanK] = {};
-            if (docObj) {
-                parsedFiles[cleanK][cleanType] = docObj;
-            } else {
-                for (const prop of Object.keys(parsedFiles[cleanK])) {
+        const idStr = String(s.id || '').trim();
+        const lrnStr = String(s.lrn || '').trim();
+        const numStr = String(s.studentNumber || '').trim();
+        const rawId = idStr.replace(/^STU-/i, '');
+        const keys = [idStr, idStr.toLowerCase(), rawId, rawId.toLowerCase(), lrnStr, numStr].filter(Boolean);
+        for (const k of keys) {
+            if (parsedFiles[k]) {
+                for (const prop of Object.keys(parsedFiles[k])) {
                     if (isDocTypeMatch(prop, cleanType)) {
-                        delete parsedFiles[cleanK][prop];
+                        delete parsedFiles[k][prop];
                     }
                 }
             }
@@ -819,48 +911,133 @@ function persistStudentDoc(student, docType, docObj) {
         if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
             const origin = getAppOrigin();
             const endpoint = (origin ? origin : '') + '/api/student-file';
-            if (docObj && docObj.data) {
-                fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: student.id,
-                        lrn: student.lrn,
-                        studentNumber: student.studentNumber,
-                        type: cleanType,
-                        docType: cleanType,
-                        file: docObj.data,
-                        dataUrl: docObj.data,
-                        doc: docObj,
-                        timestamp: Date.now()
-                    })
+            const sParam = encodeURIComponent(s.id || s.studentNumber || s.lrn || '');
+            const lrnParam = encodeURIComponent(s.lrn || '');
+            const stuNumParam = encodeURIComponent(s.studentNumber || '');
+            fetch(`${endpoint}?id=${sParam}&lrn=${lrnParam}&studentNumber=${stuNumParam}&type=${encodeURIComponent(cleanType)}`, { method: 'DELETE' })
+                .catch(err => console.error('[StudentDoc] Remote delete error:', err));
+        }
+    } catch(e) {}
+}
+window.markDocDeleted = markDocDeleted;
+
+function unmarkDocDeleted(s, docType) {
+    if (!s || !docType) return;
+    const cleanType = String(docType).replace(/^view/, '').toLowerCase();
+    s._deletedDocs = s._deletedDocs || {};
+    delete s._deletedDocs[docType];
+    delete s._deletedDocs[cleanType];
+    if (cleanType.includes('birth') || cleanType.includes('psa')) {
+        delete s._deletedDocs['birthcert'];
+        delete s._deletedDocs['birth_cert'];
+        delete s._deletedDocs['psa'];
+        delete s._deletedDocs['viewBirthCert'];
+    }
+    if (cleanType.includes('tor') || cleanType.includes('137') || cleanType.includes('sf10')) {
+        delete s._deletedDocs['tor'];
+        delete s._deletedDocs['form137'];
+        delete s._deletedDocs['sf10'];
+        delete s._deletedDocs['viewTor'];
+    }
+    if (cleanType.includes('card') || cleanType.includes('138') || cleanType.includes('sf9') || cleanType.includes('report')) {
+        delete s._deletedDocs['card'];
+        delete s._deletedDocs['form138'];
+        delete s._deletedDocs['studentcard'];
+        delete s._deletedDocs['reportcard'];
+        delete s._deletedDocs['viewCard'];
+    }
+    if (cleanType.includes('annexd') || cleanType.includes('annex_d')) {
+        delete s._deletedDocs['escannexd'];
+        delete s._deletedDocs['annexd'];
+        delete s._deletedDocs['annex_d'];
+        delete s._deletedDocs['viewEscAnnexD'];
+    }
+    if (cleanType.includes('annexf') || cleanType.includes('annex_f')) {
+        delete s._deletedDocs['escannexf'];
+        delete s._deletedDocs['annexf'];
+        delete s._deletedDocs['annex_f'];
+        delete s._deletedDocs['viewEscAnnexF'];
+    }
+
+    try {
+        const idStr = String(s.id || '').trim();
+        const lrnStr = String(s.lrn || '').trim();
+        const numStr = String(s.studentNumber || '').trim();
+        const rawId = idStr.replace(/^STU-/i, '');
+        const keys = [
+            idStr, idStr.toLowerCase(), idStr.toUpperCase(),
+            rawId, rawId.toLowerCase(), rawId.toUpperCase(),
+            'STU-' + rawId, 'stu-' + rawId.toLowerCase(),
+            lrnStr, numStr
+        ].filter(Boolean);
+
+        for (const k of keys) {
+            localStorage.setItem('mdsj_deleted_docs_' + k, JSON.stringify(s._deletedDocs));
+        }
+    } catch(e) {}
+}
+window.unmarkDocDeleted = unmarkDocDeleted;
+
+function persistStudentDoc(student, docType, docObj) {
+    if (!student || !docType) return;
+    const cleanType = String(docType).replace(/^view/, '').toLowerCase();
+    if (!docObj) {
+        markDocDeleted(student, docType);
+        return;
+    }
+
+    unmarkDocDeleted(student, docType);
+
+    try {
+        const rawFiles = localStorage.getItem('mdsj_student_files') || '{}';
+        const parsedFiles = JSON.parse(rawFiles);
+        const lookupKeys = [student.id, student.lrn, student.studentNumber].filter(Boolean);
+        for (const k of lookupKeys) {
+            const cleanK = String(k).trim().replace(/^STU-/i, '');
+            if (!parsedFiles[cleanK]) parsedFiles[cleanK] = {};
+            parsedFiles[cleanK][cleanType] = docObj;
+        }
+        localStorage.setItem('mdsj_student_files', JSON.stringify(parsedFiles));
+    } catch(e) {}
+
+    try {
+        if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+            const origin = getAppOrigin();
+            const endpoint = (origin ? origin : '') + '/api/student-file';
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: student.id,
+                    lrn: student.lrn,
+                    studentNumber: student.studentNumber,
+                    type: cleanType,
+                    docType: cleanType,
+                    file: docObj.data,
+                    dataUrl: docObj.data,
+                    doc: docObj,
+                    timestamp: Date.now()
                 })
-                .then(res => res.json().catch(() => null))
-                .then(data => {
-                    if (data && (data.success || data.ok)) {
-                        console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}:`, data.blobUrl || data.url);
-                        if (docObj) {
-                            if (data.blobUrl) {
-                                docObj.url = data.blobUrl;
-                                docObj.blobUrl = data.blobUrl;
-                                saveStudents();
-                            } else if (data.url) {
-                                docObj.url = data.url;
-                                saveStudents();
-                            }
+            })
+            .then(res => res.json().catch(() => null))
+            .then(data => {
+                if (data && (data.success || data.ok)) {
+                    console.log(`[StudentDoc] Persisted ${cleanType} to server for student ${student.id || student.lrn}:`, data.blobUrl || data.url);
+                    if (docObj) {
+                        if (data.blobUrl) {
+                            docObj.url = data.blobUrl;
+                            docObj.blobUrl = data.blobUrl;
+                            saveStudents();
+                        } else if (data.url) {
+                            docObj.url = data.url;
+                            saveStudents();
                         }
                     }
-                })
-                .catch(err => {
-                    console.error(`[StudentDoc] Failed to persist ${cleanType}:`, err);
-                });
-            } else {
-                const sParam = encodeURIComponent(student.id || student.studentNumber || student.lrn || '');
-                const lrnParam = encodeURIComponent(student.lrn || '');
-                const stuNumParam = encodeURIComponent(student.studentNumber || '');
-                fetch(`${endpoint}?id=${sParam}&lrn=${lrnParam}&studentNumber=${stuNumParam}&type=${encodeURIComponent(cleanType)}`, { method: 'DELETE' })
-                    .catch(err => console.error('[StudentDoc] Delete error:', err));
-            }
+                }
+            })
+            .catch(err => {
+                console.error(`[StudentDoc] Failed to persist ${cleanType}:`, err);
+            });
         }
     } catch(e) {
         console.error('[StudentDoc] Save error:', e);
@@ -870,12 +1047,19 @@ window.persistStudentDoc = persistStudentDoc;
 
 function syncStudentDocsFromStore(s) {
     if (!s) return;
+    enforceDeletedDocs(s);
     const deleted = getDeletedDocs(s);
     try {
         const rawFiles = localStorage.getItem('mdsj_student_files');
-        if (!rawFiles) return;
+        if (!rawFiles) {
+            enforceDeletedDocs(s);
+            return;
+        }
         const parsed = JSON.parse(rawFiles);
-        if (!parsed || typeof parsed !== 'object') return;
+        if (!parsed || typeof parsed !== 'object') {
+            enforceDeletedDocs(s);
+            return;
+        }
         const keys = [s.id, s.lrn, s.studentNumber].filter(Boolean);
         for (const k of keys) {
             const cleanKey = String(k).trim().replace(/^STU-/i, '');
@@ -897,9 +1081,9 @@ function syncStudentDocsFromStore(s) {
                     s.torDoc = null;
                 }
 
-                const isCardDel = deleted.card || deleted.studentcard || deleted.viewCard || deleted.form138;
+                const isCardDel = deleted.card || deleted.studentcard || deleted.viewCard || deleted.form138 || deleted.reportcard;
                 if (!isCardDel) {
-                    const card = studentDocs.card || studentDocs.studentCard;
+                    const card = studentDocs.card || studentDocs.studentCard || studentDocs.reportcard;
                     if (card && (!s.studentCardDoc || (s.studentCardDoc && s.studentCardDoc.data === SAMPLE_DOC_DATA))) s.studentCardDoc = card;
                 } else {
                     s.studentCardDoc = null;
@@ -923,11 +1107,13 @@ function syncStudentDocsFromStore(s) {
             }
         }
     } catch(e) {}
+    enforceDeletedDocs(s);
 }
 window.syncStudentDocsFromStore = syncStudentDocsFromStore;
 
 function fetchRemoteStudentDocs(s, callback) {
     if (!s) return;
+    enforceDeletedDocs(s);
     const studentKey = s.id || s.studentNumber || s.lrn;
     if (!studentKey) return;
     const deleted = getDeletedDocs(s);
@@ -963,7 +1149,7 @@ function fetchRemoteStudentDocs(s, callback) {
                         if (!isBirthDel && bc) {
                             s.birthCertDoc = makeDocObj(bc, 'PSA_Birth_Certificate.pdf');
                             updated = true;
-                        } else if (isBirthDel || !bc) {
+                        } else {
                             if (s.birthCertDoc) { s.birthCertDoc = null; updated = true; }
                         }
 
@@ -972,16 +1158,16 @@ function fetchRemoteStudentDocs(s, callback) {
                         if (!isTorDel && tor) {
                             s.torDoc = makeDocObj(tor, 'Transcript_Of_Records.pdf');
                             updated = true;
-                        } else if (isTorDel || !tor) {
+                        } else {
                             if (s.torDoc) { s.torDoc = null; updated = true; }
                         }
 
-                        const isCardDel = deleted.card || deleted.studentcard || deleted.viewCard || deleted.form138;
+                        const isCardDel = deleted.card || deleted.studentcard || deleted.viewCard || deleted.form138 || deleted.reportcard;
                         const card = docs.card || docs.studentcard || docs.reportcard || docs.form138 || docs.form_138 || docs.sf9;
                         if (!isCardDel && card) {
                             s.studentCardDoc = makeDocObj(card, 'Report_Card.pdf');
                             updated = true;
-                        } else if (isCardDel || !card) {
+                        } else {
                             if (s.studentCardDoc) { s.studentCardDoc = null; updated = true; }
                         }
 
@@ -990,7 +1176,7 @@ function fetchRemoteStudentDocs(s, callback) {
                         if (!isEscDDel && escD) {
                             s.escAnnexDDoc = makeDocObj(escD, 'ESC_Annex_D.pdf');
                             updated = true;
-                        } else if (isEscDDel || !escD) {
+                        } else {
                             if (s.escAnnexDDoc) { s.escAnnexDDoc = null; updated = true; }
                         }
 
@@ -999,9 +1185,11 @@ function fetchRemoteStudentDocs(s, callback) {
                         if (!isEscFDel && escF) {
                             s.escAnnexFDoc = makeDocObj(escF, 'ESC_Annex_F.pdf');
                             updated = true;
-                        } else if (isEscFDel || !escF) {
+                        } else {
                             if (s.escAnnexFDoc) { s.escAnnexFDoc = null; updated = true; }
                         }
+
+                        enforceDeletedDocs(s);
 
                         if (updated) {
                             try {
@@ -1090,6 +1278,7 @@ function loadStudents() {
                     if (ex._deletedDocs) s._deletedDocs = ex._deletedDocs;
                     if (ex.payments && (!s.payments || s.payments.length === 0)) s.payments = ex.payments;
                 }
+                enforceDeletedDocs(s);
                 const photoFromStore = getStudentPhoto(s);
                 if (photoFromStore && !s.photo) s.photo = photoFromStore;
                 if (s.photo) persistStudentPhoto(s, s.photo);
@@ -1104,8 +1293,9 @@ function loadStudents() {
     }
 
     students.forEach(s => {
-        getDeletedDocs(s);
+        enforceDeletedDocs(s);
         syncStudentDocsFromStore(s);
+        enforceDeletedDocs(s);
         if (!s.photo || s.photo.length < 10) {
             const p = getStudentPhoto(s);
             if (p) {
@@ -2319,6 +2509,8 @@ function getStudentThumbHtml(s) {
 }
 
 function getDocBadgesHtml(s) {
+    if (!s) return '';
+    enforceDeletedDocs(s);
     const hasBirthCert = Boolean(s.birthCertDoc && (s.birthCertDoc.data || s.birthCertDoc.url));
     const hasTor = Boolean(s.torDoc && (s.torDoc.data || s.torDoc.url));
     const hasCard = Boolean(s.studentCardDoc && (s.studentCardDoc.data || s.studentCardDoc.url));
@@ -2369,6 +2561,7 @@ function previewDocFromTable(studentId, docType) {
         showToast('Student record not found.', 'error');
         return;
     }
+    enforceDeletedDocs(s);
 
     let doc = null;
     let title = 'Document Preview';
@@ -2401,8 +2594,18 @@ function previewDocFromTable(studentId, docType) {
     }
 
     if (!doc || (!doc.data && !doc.url)) {
-        const isDeleted = s._deletedDocs && (s._deletedDocs[cleanType] || s._deletedDocs[docType]);
-        if (!isDeleted && cleanType) {
+        const deleted = getDeletedDocs(s);
+        const isDeleted = deleted[cleanType] || deleted[docType] ||
+                          (cleanType === 'birthcert' && (deleted.psa || deleted.birth_cert || deleted.viewBirthCert)) ||
+                          (cleanType === 'tor' && (deleted.form137 || deleted.sf10 || deleted.viewTor)) ||
+                          (cleanType === 'card' && (deleted.form138 || deleted.studentcard || deleted.viewCard || deleted.reportcard)) ||
+                          (cleanType === 'escannexd' && (deleted.annexd || deleted.viewEscAnnexD)) ||
+                          (cleanType === 'escannexf' && (deleted.annexf || deleted.viewEscAnnexF));
+        if (isDeleted) {
+            showToast(`${title} has been removed or is not on file.`, 'info');
+            return;
+        }
+        if (cleanType) {
             const serverUrl = `/api/student-file?id=${encodeURIComponent(s.id || s.lrn)}&type=${encodeURIComponent(cleanType)}&raw=1`;
             doc = { name: `${cleanType}.pdf`, type: 'application/pdf', data: serverUrl, url: serverUrl };
         } else {
@@ -3431,9 +3634,11 @@ function viewStudent(id) {
     }
 
     // Documents: Sync from local store first, then render
+    enforceDeletedDocs(s);
     if (typeof syncStudentDocsFromStore === 'function') {
         syncStudentDocsFromStore(s);
     }
+    enforceDeletedDocs(s);
     renderDocPreview('viewBirthCert', s.birthCertDoc);
     renderDocPreview('viewTor', s.torDoc);
     renderDocPreview('viewCard', s.studentCardDoc);
@@ -4229,32 +4434,8 @@ window.deleteDocFromProfile = function(prefix) {
     const title = titles[prefix] || 'Document';
     if (!confirm(`Are you sure you want to delete or replace the ${title}?`)) return;
 
-    if (prefix === 'viewBirthCert') s.birthCertDoc = null;
-    else if (prefix === 'viewTor') s.torDoc = null;
-    else if (prefix === 'viewCard') s.studentCardDoc = null;
-    else if (prefix === 'viewEscAnnexD') s.escAnnexDDoc = null;
-    else if (prefix === 'viewEscAnnexF') s.escAnnexFDoc = null;
-
-    s._deletedDocs = s._deletedDocs || {};
-    s._deletedDocs[prefix] = true;
-    const cleanType = String(prefix).replace(/^view/, '').toLowerCase();
-    s._deletedDocs[cleanType] = true;
-    if (cleanType === 'birthcert') { s._deletedDocs['psa'] = true; s._deletedDocs['birth_cert'] = true; }
-    if (cleanType === 'tor') { s._deletedDocs['form137'] = true; s._deletedDocs['sf10'] = true; }
-    if (cleanType === 'card') { s._deletedDocs['form138'] = true; s._deletedDocs['studentcard'] = true; s._deletedDocs['reportcard'] = true; }
-    if (cleanType === 'escannexd') { s._deletedDocs['annexd'] = true; }
-    if (cleanType === 'escannexf') { s._deletedDocs['annexf'] = true; }
-
-    try {
-        const keys = [s.id, s.lrn, s.studentNumber].filter(Boolean);
-        for (const k of keys) {
-            const cleanK = String(k).replace(/^STU-/i, '');
-            localStorage.setItem('mdsj_deleted_docs_' + k, JSON.stringify(s._deletedDocs));
-            localStorage.setItem('mdsj_deleted_docs_' + cleanK, JSON.stringify(s._deletedDocs));
-        }
-    } catch(e) {}
-
-    persistStudentDoc(s, prefix, null);
+    markDocDeleted(s, prefix);
+    enforceDeletedDocs(s);
     saveStudents();
     renderDocPreview(prefix, null);
     renderPrintableStudentProfile(s);
@@ -4265,6 +4446,7 @@ window.deleteDocFromProfile = function(prefix) {
 
 function getDocFromStudent(s, prefix) {
     if (!s) return null;
+    enforceDeletedDocs(s);
     if (prefix === 'viewBirthCert') return s.birthCertDoc;
     if (prefix === 'viewTor') return s.torDoc;
     if (prefix === 'viewCard') return s.studentCardDoc;
@@ -7204,11 +7386,37 @@ function initForm() {
                 const updated = { ...prev, ...formData, id: prev.id, dateModified: new Date().toISOString() };
                 students[index] = updated;
                 try { if (updated.photo) persistStudentPhoto(updated, updated.photo); } catch(e){}
-                try { if (updated.birthCertDoc) persistStudentDoc(updated, 'birthcert', updated.birthCertDoc); } catch(e){}
-                try { if (updated.torDoc) persistStudentDoc(updated, 'tor', updated.torDoc); } catch(e){}
-                try { if (updated.studentCardDoc) persistStudentDoc(updated, 'card', updated.studentCardDoc); } catch(e){}
-                try { if (updated.escAnnexDDoc) persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc); } catch(e){}
-                try { if (updated.escAnnexFDoc) persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc); } catch(e){}
+                if (updated.birthCertDoc) {
+                    persistStudentDoc(updated, 'birthcert', updated.birthCertDoc);
+                } else if (prev.birthCertDoc) {
+                    markDocDeleted(updated, 'birthcert');
+                }
+
+                if (updated.torDoc) {
+                    persistStudentDoc(updated, 'tor', updated.torDoc);
+                } else if (prev.torDoc) {
+                    markDocDeleted(updated, 'tor');
+                }
+
+                if (updated.studentCardDoc) {
+                    persistStudentDoc(updated, 'card', updated.studentCardDoc);
+                } else if (prev.studentCardDoc) {
+                    markDocDeleted(updated, 'card');
+                }
+
+                if (updated.escAnnexDDoc) {
+                    persistStudentDoc(updated, 'escannexd', updated.escAnnexDDoc);
+                } else if (prev.escAnnexDDoc) {
+                    markDocDeleted(updated, 'escannexd');
+                }
+
+                if (updated.escAnnexFDoc) {
+                    persistStudentDoc(updated, 'escannexf', updated.escAnnexFDoc);
+                } else if (prev.escAnnexFDoc) {
+                    markDocDeleted(updated, 'escannexf');
+                }
+
+                enforceDeletedDocs(updated);
                 saveStudents();
                 showToast('Student record updated successfully!', 'success');
                 if (typeof logActivity === 'function') {

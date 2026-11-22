@@ -138,6 +138,23 @@ function saveFilesToDisk(keys, docType, docObj) {
     memoryFileStore.set(cleanK.toLowerCase(), current);
   }
 
+  // If deleting, purge across all memory keys that match any lookup alias
+  if (!docObj) {
+    for (const [storeKey, storeVal] of memoryFileStore.entries()) {
+      const cleanStoreKey = storeKey.replace(/^STU-/i, '').toLowerCase();
+      for (const k of keys) {
+        const cleanK = String(k).trim().replace(/^STU-/i, '').toLowerCase();
+        if (cleanStoreKey === cleanK && storeVal && typeof storeVal === 'object') {
+          for (const prop of Object.keys(storeVal)) {
+            if (matchesDocGroup(prop, docType)) {
+              delete storeVal[prop];
+            }
+          }
+        }
+      }
+    }
+  }
+
   const paths = getStoragePaths();
   for (const p of paths) {
     try {
@@ -163,6 +180,24 @@ function saveFilesToDisk(keys, docType, docObj) {
         }
         currentDisk[cleanK] = studentDisk;
       }
+
+      // If deleting, purge across all disk keys that match any lookup alias
+      if (!docObj) {
+        for (const [diskKey, diskVal] of Object.entries(currentDisk)) {
+          const cleanDiskKey = diskKey.replace(/^STU-/i, '').toLowerCase();
+          for (const k of keys) {
+            const cleanK = String(k).trim().replace(/^STU-/i, '').toLowerCase();
+            if (cleanDiskKey === cleanK && diskVal && typeof diskVal === 'object') {
+              for (const prop of Object.keys(diskVal)) {
+                if (matchesDocGroup(prop, docType)) {
+                  delete diskVal[prop];
+                }
+              }
+            }
+          }
+        }
+      }
+
       fs.writeFileSync(p, JSON.stringify(currentDisk), 'utf8');
     } catch (e) {}
   }
@@ -346,9 +381,15 @@ module.exports = async function handler(req, res) {
               for (const blob of blobs) {
                 const filename = blob.pathname.split('/').pop().replace(/\.[^.]+$/i, '');
                 const cleanName = normalizeDocType(filename);
+                const fileUrl = blob.url || `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
                 if (cleanName && !files[cleanName]) {
-                  files[cleanName] = blob.url || `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
+                  files[cleanName] = fileUrl;
                 }
+                if (matchesDocGroup(cleanName, 'birthcert') && !files['birthcert']) files['birthcert'] = fileUrl;
+                if (matchesDocGroup(cleanName, 'tor') && !files['tor']) files['tor'] = fileUrl;
+                if (matchesDocGroup(cleanName, 'card') && !files['card']) files['card'] = fileUrl;
+                if (matchesDocGroup(cleanName, 'escannexd') && !files['escannexd']) files['escannexd'] = fileUrl;
+                if (matchesDocGroup(cleanName, 'escannexf') && !files['escannexf']) files['escannexf'] = fileUrl;
               }
             }
           }
@@ -364,9 +405,15 @@ module.exports = async function handler(req, res) {
         if (studentDocs && typeof studentDocs === 'object') {
           for (const [docName, docVal] of Object.entries(studentDocs)) {
             const cleanName = normalizeDocType(docName);
+            const fileUrl = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
             if (docVal && cleanName && !files[cleanName]) {
-              files[cleanName] = `/api/student-file?id=${encodeURIComponent(rawId)}&type=${encodeURIComponent(cleanName)}&raw=1`;
+              files[cleanName] = fileUrl;
             }
+            if (docVal && matchesDocGroup(cleanName, 'birthcert') && !files['birthcert']) files['birthcert'] = fileUrl;
+            if (docVal && matchesDocGroup(cleanName, 'tor') && !files['tor']) files['tor'] = fileUrl;
+            if (docVal && matchesDocGroup(cleanName, 'card') && !files['card']) files['card'] = fileUrl;
+            if (docVal && matchesDocGroup(cleanName, 'escannexd') && !files['escannexd']) files['escannexd'] = fileUrl;
+            if (docVal && matchesDocGroup(cleanName, 'escannexf') && !files['escannexf']) files['escannexf'] = fileUrl;
           }
         }
       }
@@ -473,25 +520,26 @@ module.exports = async function handler(req, res) {
           prefixes.add(`student-files/${testKey}/`);
           prefixes.add(`student-files/${sk}`);
         }
+        const urlsToDelete = new Set();
         for (const pfx of prefixes) {
           const listOpts = { prefix: pfx };
           if (token) listOpts.token = token;
           const { blobs } = await list(listOpts);
           if (blobs && blobs.length > 0) {
-            const urlsToDelete = [];
             for (const b of blobs) {
               const filename = b.pathname.split('/').pop().replace(/\.[^.]+$/i, '');
               if (matchesDocGroup(filename, docType)) {
-                urlsToDelete.push(b.url);
+                urlsToDelete.add(b.url);
               }
             }
-            if (urlsToDelete.length > 0) {
-              const delOpts = {};
-              if (token) delOpts.token = token;
-              await del(urlsToDelete, delOpts);
-              console.log(`[StudentFile] Permanently deleted ${urlsToDelete.length} matching blobs from Vercel Blob:`, urlsToDelete);
-            }
           }
+        }
+        if (urlsToDelete.size > 0) {
+          const urlList = Array.from(urlsToDelete);
+          const delOpts = {};
+          if (token) delOpts.token = token;
+          await del(urlList, delOpts);
+          console.log(`[StudentFile] Permanently deleted ${urlList.length} matching blobs from Vercel Blob:`, urlList);
         }
       } catch (blobDelErr) {
         console.error('[StudentFile] Vercel Blob del error:', blobDelErr.message);

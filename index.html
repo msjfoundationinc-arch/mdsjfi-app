@@ -157,6 +157,27 @@
                 return null;
             }
 
+            function findDeletedDocs(sId, sLrn, sNum) {
+                var sIdClean = sId ? String(sId).trim() : '';
+                var sIdRaw = sIdClean.replace(/^STU-/i, '');
+                var sLrnClean = sLrn ? String(sLrn).trim() : '';
+                var sNumClean = sNum ? String(sNum).trim() : '';
+                var targetKeys = [sIdClean, sIdClean.toLowerCase(), sIdRaw, sIdRaw.toLowerCase(), 'STU-' + sIdRaw, 'stu-' + sIdRaw.toLowerCase(), sLrnClean, sNumClean];
+                var res = {};
+                for (var j = 0; j < targetKeys.length; j++) {
+                    var tk = targetKeys[j];
+                    if (!tk) continue;
+                    try {
+                        var raw = localStorage.getItem('mdsj_deleted_docs_' + tk);
+                        if (raw) {
+                            var p = JSON.parse(raw);
+                            if (p && typeof p === 'object') Object.assign(res, p);
+                        }
+                    } catch(e){}
+                }
+                return res;
+            }
+
             var merged = JSON.parse(JSON.stringify(matrix));
             merged.forEach(function(m){
                 var sId = m.id || '';
@@ -164,15 +185,22 @@
                 var sLrn = m.lrn ? String(m.lrn).trim() : '';
                 var sNum = m.studentNumber ? String(m.studentNumber).trim() : '';
 
+                var dDocs = findDeletedDocs(sId, sLrn, sNum);
+                var isBirthDel = dDocs.birthcert || dDocs.psa || dDocs.viewBirthCert || dDocs.birth_cert;
+                var isTorDel = dDocs.tor || dDocs.form137 || dDocs.viewTor || dDocs.sf10;
+                var isCardDel = dDocs.card || dDocs.studentcard || dDocs.viewCard || dDocs.form138 || dDocs.reportcard;
+                var isAnnexDDel = dDocs.escannexd || dDocs.annexd || dDocs.viewEscAnnexD;
+                var isAnnexFDel = dDocs.escannexf || dDocs.annexf || dDocs.viewEscAnnexF;
+
                 var ex = existMap[sId] || (sIdRaw ? existMap[sIdRaw] : null) || (sLrn ? existMap[sLrn] : null) || (sNum ? existMap[sNum] : null);
                 if (ex) {
                     if (ex.photo) m.photo = ex.photo;
                     if (ex.signature) m.signature = ex.signature;
-                    if (ex.birthCertDoc) m.birthCertDoc = ex.birthCertDoc;
-                    if (ex.torDoc) m.torDoc = ex.torDoc;
-                    if (ex.studentCardDoc) m.studentCardDoc = ex.studentCardDoc;
-                    if (ex.escAnnexDDoc) m.escAnnexDDoc = ex.escAnnexDDoc;
-                    if (ex.escAnnexFDoc) m.escAnnexFDoc = ex.escAnnexFDoc;
+                    if (ex.birthCertDoc && !isBirthDel) m.birthCertDoc = ex.birthCertDoc;
+                    if (ex.torDoc && !isTorDel) m.torDoc = ex.torDoc;
+                    if (ex.studentCardDoc && !isCardDel) m.studentCardDoc = ex.studentCardDoc;
+                    if (ex.escAnnexDDoc && !isAnnexDDel) m.escAnnexDDoc = ex.escAnnexDDoc;
+                    if (ex.escAnnexFDoc && !isAnnexFDel) m.escAnnexFDoc = ex.escAnnexFDoc;
                 }
                 var pPhoto = findStoredPhoto(sId, sLrn, sNum);
                 if (pPhoto && (!m.photo || m.photo.length < 10)) {
@@ -186,8 +214,17 @@
                 var updated = false;
                 existingStus.forEach(function(es) {
                     var sId = es.id || '';
+                    var sIdRaw = sId.replace(/^STU-/i, '');
                     var sLrn = es.lrn ? String(es.lrn).trim() : '';
                     var sNum = es.studentNumber ? String(es.studentNumber).trim() : '';
+                    var dDocs = findDeletedDocs(sId, sLrn, sNum);
+
+                    if (es.birthCertDoc && (dDocs.birthcert || dDocs.psa || dDocs.viewBirthCert || dDocs.birth_cert)) { es.birthCertDoc = null; updated = true; }
+                    if (es.torDoc && (dDocs.tor || dDocs.form137 || dDocs.viewTor || dDocs.sf10)) { es.torDoc = null; updated = true; }
+                    if (es.studentCardDoc && (dDocs.card || dDocs.studentcard || dDocs.viewCard || dDocs.form138 || dDocs.reportcard)) { es.studentCardDoc = null; updated = true; }
+                    if (es.escAnnexDDoc && (dDocs.escannexd || dDocs.annexd || dDocs.viewEscAnnexD)) { es.escAnnexDDoc = null; updated = true; }
+                    if (es.escAnnexFDoc && (dDocs.escannexf || dDocs.annexf || dDocs.viewEscAnnexF)) { es.escAnnexFDoc = null; updated = true; }
+
                     var pPhoto = findStoredPhoto(sId, sLrn, sNum);
                     if (pPhoto && (!es.photo || es.photo.length < 10)) {
                         es.photo = pPhoto;
@@ -9142,7 +9179,7 @@
     <script src="face-recognition.js"></script>
     <script src="face-recognition-test.js"></script>
     <!-- Core App Logic -->
-    <script src="app.js?v=20261121_14"></script>
+    <script src="app.js?v=20261122_01"></script>
 </body>
 </html>
 
