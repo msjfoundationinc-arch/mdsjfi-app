@@ -7420,6 +7420,79 @@ function initDocUploads() {
 // Student E-Signature Drawing & Upload
 let isDrawingSig = false;
 let sigHasStrokes = false;
+let isSigLocked = false;
+
+function lockSignaturePad(locked = true) {
+    isSigLocked = !!locked;
+    const canvas = document.getElementById('signaturePad');
+    const container = document.getElementById('sigCanvasContainer');
+    const overlay = document.getElementById('sigLockedOverlay');
+    const statusTag = document.getElementById('sigStatusTag');
+    const saveBtn = document.getElementById('btnSaveSig');
+
+    if (canvas) {
+        if (isSigLocked) {
+            canvas.classList.add('sig-pad-locked');
+            canvas.style.cursor = 'not-allowed';
+        } else {
+            canvas.classList.remove('sig-pad-locked');
+            canvas.style.cursor = 'crosshair';
+        }
+    }
+    if (container) {
+        if (isSigLocked) {
+            container.classList.add('is-locked');
+        } else {
+            container.classList.remove('is-locked');
+        }
+    }
+    if (overlay) {
+        overlay.style.display = isSigLocked ? 'flex' : 'none';
+    }
+    if (isSigLocked) {
+        if (statusTag) {
+            statusTag.classList.add('signed');
+            statusTag.innerHTML = '<i class="fas fa-lock" style="color:#16a34a;"></i> Signature on record (Locked)';
+        }
+        if (saveBtn) {
+            saveBtn.innerHTML = '<i class="fas fa-check"></i> Signature Saved';
+            saveBtn.classList.remove('btn-primary');
+            saveBtn.classList.add('btn-secondary');
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.7';
+            saveBtn.style.cursor = 'not-allowed';
+        }
+    } else {
+        if (saveBtn) {
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Signature';
+            saveBtn.classList.remove('btn-secondary');
+            saveBtn.classList.add('btn-primary');
+            saveBtn.disabled = false;
+            saveBtn.style.opacity = '1';
+            saveBtn.style.cursor = 'pointer';
+        }
+    }
+}
+
+function saveSignaturePad() {
+    const canvas = document.getElementById('signaturePad');
+    const hidden = document.getElementById('studentSignature');
+    if (!sigHasStrokes && (!hidden || !hidden.value)) {
+        showToast('Please draw or upload a signature first before saving.', 'warning');
+        return;
+    }
+    if (canvas && sigHasStrokes) {
+        if (hidden) hidden.value = canvas.toDataURL('image/png');
+    }
+    lockSignaturePad(true);
+    const viewBtn = document.getElementById('btnViewSig');
+    const removeBtn = document.getElementById('btnRemoveSig');
+    const badge = document.getElementById('sigUploadedBadge');
+    if (viewBtn) viewBtn.style.display = 'inline-flex';
+    if (removeBtn) removeBtn.style.display = 'inline-flex';
+    if (badge) badge.style.display = 'flex';
+    showToast('Signature saved on record. Pad locked.', 'success');
+}
 
 function setSignatureState(dataUrl) {
     const hidden = document.getElementById('studentSignature');
@@ -7436,7 +7509,6 @@ function setSignatureState(dataUrl) {
     if (viewBtn) viewBtn.style.display = 'inline-flex';
     if (removeBtn) removeBtn.style.display = 'inline-flex';
     if (badge) badge.style.display = 'flex';
-    if (statusTag) statusTag.innerHTML = '<i class="fas fa-check-circle" style="color:#16a34a;"></i> Signature on record';
 
     if (canvas && dataUrl) {
         const ctx = canvas.getContext('2d');
@@ -7450,8 +7522,11 @@ function setSignatureState(dataUrl) {
             const y = (canvas.height - h) / 2;
             ctx.drawImage(img, x, y, w, h);
             sigHasStrokes = true;
+            lockSignaturePad(true);
         };
         img.src = dataUrl;
+    } else {
+        lockSignaturePad(true);
     }
 }
 
@@ -7462,6 +7537,7 @@ function clearSignaturePad(showFeedback = true) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     sigHasStrokes = false;
+    isDrawingSig = false;
 
     const hidden = document.getElementById('studentSignature');
     if (hidden) hidden.value = '';
@@ -7482,9 +7558,14 @@ function clearSignaturePad(showFeedback = true) {
     if (badge) badge.style.display = 'none';
 
     const statusTag = document.getElementById('sigStatusTag');
-    if (statusTag) statusTag.innerHTML = '<i class="fas fa-pen"></i> No signature yet';
+    if (statusTag) {
+        statusTag.classList.remove('signed');
+        statusTag.innerHTML = '<i class="fas fa-pen"></i> No signature yet';
+    }
 
-    if (showFeedback) showToast('Signature cleared.', 'info');
+    lockSignaturePad(false);
+
+    if (showFeedback) showToast('Signature cleared. Pad unlocked for drawing.', 'info');
 }
 
 function removeCurrentSig() {
@@ -7523,6 +7604,11 @@ function initSignaturePad() {
     }
 
     function startDrawing(e) {
+        if (isSigLocked) {
+            if (e && e.cancelable) e.preventDefault();
+            showToast('Signature is saved and locked. Press "Clear Pad" to sign again.', 'info');
+            return;
+        }
         if (e.touches) e.preventDefault();
         isDrawingSig = true;
         const pos = getPos(e);
@@ -7535,7 +7621,7 @@ function initSignaturePad() {
     }
 
     function draw(e) {
-        if (!isDrawingSig) return;
+        if (!isDrawingSig || isSigLocked) return;
         if (e.touches) e.preventDefault();
         const pos = getPos(e);
         ctx.lineTo(pos.x, pos.y);
@@ -7550,7 +7636,7 @@ function initSignaturePad() {
             const removeBtn = document.getElementById('btnRemoveSig');
             if (removeBtn) removeBtn.style.display = 'inline-flex';
             const statusTag = document.getElementById('sigStatusTag');
-            if (statusTag) statusTag.innerHTML = '<i class="fas fa-check-circle" style="color:#16a34a;"></i> Signature captured';
+            if (statusTag) statusTag.innerHTML = '<i class="fas fa-pencil-alt" style="color:#2563eb;"></i> Drawing signature...';
         }
     }
 
@@ -7560,6 +7646,10 @@ function initSignaturePad() {
         const hidden = document.getElementById('studentSignature');
         if (hidden && sigHasStrokes) {
             hidden.value = canvas.toDataURL('image/png');
+        }
+        if (sigHasStrokes && !isSigLocked) {
+            const statusTag = document.getElementById('sigStatusTag');
+            if (statusTag) statusTag.innerHTML = '<i class="fas fa-pen-fancy" style="color:#2563eb;"></i> Signature drawn (Click Save)';
         }
     }
 
@@ -7817,6 +7907,9 @@ function initForm() {
 
                 enforceDeletedDocs(updated);
                 saveStudents();
+                if (updated.signature) {
+                    lockSignaturePad(true);
+                }
                 showToast('Student record updated successfully!', 'success');
                 if (typeof logActivity === 'function') {
                     try { logActivity('Student Updated', `Updated profile records for ${updated.lastName}, ${updated.firstName} (LRN: ${updated.lrn})`, updated); } catch(e){}
@@ -9372,6 +9465,8 @@ window.removeCurrentDoc = removeCurrentDoc;
 window.clearSignaturePad = clearSignaturePad;
 window.removeCurrentSig = removeCurrentSig;
 window.previewCurrentSig = previewCurrentSig;
+window.saveSignaturePad = saveSignaturePad;
+window.lockSignaturePad = lockSignaturePad;
 window.previewDocData = previewDocData;
 window.viewDocumentInModal = viewDocumentInModal;
 window.openExportOptionsModal = openExportOptionsModal;

@@ -3485,6 +3485,9 @@
                                 <div class="signature-prompt" id="sigPrompt">
                                     <i class="fas fa-pencil-alt"></i> Sign above (Draw signature here)
                                 </div>
+                                <div class="sig-locked-overlay" id="sigLockedOverlay" style="display:none;">
+                                    <i class="fas fa-lock"></i> Signature Saved &amp; Locked
+                                </div>
                             </div>
                             
                             <!-- E-Signature uploading progress indicator -->
@@ -3502,6 +3505,9 @@
                             </div>
 
                             <div class="signature-actions-row">
+                                <button type="button" class="btn-primary btn-sm" id="btnSaveSig" onclick="saveSignaturePad()" style="display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fas fa-save"></i> Save Signature
+                                </button>
                                 <button type="button" class="btn-secondary btn-sm" id="btnClearSig" onclick="clearSignaturePad()">
                                     <i class="fas fa-eraser"></i> Clear Pad
                                 </button>
